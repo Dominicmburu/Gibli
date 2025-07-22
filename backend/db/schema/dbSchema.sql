@@ -133,19 +133,22 @@ CREATE TABLE ShippingDetails (
         ON DELETE CASCADE
 );
 
+USE Marketplace
 CREATE TABLE Payments (
     PaymentId VARCHAR(50) PRIMARY KEY,
     UserId VARCHAR(50) NOT NULL,
     OrderId VARCHAR(50) NOT NULL,
-    Amount DECIMAL(10,2) NOT NULL,
+    Amount DECIMAL(10,2) NOT NULL, --From checkout.session.amount_total
     PaymentMethod VARCHAR(50) NOT NULL, -- e.g., MPESA, CARD(Visa, MasterCard, etc.), PAYPAL, Apple Pay / Google Pay
     -- Regarding the PaymentMethod I can extract the method used via Stripe’s API (payment_intent.payment_method_types, or charges.data[0].payment_method_details)
     PaymentStatus VARCHAR(20) DEFAULT 'PENDING', -- SUCCESSFUL, FAILED, REFUNDED
     -- PaymentStatus comes from: payment_intent.status OR 
     -- For more human-readable statuses, Stripe also provides: charges.data[0].status USUALLY (PENDING, sUCCEEDED, FAILED, REFUNDED)
     -- Update via Stripe webhook when the payment succeeds or fails (checkout.session.completed, charge.failed, etc.).
-    TransactionRef VARCHAR(100), 
-    PaidAt DATETIME,
+    TransactionRef VARCHAR(100), -- FROM payment_intent.id
+    -- Use payment_intent.id as your TransactionRef, since it's the core object tracking the whole payment lifecycle.
+    Currency VARCHAR(10) NOT NULL, --From checkout.session.currency
+    -- PaidAt DATETIME,
     CreatedAt DATETIME DEFAULT GETDATE(),
 
     CONSTRAINT FK_Payments_Users FOREIGN KEY (UserId) REFERENCES Users(UserId),
