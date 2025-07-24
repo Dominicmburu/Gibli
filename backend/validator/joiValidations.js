@@ -47,6 +47,15 @@ export const loginUserSchema = Joi.object({
 	Password: Joi.string().required(),
 });
 
+export const newCategorySchema = Joi.object({
+	CategoryName: Joi.string().required().messages({
+		'string.empty': 'CategoryName is required',
+		'any.required': 'CategoryName is required',
+	}),
+	Description: Joi.string().optional().allow('').messages({
+		'string.base': 'Description must be a string',
+	}),
+});
 export const productSchema = Joi.object({
 	Name: Joi.string().required().messages({
 		'string.empty': 'Product Name is required',
