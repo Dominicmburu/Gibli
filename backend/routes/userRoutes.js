@@ -40,10 +40,8 @@ userRouter.post('/register', validateSchema(registerUserSchema), async (req, res
 		res.status(500).json({ message: `${error.message}` });
 	}
 });
-userRouter.post('/register-seller/:id', async (req, res) => {
+userRouter.post('/register-seller/:id', validateSchema(registerSellerSchema), async (req, res) => {
 	try {
-		validateSchema(registerSellerSchema);
-
 		const { id } = req.params;
 		const { BusinessNumber, BusinessName, Country } = req.body;
 
