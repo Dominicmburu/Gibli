@@ -47,7 +47,7 @@ userRouter.post('/register-seller/:id', validateSchema(registerSellerSchema), as
 
 		// Check if the business number already exists
 		const result = await db.executeProcedure('CheckBusinessDetails', { BusinessNumber, BusinessName });
-		if (result.length > 0) {
+		if (result.recordset.length > 0) {
 			console.log(result.recordset);
 
 			return res.status(400).json({ message: 'Some  is already in use' });
