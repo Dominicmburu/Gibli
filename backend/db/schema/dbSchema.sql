@@ -52,6 +52,23 @@ CREATE TABLE ProductImages(
     ImageUrl VARCHAR(255) NOT NULL, 
     CONSTRAINT FK_ProductImages_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 )
+USE Marketplace
+ALTER TABLE ProductImages
+ALTER COLUMN ImageUrl VARCHAR(MAX);
+
+-- USE Marketplace
+-- CREATE TYPE ImageUrlTableType AS TABLE (
+--     ImageUrl VARCHAR(MAX)
+-- );
+
+Use Marketplace
+-- Drop if it exists (safe for dev environments)
+DROP TYPE IF EXISTS ProductImageTableType;
+GO
+CREATE TYPE ProductImageTableType AS TABLE (
+    ImageId VARCHAR(50),
+    ImageUrl VARCHAR(MAX)
+);
 
 USE Marketplace
 CREATE TABLE Orders(
