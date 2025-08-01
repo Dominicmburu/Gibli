@@ -49,7 +49,7 @@ USE Marketplace
 CREATE TABLE ProductImages(
     ImageId VARCHAR(50) NOT NULL PRIMARY KEY,
     ProductId VARCHAR(50) NOT NULL,
-    ImageUrl VARCHAR(255) NOT NULL, 
+    ImageUrl VARCHAR(255) NOT NULL, --(MAX) - Since we updated this column is now of size max
     CONSTRAINT FK_ProductImages_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 )
 USE Marketplace

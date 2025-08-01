@@ -7,3 +7,4 @@ AS
 BEGIN
     SELECT * FROM Products WHERE CategoryId=@CategoryId
 END
+
