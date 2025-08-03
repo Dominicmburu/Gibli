@@ -1,8 +1,6 @@
 USE Marketplace
 GO
-CREATE OR ALTER PROCEDURE GetProductsFromCategory(
-    @CategoryId VARCHAR(50)
-)
+CREATE OR ALTER PROCEDURE GetProductsToDisplay
 AS
 BEGIN
     SELECT 
@@ -15,6 +13,7 @@ BEGIN
         p.UpdatedAt,
         s.BusinessName,
         s.Country,
+        -- Get only the first image per product (can be changed if needed)
         pi.ImageUrl
     FROM Products p
     INNER JOIN Sellers s ON p.UserId = s.UserId
@@ -22,7 +21,6 @@ BEGIN
         SELECT TOP 1 ImageUrl 
         FROM ProductImages 
         WHERE ProductId = p.ProductId
-        ORDER BY ImageId
+        ORDER BY ImageId -- assuming ImageId reflects upload order
     ) pi
-    WHERE p.CategoryId = @CategoryId
 END

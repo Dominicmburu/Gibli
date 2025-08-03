@@ -6,4 +6,3 @@ BEGIN
     SELECT * FROM Products
 END
 
-
