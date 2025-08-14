@@ -11,14 +11,13 @@ const db = new DbHelper();
 cartRouter.post('/additem', authenticateToken, async (req, res) => {
 	try {
 		const UserId = req.user.id;
-		const { ProductId, Quantity } = req.body;
+		const { ProductId } = req.body;
 		const CartItemId = uuidv4();
 
 		await db.executeProcedure('AddToCart', {
 			CartItemId,
 			UserId,
 			ProductId,
-			Quantity,
 		});
 
 		res.status(201).json({ message: 'Product added to cart' });
