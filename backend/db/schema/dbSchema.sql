@@ -49,7 +49,7 @@ USE Marketplace
 CREATE TABLE ProductImages(
     ImageId VARCHAR(50) NOT NULL PRIMARY KEY,
     ProductId VARCHAR(50) NOT NULL,
-    ImageUrl VARCHAR(255) NOT NULL, --(MAX) - Since we updated this column is now of size max
+    ImageUrl VARCHAR(MAX) NOT NULL, --(MAX) - Since we updated this column is now of size max
     CONSTRAINT FK_ProductImages_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 )
 USE Marketplace
@@ -94,6 +94,14 @@ CREATE TABLE OrderItems(
     CONSTRAINT UQ_Order_Product UNIQUE(OrderId, ProductId)
 
 )
+USE Marketplace
+CREATE TYPE OrderItemType AS TABLE (
+    ProductId VARCHAR(50),
+    Quantity INT,
+    UnitPrice DECIMAL(10,2),
+    ItemTotal DECIMAL(10,2)
+);
+
 USE Marketplace
 CREATE TABLE Reviews (
     ReviewId VARCHAR(50) NOT NULL PRIMARY KEY,

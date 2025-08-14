@@ -43,8 +43,13 @@ export const registerSellerSchema = Joi.object({
 });
 
 export const loginUserSchema = Joi.object({
-	Email: Joi.string().email().required(),
-	Password: Joi.string().required(),
+	Email: Joi.string().email().required().messages({
+		'string.empty': 'Email is required',
+		'string.email': 'Please enter a valid email address',
+	}),
+	Password: Joi.string().required().messages({
+		'string.empty': 'Password is required',
+	}),
 });
 
 export const newCategorySchema = Joi.object({
