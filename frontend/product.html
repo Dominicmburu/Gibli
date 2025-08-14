@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Marketplace - Product Details</title>
+
+		<!-- Tailwind CDN -->
+		<script src="https://cdn.tailwindcss.com"></script>
+
+		<!-- Toastify CSS -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
+
+		<!-- Custom CSS Variables (same as homepage) -->
+		<style>
+			:root {
+				--primary: #0d6efd;
+				--primary-dark: #0a58ca;
+				--primary-light: #e7f0fe;
+
+				--accent: #f97316;
+				--accent-dark: #c2410c;
+				--accent-light: #fef3e7;
+
+				--background: #f9fafb;
+				--surface: #ffffff;
+				--border: #e5e7eb;
+				--shadow: rgba(0, 0, 0, 0.05);
+
+				--text-primary: #1f2937;
+				--text-secondary: #4b5563;
+				--text-muted: #9ca3af;
+
+				--success: #10b981;
+				--warning: #f59e0b;
+				--error: #ef4444;
+				--info: #3b82f6;
+
+				--hover: #eff6ff;
+				--active: #dbeafe;
+				--disabled: #e5e7eb;
+			}
+		</style>
+	</head>
+
+	<body class="bg-background min-h-screen font-sans">
+		<!-- Navbar (reused from homepage) -->
+		<nav
+			class="fixed top-0 left-0 right-0 bg-accent shadow-md border-b-border z-50 flex items-center justify-between px-6 py-3"
+		>
+			<div class="text-primary font-bold text-xl select-none cursor-default">MarketPlace</div>
+			<div class="flex-1 mx-6 max-w-xl">
+				<input
+					type="search"
+					placeholder="Search products..."
+					class="w-full border border-border rounded-md px-4 py-2 text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+				/>
+			</div>
+			<div class="flex items-center space-x-6">
+				<!-- Cart -->
+				<button id="cartBtn" class="relative focus:outline-none" aria-label="Cart">
+					<svg
+						class="w-6 h-6 text-primary hover:text-primary-dark"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 6h13"
+						/>
+					</svg>
+					<span
+						id="cartCount"
+						class="absolute -top-2 -right-2 bg-error text-white rounded-full text-xs w-5 h-5 flex items-center justify-center"
+						>0</span
+					>
+				</button>
+
+				<!-- Account -->
+				<button class="focus:outline-none" aria-label="Account">
+					<svg
+						class="w-6 h-6 text-primary hover:text-primary-dark"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M5.121 17.804A9 9 0 0112 15a9 9 0 016.879 2.804M12 12a4 4 0 100-8 4 4 0 000 8z"
+						/>
+					</svg>
+				</button>
+
+				<!-- Login/Logout -->
+				<!-- <button id="authBtn" class="btn-primary px-4 py-1 rounded-md text-sm font-semibold focus:outline-none">
+					Login
+				</button> -->
+			</div>
+		</nav>
+
+		<!-- Product Detail Section -->
+		<main class="pt-20 px-6 max-w-7xl mx-auto">
+			<section id="productDetail" class="flex flex-col lg:flex-row gap-8">
+				<!-- Image Section -->
+				<div class="flex-1 space-y-4">
+					<!-- Main Image -->
+					<img
+						id="productImage"
+						src=""
+						alt="Product Image"
+						class="w-full h-auto max-h-[500px] object-cover rounded shadow border border-border"
+					/>
+
+					<!-- Thumbnails -->
+					<div id="thumbnailContainer" class="flex gap-3 overflow-x-auto"></div>
+				</div>
+
+				<!-- Info Section -->
+				<div class="flex-1 space-y-4">
+					<h1 id="productName" class="text-3xl font-bold text-primary"></h1>
+					<p id="description" class="text-secondary text-base"></p>
+					<p id="price" class="text-xl font-semibold text-primary"></p>
+					<p id="stock" class="text-sm font-medium"></p>
+					<p class="text-sm text-muted"><span id="businessName"></span> | <span id="country"></span></p>
+					<button
+						id="addToCartBtn"
+						class="btn-accent px-6 py-2 rounded shadow hover:shadow-md transition-all"
+					>
+						Add to Cart
+					</button>
+				</div>
+			</section>
+		</main>
+
+		<!-- Toastify -->
+		<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+		<!-- Script to fetch product by ID -->
+		<script>
+			const params = new URLSearchParams(window.location.search);
+			const productId = params.get('id');
+
+			if (!productId) {
+				Toastify({
+					text: 'No product ID provided.',
+					backgroundColor: 'var(--warning)',
+				}).showToast();
+				window.location.href = '/';
+			}
+
+			async function loadProduct() {
+				try {
+					const res = await fetch(`http://localhost:5000/products/product/details/${productId}`);
+					if (!res.ok) throw new Error('Failed to load product.');
+					const p = await res.json();
+
+					// Populate Text Fields
+					document.getElementById('productName').textContent = p.ProductName;
+					document.getElementById('description').textContent = p.Description;
+					document.getElementById('price').textContent = `$${p.Price}`;
+					document.getElementById('stock').textContent = p.InStock ? 'In Stock' : 'Out of Stock';
+					document.getElementById('stock').style.color = p.InStock ? 'var(--success)' : 'var(--error)';
+					document.getElementById('businessName').textContent = p.BusinessName;
+					document.getElementById('country').textContent = p.Country;
+
+					// Handle Product Images
+					const mainImage = document.getElementById('productImage');
+					const thumbnails = document.getElementById('thumbnailContainer');
+
+					if (p.ProductImages && p.ProductImages.length > 0) {
+						mainImage.src = p.ProductImages[0].ImageUrl;
+						thumbnails.innerHTML = '';
+
+						p.ProductImages.forEach((img, index) => {
+							const thumb = document.createElement('img');
+							thumb.src = img.ImageUrl;
+							thumb.alt = `Thumbnail ${index + 1}`;
+							thumb.className =
+								'w-20 h-20 object-cover rounded-md cursor-pointer border border-border transition hover:scale-105';
+
+							if (index === 0) {
+								thumb.classList.add('ring-2', 'ring-primary');
+							}
+
+							thumb.addEventListener('click', () => {
+								mainImage.src = img.ImageUrl;
+								document
+									.querySelectorAll('#thumbnailContainer img')
+									.forEach((img) => img.classList.remove('ring-2', 'ring-primary'));
+								thumb.classList.add('ring-2', 'ring-primary');
+							});
+
+							thumbnails.appendChild(thumb);
+						});
+					}
+				} catch (err) {
+					Toastify({
+						text: 'Error loading product: ' + err.message,
+						backgroundColor: 'var(--error)',
+					}).showToast();
+				}
+			}
+
+			document.getElementById('addToCartBtn').addEventListener('click', async () => {
+				const token = localStorage.getItem('token');
+				if (!token) {
+					window.location.href = '/login.html';
+					return;
+				}
+
+				try {
+					const res = await fetch('http://localhost:5000/cart/additem', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Authorization: `Bearer ${token}`,
+						},
+						body: JSON.stringify({ ProductId: productId }),
+					});
+
+					const data = await res.json();
+
+					if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
+
+					Toastify({
+						text: data.message || 'Product added to cart!',
+						backgroundColor: 'var(--success)',
+					}).showToast();
+				} catch (error) {
+					Toastify({
+						text: `Error: ${error.message}`,
+						backgroundColor: 'var(--error)',
+					}).showToast();
+				}
+			});
+			// Navigate to cart.html when the cart icon is clicked
+			document.getElementById('cartBtn').addEventListener('click', () => {
+				window.location.href = 'cart.html';
+			});
+			loadProduct();
+		</script>
+	</body>
+</html>

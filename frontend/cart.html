@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Cart</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body class="bg-gray-100 text-gray-900">
+		<!-- ✅ Navbar (reused from homepage) -->
+		<nav
+			class="fixed top-0 left-0 right-0 bg-accent shadow-md border-b-border z-50 flex items-center justify-between px-6 py-3"
+		>
+			<a href="/frontend/home.html"
+				><div class="text-primary font-bold text-xl select-none cursor-default">MarketPlace</div></a
+			>
+
+			<div class="flex-1 mx-6 max-w-xl">
+				<input
+					type="search"
+					placeholder="Search products..."
+					class="w-full border border-border rounded-md px-4 py-2 text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+				/>
+			</div>
+			<div class="flex items-center space-x-6">
+				<!-- Cart -->
+				<button class="relative focus:outline-none" aria-label="Cart">
+					<svg
+						class="w-6 h-6 text-primary hover:text-primary-dark"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 6h13"
+						/>
+					</svg>
+					<span
+						id="cartCount"
+						class="absolute -top-2 -right-2 bg-error text-white rounded-full text-xs w-5 h-5 flex items-center justify-center"
+						>0</span
+					>
+				</button>
+
+				<!-- Account -->
+				<button class="focus:outline-none" aria-label="Account">
+					<svg
+						class="w-6 h-6 text-primary hover:text-primary-dark"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M5.121 17.804A9 9 0 0112 15a9 9 0 016.879 2.804M12 12a4 4 0 100-8 4 4 0 000 8z"
+						/>
+					</svg>
+				</button>
+			</div>
+		</nav>
+
+		<!-- ✅ Cart Container -->
+		<div class="max-w-5xl mx-auto p-4 mt-20 bg-white rounded shadow">
+			<h1 class="text-2xl font-semibold mb-4">Your Cart</h1>
+			<div id="cartContainer" class="space-y-4"></div>
+
+			<div class="mt-6 flex flex-col sm:flex-row justify-between items-center border-t pt-4">
+				<h2 class="text-xl font-bold">Total: KES <span id="cartTotal">0</span></h2>
+				<div class="mt-4 sm:mt-0 space-x-4">
+					<button onclick="clearCart()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+						Clear Cart
+					</button>
+					<button id="checkoutBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+						Proceed to Checkout
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			const token = localStorage.getItem('token');
+			if (!token) {
+				window.location.href = 'login.html';
+			}
+
+			const cartContainer = document.getElementById('cartContainer');
+			const cartTotal = document.getElementById('cartTotal');
+			const cartCount = document.getElementById('cartCount');
+			let cartItems = [];
+
+			const headers = {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json',
+			};
+
+			const getCartItems = async () => {
+				try {
+					const res = await fetch('http://localhost:5000/cart/items', { headers });
+					cartItems = await res.json();
+					renderCartItems();
+				} catch (err) {
+					console.error('Error fetching cart items:', err);
+					cartContainer.innerHTML = `<p class="text-red-600">Unable to load cart. Please log in.</p>`;
+				}
+			};
+
+			const renderCartItems = () => {
+				cartContainer.innerHTML = '';
+				let total = 0;
+
+				cartItems.forEach((item) => {
+					const itemTotal = item.Quantity * item.Price;
+					total += itemTotal;
+
+					const itemDiv = document.createElement('div');
+					itemDiv.className = 'flex items-center justify-between border p-4 rounded shadow-sm';
+
+					itemDiv.innerHTML = `
+						<div class="flex items-center space-x-4">
+							<img src="${item.ProductImageUrl}" alt="${item.ProductName}" class="w-20 h-20 object-cover rounded"/>
+							<div>
+								<h3 class="font-semibold text-lg">${item.ProductName}</h3>
+								<p class="text-sm text-gray-600">KES ${item.Price} each</p>
+								<p class="text-sm font-semibold mt-1">Subtotal: <span id="subtotal-${item.CartItemId}">KES ${itemTotal}</span></p>
+							</div>
+						</div>
+
+						<div class="flex items-center space-x-2">
+							<button onclick="updateQuantity('${item.CartItemId}', -1)" class="bg-gray-300 px-2 py-1 rounded text-xl">-</button>
+							<span id="qty-${item.CartItemId}" class="min-w-[30px] text-center">${item.Quantity}</span>
+							<button onclick="updateQuantity('${item.CartItemId}', 1)" class="bg-gray-300 px-2 py-1 rounded text-xl">+</button>
+							<button onclick="removeItem('${item.CartItemId}')" class="ml-4 text-red-600 hover:text-red-800">Remove</button>
+						</div>
+					`;
+
+					cartContainer.appendChild(itemDiv);
+				});
+
+				cartTotal.innerText = total;
+				cartCount.innerText = cartItems.length;
+			};
+
+			const updateQuantity = async (cartItemId, change) => {
+				const item = cartItems.find((i) => i.CartItemId === cartItemId);
+				if (!item) return;
+
+				let newQty = item.Quantity + change;
+				if (newQty < 1) newQty = 1;
+
+				try {
+					await fetch(`http://localhost:5000/cart/update/${cartItemId}`, {
+						method: 'PUT',
+						headers,
+						body: JSON.stringify({ Quantity: newQty }),
+					});
+					item.Quantity = newQty;
+					renderCartItems();
+				} catch (err) {
+					console.error('Failed to update quantity:', err);
+				}
+			};
+
+			const removeItem = async (cartItemId) => {
+				try {
+					await fetch(`http://localhost:5000/cart/remove/${cartItemId}`, {
+						method: 'DELETE',
+						headers,
+					});
+					cartItems = cartItems.filter((i) => i.CartItemId !== cartItemId);
+					renderCartItems();
+				} catch (err) {
+					console.error('Error removing item:', err);
+				}
+			};
+
+			const clearCart = async () => {
+				try {
+					await fetch('http://localhost:5000/cart/clear', {
+						method: 'DELETE',
+						headers,
+					});
+					cartItems = [];
+					renderCartItems();
+				} catch (err) {
+					console.error('Error clearing cart:', err);
+				}
+			};
+
+			getCartItems();
+			const checkoutBtn = document.getElementById('checkoutBtn');
+
+			checkoutBtn.addEventListener('click', async () => {
+				try {
+					const res = await fetch('http://localhost:5000/checkout/proceed', {
+						method: 'POST',
+						headers,
+					});
+
+					if (!res.ok) {
+						throw new Error('Failed to initiate checkout');
+					}
+
+					const data = await res.json();
+
+					if (data.url) {
+						window.location.href = data.url;
+					} else {
+						alert('Something went wrong. No checkout URL received.');
+					}
+				} catch (err) {
+					console.error('Checkout error:', err);
+					alert('Checkout failed. Please try again.');
+				}
+			});
+		</script>
+	</body>
+</html>
