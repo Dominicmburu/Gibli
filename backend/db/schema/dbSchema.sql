@@ -11,7 +11,15 @@ CREATE TABLE Users (
     UpdatedAt DATETIME NULL,
     IsDeleted BIT NOT NULL DEFAULT 0
 );
-
+Use Marketplace
+CREATE TABLE PasswordResetRequests (
+    ResetId VARCHAR(50) PRIMARY KEY,
+    UserId VARCHAR(50) NOT NULL,
+    TokenHash NVARCHAR(512) NOT NULL,
+    --ExpiresAt DATETIME NOT NULL,
+    --IsValid BIT NOT NULL DEFAULT 0
+    FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
+);
 USE Marketplace
 CREATE TABLE Sellers(
     UserId VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -22,6 +30,10 @@ CREATE TABLE Sellers(
     CONSTRAINT FK_Sellers_Users FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
     
 )
+USE Marketplace
+ALTER TABLE Sellers
+ADD PaymentAccount NVARCHAR(100) NULL;
+
 
 USE Marketplace
 CREATE TABLE Categories(
@@ -136,6 +148,17 @@ CREATE TABLE CartItems (
     CONSTRAINT FK_CartItems_Users FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE,
     CONSTRAINT FK_CartItems_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId) ON DELETE CASCADE,
     CONSTRAINT UQ_Cart_User_Product UNIQUE(UserId, ProductId)
+);
+USE Marketplace
+CREATE TABLE WishList (
+    WishListItemId VARCHAR(50) PRIMARY KEY,
+    UserId VARCHAR(50) NOT NULL,
+    ProductId VARCHAR(50) NOT NULL,
+    DateAdded DATETIME DEFAULT GETDATE(),
+
+    CONSTRAINT FK_WishList_Users FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE,
+    CONSTRAINT FK_WishList_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId) ON DELETE CASCADE,
+    CONSTRAINT UQ_WishList_User_Product UNIQUE(UserId, ProductId)
 );
 
 USE Marketplace;
