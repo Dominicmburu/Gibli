@@ -39,7 +39,7 @@ USE Marketplace
 CREATE TABLE Categories(
     CategoryId VARCHAR(50) NOT NULL PRIMARY KEY,
     CategoryName VARCHAR(50) NOT NULL,
-    -- Description VARCHAR(MAX)
+    
 )
 
 
@@ -65,6 +65,11 @@ CREATE TABLE Products(
     CONSTRAINT FK_Products_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(CategoryId),
     CONSTRAINT FK_Products_Sellers FOREIGN KEY (UserId) REFERENCES Sellers(UserId)
 )
+USE Marketplace
+ALTER TABLE Products
+ADD SubCategoryId VARCHAR(50) NOT NULL, 
+CONSTRAINT FK_Products_SubCategories FOREIGN KEY (SubCategoryId) REFERENCES SubCategories(SubCategoryId);
+
 
 USE Marketplace
 CREATE TABLE ProductImages(

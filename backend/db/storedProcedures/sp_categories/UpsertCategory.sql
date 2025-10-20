@@ -2,8 +2,8 @@ USE Marketplace
 GO
 CREATE OR ALTER PROCEDURE UpsertCategory(
     @CategoryId VARCHAR(50),
-    @CategoryName VARCHAR(50),
-    @Description VARCHAR(MAX)
+    @CategoryName VARCHAR(50)
+    -- @Description VARCHAR(MAX)
     )
 
     AS
@@ -11,13 +11,13 @@ CREATE OR ALTER PROCEDURE UpsertCategory(
     IF EXISTS (SELECT 1 FROM Categories WHERE CategoryId=@CategoryId)
     BEGIN
         UPDATE Categories
-        SET CategoryName=@CategoryName, Description=@Description
+        SET CategoryName=@CategoryName
         WHERE CategoryId=@CategoryId
     END
     ELSE
     BEGIN
-        INSERT INTO Categories (CategoryId, CategoryName, Description)
-        VALUES (@CategoryId, @CategoryName, @Description)
+        INSERT INTO Categories (CategoryId, CategoryName)
+        VALUES (@CategoryId, @CategoryName)
     END
     END
 
