@@ -1,0 +1,11 @@
+Use Marketplace
+GO
+CREATE OR ALTER PROCEDURE GetStoreInfoFromId
+@UserId VARCHAR(50)
+AS
+BEGIN
+SET NOCOUNT ON
+
+    SELECT * FROM Sellers WHERE UserId=@UserId
+
+END
