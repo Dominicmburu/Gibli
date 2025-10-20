@@ -39,7 +39,16 @@ USE Marketplace
 CREATE TABLE Categories(
     CategoryId VARCHAR(50) NOT NULL PRIMARY KEY,
     CategoryName VARCHAR(50) NOT NULL,
-    Description VARCHAR(MAX)
+    -- Description VARCHAR(MAX)
+)
+
+
+USE Marketplace
+CREATE TABLE SubCategories(
+    SubCategoryId VARCHAR(50) NOT NULL PRIMARY KEY,
+    CategoryId VARCHAR(50) NOT NULL,
+    SubCategoryName VARCHAR(50) NOT NULL,
+    CONSTRAINT FK_SubCategories_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(CategoryId)
 )
 
 USE Marketplace
