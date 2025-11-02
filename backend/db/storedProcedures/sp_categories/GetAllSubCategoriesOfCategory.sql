@@ -1,6 +1,6 @@
 USE Marketplace
 GO
-CREATE OR ALTER PROCEDURE GetSubCategories
+CREATE OR ALTER PROCEDURE GetAllSubCategoriesOfCategory
     @CategoryId VARCHAR(50)
 AS
 BEGIN
@@ -10,3 +10,4 @@ BEGIN
     FROM SubCategories
     WHERE CategoryId = @CategoryId
 END;
+

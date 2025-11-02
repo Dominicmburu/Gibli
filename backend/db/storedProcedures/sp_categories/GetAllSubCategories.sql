@@ -1,0 +1,7 @@
+USE Marketplace
+GO
+CREATE OR ALTER PROCEDURE GetAllSubCategories
+AS
+BEGIN
+	SELECT * FROM SubCategories
+END
