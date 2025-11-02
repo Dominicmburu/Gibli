@@ -26,13 +26,15 @@ CREATE TABLE Sellers(
     BusinessNumber NVARCHAR(20) NOT NULL UNIQUE,
     BusinessName NVARCHAR(255) NOT NULL UNIQUE,
     Country VARCHAR(50) NOT NULL,
-    IsVerified BIT DEFAULT 0,
+    PaymentAccount NVARCHAR(100) NULL;
+    IsVerified BIT DEFAULT 0;
+    IsStoreActive BIT DEFAULT 0;
     CONSTRAINT FK_Sellers_Users FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
     
 )
 USE Marketplace
 ALTER TABLE Sellers
-ADD PaymentAccount NVARCHAR(100) NULL;
+ADD City VARCHAR(50) NOT NULL, -- REMEBER TO ADD A CITY FOR SELLERS 
 
 
 USE Marketplace
@@ -62,13 +64,15 @@ CREATE TABLE Products(
     Price DECIMAL(10,2) NOT NULL,
     CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     UpdatedAt DATETIME NULL,
+    ShippingPrice DECIMAL(10,2) NOT NULL,
+    ExpressShippingPrice DECIMAL(10,2) NOT NULL,
+    TotalPrice AS (Price + ShippingPrice) PERSISTED,
+    ExpressTotalPrice AS (Price + ExpressShippingPrice) PERSISTED,
+    SubCategoryId VARCHAR(50) NOT NULL, -- Make Sub-Category Nullable
+    CONSTRAINT FK_Products_SubCategories FOREIGN KEY (SubCategoryId) REFERENCES SubCategories(SubCategoryId),
     CONSTRAINT FK_Products_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(CategoryId),
     CONSTRAINT FK_Products_Sellers FOREIGN KEY (UserId) REFERENCES Sellers(UserId)
 )
-USE Marketplace
-ALTER TABLE Products
-ADD SubCategoryId VARCHAR(50) NOT NULL, 
-CONSTRAINT FK_Products_SubCategories FOREIGN KEY (SubCategoryId) REFERENCES SubCategories(SubCategoryId);
 
 
 USE Marketplace
@@ -78,9 +82,19 @@ CREATE TABLE ProductImages(
     ImageUrl VARCHAR(MAX) NOT NULL, --(MAX) - Since we updated this column is now of size max
     CONSTRAINT FK_ProductImages_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 )
-USE Marketplace
-ALTER TABLE ProductImages
-ALTER COLUMN ImageUrl VARCHAR(MAX);
+-- USE Marketplace
+-- ALTER TABLE ProductImages
+-- DROP CONSTRAINT FK_ProductImages_Products;
+
+-- ALTER TABLE ProductImages
+-- ADD CONSTRAINT FK_ProductImages_Products
+-- FOREIGN KEY (ProductId)
+-- REFERENCES Products(ProductId)
+-- ON DELETE CASCADE;
+
+-- USE Marketplace
+-- ALTER TABLE ProductImages
+-- ALTER COLUMN ImageUrl VARCHAR(MAX);
 
 -- USE Marketplace
 -- CREATE TYPE ImageUrlTableType AS TABLE (
@@ -97,36 +111,79 @@ CREATE TYPE ProductImageTableType AS TABLE (
 );
 
 USE Marketplace
-CREATE TABLE Orders(
+
+CREATE TABLE Orders (
     OrderId VARCHAR(50) NOT NULL PRIMARY KEY,
-    BuyerId VARCHAR(50) NOT NULL,
-    OrderDate DATETIME NOT NULL DEFAULT GETDATE(),
-    TotalAmount DECIMAL(10,2),
-    Status VARCHAR(20) NOT NULL CHECK(Status IN ('pending', 'shipped', 'delivered', 'cancelled')),
-    CONSTRAINT FK_Orders_Users FOREIGN KEY (BuyerId) REFERENCES Users(UserId)
-)
+    BuyerId VARCHAR(50) NOT NULL,               -- FK to Users (buyers)
+    SellerId VARCHAR(50) NOT NULL,              -- FK to Sellers (sellers)
+    ShippingId VARCHAR(50) NOT NULL,            -- FK to ShippingDetails
+    -- SubTotal DECIMAL(10,2) NOT NULL,            -- Total before shipping
+    -- ShippingCost DECIMAL(10,2) NOT NULL DEFAULT 0,
+    TotalAmount DECIMAL(10,2) NOT NULL,         -- Final total
+    PaymentIntentId NVARCHAR(255),              -- Stripe Payment Intent
+    -- PaymentStatus NVARCHAR(50) DEFAULT 'Pending' CHECK (PaymentStatus IN ('Pending', 'Paid', 'Failed')),
+    DeliveryStatus NVARCHAR(50) DEFAULT 'Processing' CHECK (DeliveryStatus IN ('Processing', 'Shipped', 'Delivered', 'Cancelled')),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL,
+    IsDeleted BIT NOT NULL DEFAULT 0,
+
+    CONSTRAINT FK_Orders_Buyers FOREIGN KEY (BuyerId) REFERENCES Users(UserId),
+    CONSTRAINT FK_Orders_Sellers FOREIGN KEY (SellerId) REFERENCES Sellers(UserId),
+    CONSTRAINT FK_Orders_Shipping FOREIGN KEY (ShippingId) REFERENCES ShippingDetails(ShippingId)
+);
 
 USE Marketplace
-CREATE TABLE OrderItems(
+
+CREATE TABLE OrderItems (
     OrderItemId VARCHAR(50) NOT NULL PRIMARY KEY,
     OrderId VARCHAR(50) NOT NULL,
     ProductId VARCHAR(50) NOT NULL,
-    Quantity INT NOT NULL,
+    Quantity INT NOT NULL ,
     UnitPrice DECIMAL(10,2) NOT NULL,
-    ItemTotal DECIMAL(10,2) NOT NULL,
-    Status VARCHAR(20) NOT NULL CHECK(Status IN ('pending', 'shipped', 'delivered', 'cancelled')),
-    CONSTRAINT FK_OrderItems_Orders FOREIGN KEY (OrderId) REFERENCES Orders(OrderId),
-    CONSTRAINT FK_OrderItems_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId),
-    CONSTRAINT UQ_Order_Product UNIQUE(OrderId, ProductId)
+    ShippingPrice DECIMAL(10,2) DEFAULT 0,
+    ItemTotal AS (Quantity * UnitPrice + ShippingPrice) PERSISTED,
+    ProductName NVARCHAR(255) NOT NULL,
+    Description NVARCHAR(MAX),
+    ProductImageUrl NVARCHAR(MAX),
+    CategoryId VARCHAR(50) NULL,
+    SubCategoryId VARCHAR(50) NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
 
-)
-USE Marketplace
-CREATE TYPE OrderItemType AS TABLE (
-    ProductId VARCHAR(50),
-    Quantity INT,
-    UnitPrice DECIMAL(10,2),
-    ItemTotal DECIMAL(10,2)
+    CONSTRAINT FK_OrderItems_Orders FOREIGN KEY (OrderId) REFERENCES Orders(OrderId) ON DELETE CASCADE,
+    CONSTRAINT FK_OrderItems_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId),
+    CONSTRAINT FK_OrderItems_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(CategoryId),
+    CONSTRAINT FK_OrderItems_SubCategories FOREIGN KEY (SubCategoryId) REFERENCES SubCategories(SubCategoryId)
 );
+
+-- (Snapshot of the user's shipping info at the time of order)
+USE Marketplace
+CREATE TABLE OrderShippingDetails (
+    OrderShippingId VARCHAR(50) NOT NULL PRIMARY KEY,
+    OrderId VARCHAR(50) NOT NULL,
+    FullName NVARCHAR(255) ,
+    PhoneNumber VARCHAR(20) ,
+    AddressLine1 NVARCHAR(255) ,
+    AddressLine2 NVARCHAR(255),
+    City NVARCHAR(100) ,
+    StateOrProvince NVARCHAR(100),
+    PostalCode VARCHAR(20),
+    Country VARCHAR(50) ,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+
+    CONSTRAINT FK_OrderShippingDetails_Orders FOREIGN KEY (OrderId) REFERENCES Orders(OrderId) ON DELETE CASCADE
+);
+USE Marketplace
+CREATE TABLE CheckoutDrafts (
+    DraftId VARCHAR(50) PRIMARY KEY,
+    BuyerId VARCHAR(50),
+    CartItemsJson NVARCHAR(MAX),
+    ShippingOptionsJson NVARCHAR(MAX),
+    ShippingAddressJson VARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    IsUsed BIT DEFAULT 0
+);
+
+
 
 USE Marketplace
 CREATE TABLE Reviews (
@@ -187,13 +244,20 @@ CREATE TABLE ShippingDetails (
     StateOrProvince NVARCHAR(100),
     PostalCode VARCHAR(20),
     Country VARCHAR(50) NOT NULL,
-    -- IsDefault BIT DEFAULT 0,
+    IsDefault BIT DEFAULT 0,--Every address is added as non-default unless specified, when marked as default it gets the BIT 1
     CreatedAt DATETIME DEFAULT GETDATE(),
 
     CONSTRAINT FK_ShippingDetails_Users FOREIGN KEY (UserId)
         REFERENCES Users(UserId)
         ON DELETE CASCADE
 );
+
+
+-- Filtered unique index enforces at most one default address per user
+CREATE UNIQUE INDEX UQ_User_Default_Shipping
+ON ShippingDetails(UserId)
+WHERE IsDefault = 1;  -- Should only have one default address per user
+GO
 
 USE Marketplace
 CREATE TABLE Payments (
