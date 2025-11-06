@@ -17,10 +17,12 @@ BEGIN
         pi.ImageUrl
     FROM Products p
     INNER JOIN Sellers s ON p.UserId = s.UserId
+
     OUTER APPLY (
         SELECT TOP 1 ImageUrl 
         FROM ProductImages 
         WHERE ProductId = p.ProductId
         ORDER BY ImageId -- assuming ImageId reflects upload order
     ) pi
+    WHERE s.IsVerified = 0
 END

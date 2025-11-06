@@ -23,4 +23,12 @@ export function authenticateToken(req, res, next) {
 		req.user = user;
 		next();
 	});
+	// jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+	// 	if (err) {
+	// 		console.log('JWT Verification failed:', err.message);
+	// 		return res.status(403).json({ message: 'Invalid or expired token' });
+	// 	}
+	// 	console.log('Decoded token:', decoded);
+	// 	next();
+	// });
 }

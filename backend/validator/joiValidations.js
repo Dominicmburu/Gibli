@@ -51,14 +51,28 @@ export const loginUserSchema = Joi.object({
 		'string.empty': 'Password is required',
 	}),
 });
+export const forgortPasswordSchema = Joi.object({
+	Email: Joi.string().email().required().messages({
+		'string.empty': 'Email is required',
+		'string.email': 'Please enter a valid email address',
+	}),
+});
+export const resetPasswordSchema = Joi.object({
+	Password: Joi.string().pattern(passwordPattern).required().messages({
+		'string.empty': 'Password is required',
+		'string.pattern.base':
+			'Password must be at least 8 characters and include one uppercase letter, one lowercase letter, one number, and one special character (!@#$%^&*)',
+	}),
 
+	ConfirmPassword: Joi.any().valid(Joi.ref('Password')).required().messages({
+		'any.only': 'Password and ConfirmPassword do not match',
+		'any.required': 'Confirm Password is required',
+	}),
+});
 export const newCategorySchema = Joi.object({
 	CategoryName: Joi.string().required().messages({
 		'string.empty': 'CategoryName is required',
 		'any.required': 'CategoryName is required',
-	}),
-	Description: Joi.string().optional().allow('').messages({
-		'string.base': 'Description must be a string',
 	}),
 });
 export const productSchema = Joi.object({

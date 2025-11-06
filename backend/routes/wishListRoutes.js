@@ -29,10 +29,8 @@ wishlistRouter.get('/items', authenticateToken, async (req, res) => {
 
 		const result = await db.executeProcedure('GetUserWishList', { UserId });
 
-		const wishlistItems = result?.recordset;
-		wishlistItems.length == 0
-			? res.status(200).json({ message: 'wishlist is empty' })
-			: res.status(200).json(wishlistItems);
+		const wishlistItems = result?.recordset || [];
+		res.status(200).json(wishlistItems);
 	} catch (err) {
 		res.status(500).json({ message: 'Failed to fetch wishlistItems', error: err.message });
 	}
@@ -48,6 +46,22 @@ wishlistRouter.delete('/remove/:id', authenticateToken, async (req, res) => {
 		});
 
 		res.status(200).json({ message: 'wishlist item removed' });
+	} catch (err) {
+		res.status(500).json({ message: 'Failed to remove item', error: err.message });
+	}
+});
+// Quick-Remove item from wishlist from the heart icon in product card
+wishlistRouter.delete('/quick-remove/:id', authenticateToken, async (req, res) => {
+	try {
+		const { id } = req.params;
+		const UserId = req.user.id;
+
+		await db.executeProcedure('QuickRemoveProductFromWishlist', {
+			ProductId: id,
+			UserId,
+		});
+
+		res.status(200).json({ message: 'item removed from wishlist' });
 	} catch (err) {
 		res.status(500).json({ message: 'Failed to remove item', error: err.message });
 	}

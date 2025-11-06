@@ -16,6 +16,19 @@ BEGIN
         p.Description,
         p.Price,
         p.InStock,
+        --Additional Extra fields for detailed information about the product in the cart
+        p.CategoryId,
+        p.SubCategoryId,
+        p.ShippingPrice,
+        p.TotalPrice,
+        p.ExpressShippingPrice,
+        p.ExpressTotalPrice,
+        p.UserId AS SellerId,
+
+        s.BusinessName AS SellerName,
+        s.BusinessNumber AS SellerVATNumber,
+        s.Country AS SellerCountry,
+        
         -- Return the first image for that product
         (
             SELECT TOP 1 pi.ImageUrl 
@@ -24,5 +37,6 @@ BEGIN
         ) AS ProductImageUrl
     FROM CartItems ci
     INNER JOIN Products p ON ci.ProductId = p.ProductId
+    INNER JOIN Sellers s ON p.UserId = s.UserId
     WHERE ci.UserId = @UserId;
 END

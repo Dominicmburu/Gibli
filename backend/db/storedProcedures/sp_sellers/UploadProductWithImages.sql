@@ -3,11 +3,14 @@ GO
 CREATE OR ALTER PROCEDURE UploadProductWithImages
     @ProductId VARCHAR(50),
     @CategoryId VARCHAR(50),
+    @SubCategoryId VARCHAR(50),
     @UserId VARCHAR(50),
     @ProductName NVARCHAR(50),
     @Description NVARCHAR(MAX),
     @InStock INT,
     @Price DECIMAL(10,2),
+    @ShippingPrice DECIMAL(10,2),
+    @ExpressShippingPrice DECIMAL(10,2),
     @Images ProductImageTableType READONLY
 AS
 BEGIN
@@ -16,10 +19,10 @@ BEGIN
     BEGIN TRY
         -- Insert product
         INSERT INTO Products (
-            ProductId, CategoryId, UserId, ProductName, Description, InStock, Price
+            ProductId, CategoryId, SubCategoryId, UserId, ProductName, Description, InStock, Price, ShippingPrice, ExpressShippingPrice
         )
         VALUES (
-            @ProductId, @CategoryId, @UserId, @ProductName, @Description, @InStock, @Price
+            @ProductId, @CategoryId, @SubCategoryId, @UserId, @ProductName, @Description, @InStock, @Price, @ShippingPrice, @ExpressShippingPrice
         );
 
         -- Insert images

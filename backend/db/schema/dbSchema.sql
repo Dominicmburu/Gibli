@@ -172,16 +172,27 @@ CREATE TABLE OrderShippingDetails (
 
     CONSTRAINT FK_OrderShippingDetails_Orders FOREIGN KEY (OrderId) REFERENCES Orders(OrderId) ON DELETE CASCADE
 );
-USE Marketplace
+USE Marketplace;
+GO
+
 CREATE TABLE CheckoutDrafts (
     DraftId VARCHAR(50) PRIMARY KEY,
-    BuyerId VARCHAR(50),
-    CartItemsJson NVARCHAR(MAX),
-    ShippingOptionsJson NVARCHAR(MAX),
-    ShippingAddressJson VARCHAR(MAX),
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    IsUsed BIT DEFAULT 0
+    BuyerId VARCHAR(50) NOT NULL,
+    CartItemsJson NVARCHAR(MAX) NOT NULL,
+    ShippingOptionsJson NVARCHAR(MAX) NOT NULL,
+    ShippingAddressJson NVARCHAR(MAX) NOT NULL,
+    TotalAmount DECIMAL(10,2) NULL,          -- optional, compute server-side
+    SessionId NVARCHAR(255) NULL,            -- Stripe session id (optional)
+    Status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, completed, cancelled, expired
+    IsUsed BIT NOT NULL DEFAULT 0,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL
 );
+
+CREATE INDEX IX_CheckoutDrafts_Buyer_Status ON CheckoutDrafts (BuyerId, Status);
+CREATE INDEX IX_CheckoutDrafts_CreatedAt ON CheckoutDrafts (CreatedAt);
+
+
 
 
 

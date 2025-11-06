@@ -13,7 +13,8 @@ cartRouter.post('/additem', authenticateToken, async (req, res) => {
 		const UserId = req.user.id;
 		const { ProductId } = req.body;
 		const CartItemId = uuidv4();
-
+		//============NEED TO CROSSS CHECK WITH THE STOCK AMOUNT AND IF PRODUCT IS SOLDOUT, DISABLE THE ADD TO CART BTN=======
+		//======ALSO IN CHECKOUT I NEED TO CHECK RIGHT BEFORE THEY CHECKOUT IF WHAT THEY HAD IN THEIR CART IS STILL IN STOCK=====
 		await db.executeProcedure('AddToCart', {
 			CartItemId,
 			UserId,

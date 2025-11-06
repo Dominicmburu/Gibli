@@ -4,17 +4,28 @@ import { uploadToS3 } from '../services/s3UploadService.js';
 import { v4 as uuidv4 } from 'uuid';
 import sql from 'mssql';
 import DbHelper from '../db/dbHelper.js';
+import { authenticateToken } from '../middlewares/authMiddleware.js';
 
 const sellerRouter = express.Router();
 const db = new DbHelper();
 
-sellerRouter.post('/upload/product', upload.array('images', 4), async (req, res) => {
+sellerRouter.post('/upload/product', upload.array('images', 4), authenticateToken, async (req, res) => {
 	try {
 		if (!req.files || req.files.length !== 4) {
 			return res.status(400).json({ error: 'You must upload exactly 4 images of the product.' });
 		}
-
-		const { CategoryId, UserId, ProductName, Description, InStock, Price } = req.body;
+		const UserId = req.user.id;
+		const {
+			CategoryId,
+			SubCategoryId,
+			ProductName,
+			Description,
+			InStock,
+			Price,
+			ShippingPrice,
+			ExpressShippingPrice,
+		} = req.body;
+		// const { CategoryId, UserId, ProductName, Description, InStock, Price } = req.body;
 		const ProductId = uuidv4();
 
 		// Upload to S3
@@ -40,11 +51,14 @@ sellerRouter.post('/upload/product', upload.array('images', 4), async (req, res)
 		await db.executeProcedure('UploadProductWithImages', {
 			ProductId,
 			CategoryId,
+			SubCategoryId,
 			UserId,
 			ProductName,
 			Description,
 			InStock: parseInt(InStock),
 			Price: parseFloat(Price),
+			ShippingPrice: parseFloat(ShippingPrice),
+			ExpressShippingPrice: parseFloat(ExpressShippingPrice),
 			Images: imageTable, //  Properly structured table input
 		});
 
@@ -58,21 +72,7 @@ sellerRouter.post('/upload/product', upload.array('images', 4), async (req, res)
 		res.status(500).json({ error: error.message || 'Internal Server Error' });
 	}
 });
-sellerRouter.get('/myproducts/:id', async (req, res) => {
-	try {
-		const { id } = req.params;
 
-		const foundProduct = await db.executeProcedure('GetProductsBySeller', { UserId: id });
-		if (!foundProduct) {
-			res.status(404).json({ message: 'No products were found for you/user with that id' });
-		}
-
-		res.status(200).json(foundProduct.recordset);
-	} catch (error) {
-		console.error('Something went wrong, pertainig: ', error);
-		res.status(500).json({ message: `Something went wrong: ${error.message}` });
-	}
-});
 sellerRouter.patch('/update/product/:id', async (req, res) => {
 	try {
 		const { id } = req.params;
@@ -97,6 +97,30 @@ sellerRouter.patch('/update/product/:id', async (req, res) => {
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });
 	}
 });
+// sellerRouter.js
+sellerRouter.patch('/snooze/:id', async (req, res) => {
+	try {
+		const { id } = req.params;
+		const result = await db.executeProcedure('ToggleSellerVerification', { UserId: id });
+
+		const updatedSeller = result.recordset[0];
+		if (!updatedSeller) {
+			return res.status(404).json({ message: 'Seller not found.' });
+		}
+
+		const statusText =
+			updatedSeller.IsVerified === true || updatedSeller.IsVerified === 1 ? 'Activated' : 'Snoozed';
+
+		res.status(200).json({
+			message: `Store has been ${statusText} successfully.`,
+			data: updatedSeller,
+		});
+	} catch (error) {
+		console.error('Error toggling seller status:', error);
+		res.status(500).json({ message: `Something went wrong: ${error.message}` });
+	}
+});
+
 sellerRouter.delete('/delete/product/:id', async (req, res) => {
 	try {
 		const { id } = req.params;

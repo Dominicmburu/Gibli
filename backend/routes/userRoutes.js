@@ -3,13 +3,21 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uid } from 'uuid';
 import DbHelper from '../db/dbHelper.js';
-import { loginUserSchema, registerSellerSchema, registerUserSchema } from '../validator/joiValidations.js';
+import {
+	forgortPasswordSchema,
+	loginUserSchema,
+	registerSellerSchema,
+	registerUserSchema,
+	resetPasswordSchema,
+} from '../validator/joiValidations.js';
 import validateSchema from '../middlewares/validateSchema.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
 
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { sellerRegistrationEmail, sendForgotPasswordEmail, sendWelcomeEmail } from '../services/emailService.js';
+import { log } from 'console';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -40,11 +48,10 @@ userRouter.post('/register', validateSchema(registerUserSchema), async (req, res
 			PasswordHash: hashedPassword,
 		});
 
+		await sendWelcomeEmail(Email);
 		res.status(201).json({
 			message: `User ${Email} has been created successfully`,
 		});
-
-		//await sendWelcomeEmail(Email);
 	} catch (error) {
 		console.error('Error happened ', error);
 		res.status(500).json({ message: `${error.message}` });
@@ -95,9 +102,113 @@ userRouter.post('/login', validateSchema(loginUserSchema), async (req, res) => {
 	}
 });
 
-userRouter.post('/register-seller/:id', authenticateToken, validateSchema(registerSellerSchema), async (req, res) => {
+//Email Reset Link
+userRouter.post('/forgot-password', validateSchema(forgortPasswordSchema), async (req, res) => {
+	try {
+		const { Email } = req.body;
+		const result = await db.executeProcedure('GetUserByEmail', { Email });
+		const foundUser = result.recordset[0];
+		console.log(foundUser);
+		if (!foundUser) {
+			return res
+				.status(200)
+				.json({ message: 'If an account with that email exists, you will receive a reset link.' });
+		}
+		// Create JWT payload
+		const payload = {
+			id: foundUser.UserId,
+			email: foundUser.Email,
+			username: foundUser.Username,
+			role: foundUser.Role,
+		};
+
+		// Sign JWT
+		const token = jwt.sign(payload, process.env.JWT_SECRET, {
+			expiresIn: '5m',
+		});
+		const hashedToken = await bcrypt.hash(token, 10);
+		const expireTime = new Date(Date.now() + 300000);
+		const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+		await sendForgotPasswordEmail(foundUser.Email, resetUrl);
+		await db.executeProcedure('InsertIntoResetRequest', {
+			ResetId: uid(),
+			UserId: foundUser.UserId,
+			TokenHash: hashedToken,
+			// ExpiresAt: expireTime,
+		});
+		return res
+			.status(200)
+			.json({ message: 'If an account with that email exists, you will receive a reset link.' });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ message: 'Server error.' });
+	}
+});
+
+userRouter.patch('/reset-password', async (req, res) => {
+	try {
+		const { token, newPassword } = req.body;
+
+		if (!token) {
+			return res.status(400).json({ message: 'Access Token Missing' });
+		}
+		if (!newPassword) {
+			return res.status(400).json({ message: 'Password field is required' });
+		}
+		// console.log('Token was found');
+
+		const decoded = jwt.verify(token, process.env.JWT_SECRET);
+		const userId = decoded.id;
+
+		const result = await db.executeProcedure('GetRequestsByUserId', { UserId: userId });
+
+		const resetRequests = result.recordset;
+
+		if (!resetRequests || resetRequests.length === 0) {
+			return res.status(400).json({ message: 'No reset requests found for that user' });
+		}
+
+		// Try to match the token being used with one of the stored hashed Tokens
+		let validRequest = null;
+		for (const request of resetRequests) {
+			const isMatch = await bcrypt.compare(token, request.TokenHash);
+			if (isMatch) {
+				validRequest = request;
+				break;
+			}
+		}
+
+		if (!validRequest) {
+			return res.status(400).json({ message: 'Invalid token' });
+		}
+
+		// Hash and update new password
+		const hashedPassword = await bcrypt.hash(newPassword, 10);
+		await db.executeProcedure('UpdateUserPassword', {
+			UserId: userId,
+			PasswordHash: hashedPassword,
+		});
+
+		// clear the ResetRequest Table for all instances of this current user
+		await db.executeProcedure('ClearUsersResetRequests', {
+			UserId: userId,
+		});
+
+		return res.status(200).json({ message: 'Password successfully reset' });
+	} catch (error) {
+		if (error.name === 'TokenExpiredError') {
+			return res.status(400).json({ message: 'Token expired' });
+		}
+		return res.status(500).json({ message: 'Server Error' });
+	}
+});
+// userRouter.post('/forgot-password', validateSchema(forgortPasswordSchema), async (req, res) => {});
+
+userRouter.post('/register-seller', authenticateToken, validateSchema(registerSellerSchema), async (req, res) => {
 	try {
 		const UserId = req.user.id;
+		const UserEmail = req.user.email;
+
 		const { BusinessNumber, BusinessName, Country } = req.body;
 
 		// Check if the business number already exists
@@ -116,10 +227,10 @@ userRouter.post('/register-seller/:id', authenticateToken, validateSchema(regist
 		});
 
 		res.status(201).json({
-			message: `${BusinessName} is now a registered seller`,
+			message: ` Your store: ${BusinessName} is now a registered seller`,
 		});
 
-		//await sendSellerWelcomeEmail(Email);
+		await sellerRegistrationEmail(UserEmail);
 	} catch (error) {
 		console.error('Error happened ', error);
 		res.status(500).json({ message: `${error.message}` });

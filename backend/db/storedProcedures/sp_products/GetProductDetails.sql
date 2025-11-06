@@ -1,7 +1,7 @@
 USE Marketplace
 GO
 
-CREATE PROCEDURE GetProductDetails
+CREATE OR ALTER PROCEDURE GetProductDetails
     @ProductId VARCHAR(50)
 AS
 BEGIN
@@ -13,13 +13,20 @@ BEGIN
         P.Description,
         P.InStock,
         P.Price,
+        P.ShippingPrice,
+        P.ExpressShippingPrice,
+        P.TotalPrice,
+        P.ExpressTotalPrice,
         P.CreatedAt,
         P.UpdatedAt,
 
         -- Category info
         C.CategoryId,
         C.CategoryName,
-        C.Description AS CategoryDescription,
+
+        -- SubCategory info
+        SC.SubCategoryId,
+        SC.SubCategoryName,
 
         -- Seller info
         S.UserId AS SellerId,
@@ -41,5 +48,6 @@ BEGIN
     FROM Products P
     INNER JOIN Categories C ON P.CategoryId = C.CategoryId
     INNER JOIN Sellers S ON P.UserId = S.UserId
+    INNER JOIN SubCategories SC ON P.SubCategoryId = SC.SubCategoryId
     WHERE P.ProductId = @ProductId;
 END;
