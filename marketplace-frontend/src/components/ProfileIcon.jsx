@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 const ProfileIcon = () => {
 	const navigate = useNavigate();
 
-	const handleClick = () => {
-		navigate('/profile');
-	};
+	// const handleClick = () => {
+	// 	navigate('/profile');
+	// };
 
 	return (
 		<button

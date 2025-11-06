@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import api from '../../../api/axios';
 import { Link, useNavigate } from 'react-router-dom';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const ForgotPassword = () => {
 	const [email, setEmail] = useState('');
@@ -69,7 +69,6 @@ const ForgotPassword = () => {
 						Back To Login
 					</Link>
 				</p>
-				<Toaster />
 			</div>
 		</div>
 	);

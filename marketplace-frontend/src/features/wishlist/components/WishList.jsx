@@ -14,14 +14,15 @@ const WishList = () => {
 		const token = localStorage.getItem('token');
 		if (!token) {
 			console.log('taking you to login');
-			//navigate('/login');
+			navigate('/login');
 			return;
 		}
 
 		const fetchWishItems = async () => {
 			try {
-				const res = await api.get('http://localhost:5000/wishlist/items');
+				const res = await api.get('/wishlist/items');
 				setWishItems(res.data || []);
+				console.log('wishlist items', res.data);
 			} catch (err) {
 				console.error('Error fetching wishlist items:', err);
 				setError('Unable to load wishlist. Please log in.');
@@ -29,15 +30,14 @@ const WishList = () => {
 				setLoading(false);
 			}
 		};
-
 		fetchWishItems();
 	}, [navigate]);
 
 	// Remove single item
-	const removeItem = async (wishItemId) => {
+	const removeItem = async (itemId) => {
 		try {
-			await api.delete(`http://localhost:5000/wishlist/remove/${wishItemId}`);
-			setWishItems((prev) => prev.filter((i) => i.WishItemId !== wishItemId));
+			await api.delete(`/wishlist/remove/${itemId}`);
+			setWishItems((prev) => prev.filter((i) => i.WishListItemId !== itemId));
 		} catch (err) {
 			console.error('Error removing wishlist item:', err);
 		}
@@ -46,7 +46,7 @@ const WishList = () => {
 	// Clear entire wishlist
 	const clearWishList = async () => {
 		try {
-			await api.delete('http://localhost:5000/wishlist/clear');
+			await api.delete('/wishlist/clear');
 			setWishItems([]);
 		} catch (err) {
 			console.error('Error clearing wishlist:', err);
@@ -68,7 +68,7 @@ const WishList = () => {
 					<div className='space-y-4'>
 						{wishItems.map((item) => (
 							<div
-								key={item.WishItemId}
+								key={item.ProductId}
 								className='flex items-center justify-between border p-4 rounded shadow-sm'
 							>
 								<div className='flex items-center space-x-4'>
@@ -79,12 +79,14 @@ const WishList = () => {
 									/>
 									<div>
 										<h3 className='font-semibold text-lg'>{item.ProductName}</h3>
-										<p className='text-sm text-gray-600'>€ {item.Price}</p>
+									</div>
+									<div className='text-capitalize'>
+										<p className='text-sm text-gray-600'>Price per unit: € {item.Price}</p>
 									</div>
 								</div>
 
 								<button
-									onClick={() => removeItem(item.WishItemId)}
+									onClick={() => removeItem(item.WishListItemId)}
 									aria-label='Remove item from wishlist'
 									className='ml-4 text-red-600 hover:text-red-800'
 								>

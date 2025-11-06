@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import api from '../../../api/axios';
 import { useParams } from 'react-router-dom';
-import NavBar from '../../../components/Navbar';
+import NavBar from '../../../components/NavBar';
 import AddToCart from '../../cart/components/AddToCart';
+import Footer from '../../../components/Footer';
+import Suggestions from './Suggestions';
+import AddToWishList from '../../wishlist/components/AddToWishlist';
 
 const ProductDetails = () => {
 	const [productDetails, setProductDetails] = useState(null);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const { id } = useParams();
 
+	console.log('These are the current product details', productDetails);
 	useEffect(() => {
 		const fetchProductDetails = async () => {
 			try {
@@ -35,16 +39,27 @@ const ProductDetails = () => {
 					{/* <p className='text-xl text-green-600 font-semibold'>€ {productDetails.Price}</p> */}
 					{/* <p className='text-sm text-gray-500'>Stock: {productDetails.InStock}</p> */}
 					<p className='text-gray-600'>{productDetails.Description}</p>
-					<p className='text-xl text-green-600 font-semibold'>€ {productDetails.Price}</p>
-					<p className='text-sm text-gray-500'>Units in stock: {productDetails.InStock}</p>
+					<p className='text-xl text-green-600 font-semibold'>Selling at: € {productDetails.Price}</p>
+					<p>
+						<span className='text-sm text-gray-500'>Shipping Fee: €{productDetails.ShippingPrice}</span> |{' '}
+						<span className='text-sm text-gray-500'>
+							Express Shipping Fee: €{productDetails.ExpressShippingPrice}
+						</span>
+					</p>
+
 					<p className='text-sm text-muted'>
-						<span className='text-sm text-green-600 font-semibold'>{productDetails.BusinessName}</span> |{' '}
+						<span className='text-sm text-green-600 font-semibold'>
+							Seller: {productDetails.BusinessName}
+						</span>{' '}
+						|{' '}
 						<span className='text-sm text-green-600 font-semibold'>Country: {productDetails.Country}</span>
 					</p>
-					<button className='w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-md'>
+					<p className='text-sm text-gray-500'>Units in stock: {productDetails.InStock}</p>
+					<button className='w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-md'>
 						Buy Now
 					</button>
 					<AddToCart />
+					<AddToWishList ProductId={productDetails.ProductId} />
 				</div>
 
 				{/* RIGHT SIDE - product images */}
@@ -74,6 +89,8 @@ const ProductDetails = () => {
 					</div>
 				</div>
 			</div>
+			<Suggestions />
+			<Footer />
 		</>
 	);
 };

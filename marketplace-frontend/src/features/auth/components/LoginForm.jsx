@@ -88,6 +88,11 @@ const LoginForm = () => {
 					</button>
 				</form>
 				<p className='text-sm text-center text-muted mt-4'>
+					<Link className='text-blue-600 hover:underline font-semibold' to='/forgot-password'>
+						Forgot Password?
+					</Link>
+				</p>
+				<p className='text-sm text-center text-muted mt-4'>
 					Want to join us?{' '}
 					<Link className='text-blue-600 hover:underline font-semibold' to='/signup'>
 						Register here

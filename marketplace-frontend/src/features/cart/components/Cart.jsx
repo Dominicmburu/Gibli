@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import NavBar from '../../../components/NavBar';
+import { MapPin, Store } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const Cart = () => {
 	const navigate = useNavigate();
@@ -9,10 +11,12 @@ const Cart = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 
+	console.log(cartItems);
 	// Check for token presence on mount
 	useEffect(() => {
 		const token = localStorage.getItem('token');
 		if (!token) {
+			console.log('found no token');
 			navigate('/login');
 			return;
 		}
@@ -24,6 +28,7 @@ const Cart = () => {
 			} catch (err) {
 				console.error('Error fetching cart items:', err);
 				setError('Unable to load cart. Please log in.');
+				navigate('/login');
 			} finally {
 				setLoading(false);
 			}
@@ -71,19 +76,25 @@ const Cart = () => {
 		}
 	};
 
-	// Proceed to checkout -=====================NOT WORKING FIX IT IN THE BACKEND
+	// Proceed to checkout -====
 	const proceedToCheckout = async () => {
 		try {
 			const res = await api.post('/checkout/proceed');
 			if (res.data.url) {
-				window.location.href = res.data.url; // redirect to checkout
+				console.log(res);
+				//window.location.href = res.data.url; // redirect to checkout
 			} else {
 				alert('Something went wrong. No checkout URL received.');
 			}
 		} catch (err) {
 			console.error('Checkout error:', err);
+			toast.error('Checkout failed. Please try again.');
 			alert('Checkout failed. Please try again.');
 		}
+	};
+
+	const finalizeCheckout = async () => {
+		navigate('/finalize-checkout');
 	};
 
 	const total = cartItems.reduce((sum, item) => sum + item.Quantity * Number(item.Price), 0);
@@ -117,8 +128,21 @@ const Cart = () => {
 										/>
 										<div>
 											<h3 className='font-semibold text-lg'>{item.ProductName}</h3>
-											<p className='text-sm text-gray-600'>€ {item.Price} each</p>
+											<p className='text-sm text-gray-600'>Price: € {item.Price} each</p>
 											<p className='text-sm font-semibold mt-1'>Subtotal: € {itemTotal}</p>
+										</div>
+										<div className='self-start flex items-center space-x-6 text-sm text-gray-600 mt-2'>
+											<div className='flex items-center space-x-2'>
+												<Store size={16} className='text-gray-500' aria-hidden />
+												<span className='font-medium'>{item.SellerName}</span>
+											</div>
+
+											<div className='flex items-center space-x-2'>
+												<MapPin size={16} className='text-gray-500' aria-hidden />
+												<span>
+													{item.SellerCountry}, {item.SellerCountry}
+												</span>
+											</div>
 										</div>
 									</div>
 
@@ -161,11 +185,12 @@ const Cart = () => {
 						>
 							Clear Cart
 						</button>
+
 						<button
-							onClick={proceedToCheckout}
+							onClick={finalizeCheckout}
 							className='bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700'
 						>
-							Proceed to Checkout
+							Proceed To Checkout
 						</button>
 					</div>
 				</div>

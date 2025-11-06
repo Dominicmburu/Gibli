@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../../../api/axios';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../../../components/NavBar';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const SellerRegistration = () => {
 	const [businessNumber, setBusinessNumber] = useState('');
@@ -102,12 +102,12 @@ const SellerRegistration = () => {
 					<form className='space-y-4' onSubmit={handleSubmit} noValidate>
 						<div>
 							<label className='block text-sm font-medium text-gray-700' htmlFor='businessNumber'>
-								Business Number
+								VAT Id Number
 							</label>
 							<input
 								id='businessNumber'
 								type='text'
-								placeholder='BN-008'
+								placeholder='VAT Id Number'
 								value={businessNumber}
 								onChange={(e) => setBusinessNumber(e.target.value)}
 								required
@@ -122,7 +122,7 @@ const SellerRegistration = () => {
 							<input
 								id='businessName'
 								type='text'
-								placeholder='Chairs By Me'
+								placeholder='Store/Business Name'
 								value={businessName}
 								onChange={(e) => setBusinessName(e.target.value)}
 								required
@@ -137,7 +137,7 @@ const SellerRegistration = () => {
 							<input
 								id='country'
 								type='text'
-								placeholder='Austria'
+								placeholder='Country Business/Store is Located In'
 								value={country}
 								onChange={(e) => setCountry(e.target.value)}
 								required
@@ -155,7 +155,6 @@ const SellerRegistration = () => {
 					</form>
 				</div>
 			</div>
-			<Toaster />
 		</>
 	);
 };
