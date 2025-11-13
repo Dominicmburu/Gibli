@@ -23,7 +23,7 @@ const ResetPassword = () => {
 		// simple validation
 		if (password !== confirmPassword) {
 			setError('Passwords do not match');
-			toast.error('Passwords dont match');
+			toast.error('Passwords do not match');
 			return;
 		}
 		if (!token) {

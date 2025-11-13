@@ -52,6 +52,14 @@ CREATE TABLE SubCategories(
     SubCategoryName VARCHAR(50) NOT NULL,
     CONSTRAINT FK_SubCategories_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(CategoryId)
 )
+USE Marketplace
+SELECT *
+FROM Products
+WHERE UserId = '098e0162-9aa9-4d5e-8e70-8809f7d0023b'
+
+USE Marketplace
+DELETE FROM Products WHERE UserId = '098e0162-9aa9-4d5e-8e70-8809f7d0023b'
+DELETE FROM Users WHERE UserId = '098e0162-9aa9-4d5e-8e70-8809f7d0023b'
 
 USE Marketplace
 CREATE TABLE Products(
@@ -291,4 +299,7 @@ CREATE TABLE Payments (
     CONSTRAINT FK_Payments_Users FOREIGN KEY (UserId) REFERENCES Users(UserId),
     CONSTRAINT FK_Payments_Orders FOREIGN KEY (OrderId) REFERENCES Orders(OrderId)
 );
+
+
+
 

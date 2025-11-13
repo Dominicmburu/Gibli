@@ -32,9 +32,10 @@ const ProductDetails = () => {
 	return (
 		<>
 			<NavBar />
-			<div className='flex flex-col md:flex-row gap-8 p-6 max-w-7xl mx-auto'>
+			<div className=' flex flex-col md:flex-row gap-8 p-6 max-w-7xl mx-auto'>
 				{/* LEFT SIDE - product info */}
-				<div className='flex-1 space-y-4'>
+				<div className=' relative flex-1 space-y-4'>
+					<AddToWishList ProductId={productDetails.ProductId} />
 					<h1 className='text-3xl font-bold text-primary'>{productDetails.ProductName}</h1>
 					{/* <p className='text-xl text-green-600 font-semibold'>€ {productDetails.Price}</p> */}
 					{/* <p className='text-sm text-gray-500'>Stock: {productDetails.InStock}</p> */}
@@ -55,11 +56,12 @@ const ProductDetails = () => {
 						<span className='text-sm text-green-600 font-semibold'>Country: {productDetails.Country}</span>
 					</p>
 					<p className='text-sm text-gray-500'>Units in stock: {productDetails.InStock}</p>
+
 					<button className='w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-md'>
 						Buy Now
 					</button>
 					<AddToCart />
-					<AddToWishList ProductId={productDetails.ProductId} />
+					{/* <AddToWishList ProductId={productDetails.ProductId} /> */}
 				</div>
 
 				{/* RIGHT SIDE - product images */}

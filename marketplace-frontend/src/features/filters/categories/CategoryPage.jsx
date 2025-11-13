@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import api from '../../../api/axios';
 import NavBar from '../../../components/NavBar';
 import CategorySideBar from './CategorySideBar';
+import ProductCard from '../../products/components/ProductCard';
+import Footer from '../../../components/Footer';
 
 const CategoryPage = () => {
 	const { id } = useParams(); // categoryId from route
@@ -28,24 +30,23 @@ const CategoryPage = () => {
 		};
 		fetchData();
 	}, [id]);
-	console.log(products);
-	console.log(subcategories);
+
 	return (
 		<>
 			<NavBar />
 			<div className='flex mt-10 px-10 gap-8'>
-				{/* Sidebar (fixed width) */}
-				{/* <div className='w-64'> */}
+				{/* Sidebar */}
 				<div className='w-64 h-screen sticky top-0 overflow-y-auto'>
 					<CategorySideBar />
 				</div>
 
-				{/* Product List (takes remaining space) */}
+				{/* Product Section */}
 				<div className='flex-1'>
 					<div className='p-4 flex-1 overflow-y-auto'>
-						<h1>Category: {categoryName}</h1>
+						<h1 className='text-xl font-semibold mb-4'>Category: {categoryName}</h1>
+
 						{/* Subcategory Tags */}
-						<div className='flex flex-wrap gap-2 mb-4'>
+						<div className='flex flex-wrap gap-2 mb-6'>
 							{subcategories.map((sub) => (
 								<button
 									key={sub.SubCategoryId}
@@ -56,64 +57,18 @@ const CategoryPage = () => {
 							))}
 						</div>
 
-						{/* Product Grid */}
-						<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
-							{products.map((p) => (
-								<div
-									key={p.ProductId}
-									className='bg-white p-3 rounded-lg shadow hover:shadow-md transition'
-								>
-									<img
-										src={p.ImageUrl}
-										alt={p.ProductName}
-										className='w-full h-40 object-cover rounded-md mb-2'
-									/>
-									<h3 className='font-semibold text-sm'>{p.ProductName}</h3>
-									<p className='text-gray-600 text-xs'>{p.Price} </p>
-								</div>
+						{/* Product Grid using ProductCard */}
+						<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6'>
+							{products.map((product) => (
+								<ProductCard key={product.ProductId} {...product} />
 							))}
 						</div>
 					</div>
 				</div>
 			</div>
+			<Footer />
 		</>
 	);
-	// return (
-	// 	<>
-
-	// 		<NavBar />
-	// 		<CategorySideBar />
-	// <div className='p-4 flex-1 overflow-y-auto'>
-	// 	<h1>Category: {categoryName}</h1>
-	// 	{/* Subcategory Tags */}
-	// 	<div className='flex flex-wrap gap-2 mb-4'>
-	// 		{subcategories.map((sub) => (
-	// 			<button
-	// 				key={sub.SubCategoryId}
-	// 				className='px-3 py-1 text-sm rounded-full bg-gray-200 hover:bg-green-600 hover:text-white transition'
-	// 			>
-	// 				{sub.SubCategoryName}
-	// 			</button>
-	// 		))}
-	// 	</div>
-
-	// 	{/* Product Grid */}
-	// 	<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
-	// 		{products.map((p) => (
-	// 			<div key={p.ProductId} className='bg-white p-3 rounded-lg shadow hover:shadow-md transition'>
-	// 				<img
-	// 					src={p.ImageUrl}
-	// 					alt={p.ProductName}
-	// 					className='w-full h-40 object-cover rounded-md mb-2'
-	// 				/>
-	// 				<h3 className='font-semibold text-sm'>{p.ProductName}</h3>
-	// 				<p className='text-gray-600 text-xs'>{p.Price} </p>
-	// 			</div>
-	// 		))}
-	// 	</div>
-	// </div>
-	// 	</>
-	// );
 };
 
 export default CategoryPage;

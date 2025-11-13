@@ -7,18 +7,18 @@ const SignupForm = () => {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
 	const [loading, setLoading] = useState(false);
-
-	const navigate = useNavigate(); // React Router navigation hook
+	const navigate = useNavigate();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError('');
 		setSuccess('');
 
-		// Basic client-side validation
 		if (!email || !username || !password || !confirmPassword) {
 			setError('All fields are required.');
 			return;
@@ -29,14 +29,13 @@ const SignupForm = () => {
 		}
 
 		try {
+			setLoading(true);
 			const response = await api.post('/users/register', {
 				Email: email,
 				Username: username,
 				Password: password,
 				ConfirmPassword: confirmPassword,
 			});
-			console.log('This is the response', response);
-			setLoading(true);
 			setSuccess(response.data.message || 'Registration successful!');
 			setEmail('');
 			setUsername('');
@@ -44,7 +43,6 @@ const SignupForm = () => {
 			setConfirmPassword('');
 			navigate('/login');
 		} catch (err) {
-			console.log('error object', err);
 			setError(err.response?.data?.message || 'Registration failed. Please try again.');
 		} finally {
 			setLoading(false);
@@ -55,29 +53,30 @@ const SignupForm = () => {
 		<div className='bg-white-100 flex items-center justify-center min-h-screen'>
 			<div className='bg-white p-8 rounded-2xl shadow-xl w-full max-w-md'>
 				<h4 className='text-2xl font-bold mb-6 text-center text-gray-800'>Register</h4>
-				{error && <p style={{ color: 'red' }}>{error}</p>}
-				{success && <p style={{ color: 'green' }}>{success}</p>}
+				{error && <p className='text-red-600'>{error}</p>}
+				{success && <p className='text-green-600'>{success}</p>}
+
 				<form className='space-y-4' onSubmit={handleSubmit} noValidate>
-					<label className='block text-sm font-medium text-gray-700' htmlFor='email'>
+					<label htmlFor='email' className='block text-sm font-medium text-gray-700'>
 						Email
 					</label>
 					<input
-						className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 						type='email'
 						id='email'
+						className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500'
 						placeholder='Enter your email'
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						required
 					/>
 
-					<label className='block text-sm font-medium text-gray-700' htmlFor='username'>
+					<label htmlFor='username' className='block text-sm font-medium text-gray-700'>
 						Username
 					</label>
 					<input
-						className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 						type='text'
 						id='username'
+						className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500'
 						placeholder='Choose a username'
 						value={username}
 						onChange={(e) => setUsername(e.target.value)}
@@ -85,53 +84,63 @@ const SignupForm = () => {
 					/>
 
 					<div className='relative'>
-						<label className='block text-sm font-medium text-gray-700' htmlFor='password'>
+						<label htmlFor='password' className='block text-sm font-medium text-gray-700'>
 							Password
 						</label>
 						<input
-							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-							type='password'
+							type={showPassword ? 'text' : 'password'}
 							id='password'
+							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500'
 							placeholder='Enter password'
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							required
 							minLength={6}
 						/>
-						<button type='button' className='absolute right-3 top-8 text-gray-500 text-sm'>
-							Show
+						<button
+							type='button'
+							onClick={() => setShowPassword((prev) => !prev)}
+							className='absolute right-3 top-8 text-gray-500 text-sm'
+						>
+							{showPassword ? 'Hide' : 'Show'}
 						</button>
 					</div>
+
 					<div className='relative'>
-						<label className='block text-sm font-medium text-gray-700' htmlFor='confirmPassword'>
+						<label htmlFor='confirmPassword' className='block text-sm font-medium text-gray-700'>
 							Confirm Password
 						</label>
 						<input
-							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-							type='password'
+							type={showConfirmPassword ? 'text' : 'password'}
 							id='confirmPassword'
+							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500'
 							placeholder='Confirm password'
 							value={confirmPassword}
 							onChange={(e) => setConfirmPassword(e.target.value)}
 							required
 							minLength={6}
 						/>
-						<button type='button' className='absolute right-3 top-8 text-gray-500 text-sm'>
-							Show
+						<button
+							type='button'
+							onClick={() => setShowConfirmPassword((prev) => !prev)}
+							className='absolute right-3 top-8 text-gray-500 text-sm'
+						>
+							{showConfirmPassword ? 'Hide' : 'Show'}
 						</button>
 					</div>
 
 					<button
-						className='w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-md'
 						type='submit'
+						className='w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-md'
 						disabled={loading}
 					>
 						{loading ? 'Registering...' : 'Register'}
 					</button>
 				</form>
-				<p className='text-sm text-center text-muted mt-4'>
+
+				<p className='text-sm text-center mt-4'>
 					Already have an account?{' '}
-					<Link className='text-blue-600 hover:underline font-semibold' to='/login'>
+					<Link to='/login' className='text-blue-600 hover:underline font-semibold'>
 						Login here
 					</Link>
 				</p>
