@@ -1,6 +1,3 @@
--- IMPROVEMENTS TO MAKE.
--- ONLY EVER FETCH PRODUCTS THAT ARE IN STOCK, THOSE THAT STOCK == 0 DONT NEED TO BE RENDERED
-
 USE Marketplace
 GO
 CREATE OR ALTER PROCEDURE GetProductsToDisplay
@@ -28,4 +25,4 @@ BEGIN
         ORDER BY ImageId -- assuming ImageId reflects upload order
     ) pi
     WHERE s.IsVerified = 0 AND p.InStock > 0
-END
+END 
