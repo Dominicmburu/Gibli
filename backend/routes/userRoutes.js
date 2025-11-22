@@ -16,8 +16,13 @@ import { authenticateToken } from '../middlewares/authMiddleware.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sellerRegistrationEmail, sendForgotPasswordEmail, sendWelcomeEmail } from '../services/emailService.js';
-import { log } from 'console';
+import {
+	sellerRegistrationEmail,
+	sendForgotPasswordEmail,
+	sendVerificationEmail,
+	sendWelcomeEmail,
+} from '../services/emailService.js';
+import crypto from 'crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -27,80 +32,174 @@ const db = new DbHelper();
 
 userRouter.post('/register', validateSchema(registerUserSchema), async (req, res) => {
 	try {
-		const { Email, Username, Password, ConfirmPassword } = req.body;
+		const { Email, Username, Password } = req.body;
 
-		// Check if the email already exists
 		const existingEmail = await db.executeProcedure('GetUserByEmail', { Email });
-		//console.log('--------This is the existing email we found', existingEmail.recordset);
-		if (existingEmail.recordset.length > 0) {
-			console.log('--------Email is already in use', existingEmail.recordset);
-			return res.status(400).json({ message: 'Email is already in use' });
-		}
+		if (existingEmail.recordset.length > 0) return res.status(400).json({ message: 'Email is already in use' });
 
-		// Hash password
 		const hashedPassword = await bcrypt.hash(Password, 10);
 		const userId = uid();
-		// Execute stored procedure and retrieve the new UserID
+		const verificationToken = crypto.randomBytes(32).toString('hex');
+
 		await db.executeProcedure('CreateUser', {
 			UserId: userId,
 			Email,
 			Username,
 			PasswordHash: hashedPassword,
+			VerificationToken: verificationToken,
 		});
 
-		await sendWelcomeEmail(Email);
+		// Send verification email
+		await sendVerificationEmail(Email, verificationToken);
+
 		res.status(201).json({
-			message: `User ${Email} has been created successfully`,
+			message: `Account created. Check your email (${Email}) for verification link.`,
 		});
 	} catch (error) {
-		console.error('Error happened ', error);
-		res.status(500).json({ message: `${error.message}` });
+		console.error('Registration error:', error);
+		res.status(500).json({ message: error.message });
 	}
 });
 
-// Login route
 userRouter.post('/login', validateSchema(loginUserSchema), async (req, res) => {
 	try {
 		const { Email, Password } = req.body;
-
-		// Fetch user from DB
 		const result = await db.executeProcedure('GetUserByEmail', { Email });
 
-		if (result.recordset.length === 0) {
-			return res.status(400).json({ message: 'Invalid email or password' });
-		}
+		if (result.recordset.length === 0) return res.status(400).json({ message: 'Invalid email or password' });
 
 		const user = result.recordset[0];
-
-		// Check password
 		const isValid = await bcrypt.compare(Password, user.PasswordHash);
-		if (!isValid) {
-			return res.status(400).json({ message: 'Invalid email or password' });
-		}
+		if (!isValid) return res.status(400).json({ message: 'Invalid email or password' });
 
-		// Create JWT payload
-		const payload = {
-			id: user.UserId,
-			email: user.Email,
-			username: user.Username,
-			role: user.Role,
-		};
+		if (!user.IsEmailVerified)
+			return res.status(403).json({ message: 'Please verify your email before logging in.' });
 
-		// Sign JWT
-		const token = jwt.sign(payload, process.env.JWT_SECRET, {
-			expiresIn: '2h',
-		});
+		const payload = { id: user.UserId, email: user.Email, username: user.Username, role: user.Role };
+		const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
 
-		res.status(200).json({
-			message: 'Login successful',
-			token,
-			user: payload,
-		});
+		res.status(200).json({ message: 'Login successful', token, user: payload });
 	} catch (error) {
 		console.error('Login failed:', error);
 		res.status(500).json({ message: 'Login failed', error: error.message });
 	}
 });
+userRouter.get('/verify-email/:token', async (req, res) => {
+	try {
+		const { token } = req.params;
+		const result = await db.executeProcedure('GetUserByVerificationToken', { VerificationToken: token });
+
+		if (result.recordset.length === 0) return res.status(400).send('Invalid or expired verification link.');
+
+		const user = result.recordset[0];
+		await db.executeProcedure('VerifyUserEmail', { UserId: user.UserId });
+
+		res.send('Email verified successfully! You can now close this page and log in.');
+	} catch (error) {
+		console.error(error);
+		res.status(500).send('Error verifying email');
+	}
+});
+userRouter.post('/resend-verification', async (req, res) => {
+	try {
+		const { Email } = req.body;
+		const result = await db.executeProcedure('GetUserByEmail', { Email });
+
+		if (result.recordset.length === 0) return res.status(400).json({ message: 'Email not found' });
+
+		const user = result.recordset[0];
+		if (user.IsEmailVerified) return res.status(400).json({ message: 'Email already verified' });
+
+		const newToken = crypto.randomBytes(32).toString('hex');
+		await db.executeProcedure('UpdateVerificationToken', { Email, VerificationToken: newToken });
+		await sendVerificationEmail(Email, newToken);
+
+		res.status(200).json({ message: 'Verification email resent successfully' });
+	} catch (error) {
+		console.error('Resend verification error:', error);
+		res.status(500).json({ message: error.message });
+	}
+});
+
+//OG REGISTER ROUTE WITHOUT VERIFICATION LINK
+// userRouter.post('/register', validateSchema(registerUserSchema), async (req, res) => {
+// 	try {
+// 		const { Email, Username, Password, ConfirmPassword } = req.body;
+
+// 		// Check if the email already exists
+// 		const existingEmail = await db.executeProcedure('GetUserByEmail', { Email });
+// 		//console.log('--------This is the existing email we found', existingEmail.recordset);
+// 		if (existingEmail.recordset.length > 0) {
+// 			console.log('--------Email is already in use', existingEmail.recordset);
+// 			return res.status(400).json({ message: 'Email is already in use' });
+// 		}
+
+// 		// Hash password
+// 		const hashedPassword = await bcrypt.hash(Password, 10);
+// 		const userId = uid();
+// 		// Execute stored procedure and retrieve the new UserID
+// 		await db.executeProcedure('CreateUser', {
+// 			UserId: userId,
+// 			Email,
+// 			Username,
+// 			PasswordHash: hashedPassword,
+// 		});
+
+// 		await sendWelcomeEmail(Email);
+// 		res.status(201).json({
+// 			message: `User ${Email} has been created successfully`,
+// 		});
+// 	} catch (error) {
+// 		console.error('Error happened ', error);
+// 		res.status(500).json({ message: `${error.message}` });
+// 	}
+// });
+
+// Login route
+
+// OG LOGIN ROUTE WITHOUT BLOCKING UNVERIFIED USERS
+// userRouter.post('/login', validateSchema(loginUserSchema), async (req, res) => {
+// 	try {
+// 		const { Email, Password } = req.body;
+
+// 		// Fetch user from DB
+// 		const result = await db.executeProcedure('GetUserByEmail', { Email });
+
+// 		if (result.recordset.length === 0) {
+// 			return res.status(400).json({ message: 'Invalid email or password' });
+// 		}
+
+// 		const user = result.recordset[0];
+
+// 		// Check password
+// 		const isValid = await bcrypt.compare(Password, user.PasswordHash);
+// 		if (!isValid) {
+// 			return res.status(400).json({ message: 'Invalid email or password' });
+// 		}
+
+// 		// Create JWT payload
+// 		const payload = {
+// 			id: user.UserId,
+// 			email: user.Email,
+// 			username: user.Username,
+// 			role: user.Role,
+// 		};
+
+// 		// Sign JWT
+// 		const token = jwt.sign(payload, process.env.JWT_SECRET, {
+// 			expiresIn: '2h',
+// 		});
+
+// 		res.status(200).json({
+// 			message: 'Login successful',
+// 			token,
+// 			user: payload,
+// 		});
+// 	} catch (error) {
+// 		console.error('Login failed:', error);
+// 		res.status(500).json({ message: 'Login failed', error: error.message });
+// 	}
+// });
 
 //Email Reset Link
 userRouter.post('/forgot-password', validateSchema(forgortPasswordSchema), async (req, res) => {

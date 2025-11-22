@@ -40,6 +40,56 @@ const transporter = nodemailer.createTransport({
 		pass: process.env.EMAIL_PASS,
 	},
 });
+export async function sendVerificationEmail(recipient, token) {
+	const verificationLink = `${process.env.FRONTEND_URL}/verify/${token}`;
+	try {
+		await transporter.sendMail({
+			from: `Marketplace <${process.env.EMAIL_USER}>`,
+			to: recipient,
+			subject: 'Verify your Marketplace account',
+			html: `
+				<h2>Welcome to Marketplace!</h2>
+				<p>Please verify your email by clicking the link below:</p>
+				<a href="${verificationLink}" target="_blank"
+				style="background-color:#007bff; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Verify Email</a>
+				
+				<p>, <br/>Best regards, Support Team</p>
+
+
+			`,
+		});
+	} catch (error) {
+		console.error('Error sending verification email', error);
+	}
+}
+// export async function sendVerificationEmail(recipient, token) {
+// 	const verificationLink = `${process.env.FRONTEND_URL}/verify/${token}`;
+// 	// const resendVerificationLink = `${process.env.FRONTEND_URL}/users/resend-verification`;
+// 	const resendVerificationLink = `http://localhost:5000/users/resend-verification`;
+// 	try {
+// 		await transporter.sendMail({
+// 			from: `Marketplace <${process.env.EMAIL_USER}>`,
+// 			to: recipient,
+// 			subject: 'Verify your Marketplace account',
+// 			html: `
+// 				<h2>Welcome to Marketplace!</h2>
+// 				<p>Please verify your email by clicking the link below:</p>
+// 				<a href="${verificationLink}" target="_blank"
+// 				style="background-color:#007bff; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Verify Email</a>
+// 				<p>NOTE: This link will expire after some time.</p>
+// 				<p>If you see "Invalid or expired verification link" means the link has already been revoked.</p>
+// 				<p>Please request a new verification link by clicking the button below so you can continue shopping on the platform</p>
+// 				<a href="${resendVerificationLink}" target="_blank"
+// 				style="background-color:#037bbf; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Request New Verification Email</a>
+// 				<br/>
+// 				<p>, <br/>Best regards, Support Team</p>
+
+// 			`,
+// 		});
+// 	} catch (error) {
+// 		console.error('Error sending verification email', error);
+// 	}
+// }
 
 export async function sendWelcomeEmail(recipient) {
 	try {

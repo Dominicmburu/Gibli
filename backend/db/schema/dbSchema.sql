@@ -17,22 +17,22 @@ ALTER TABLE Users
 ADD IsEmailVerified BIT Default 0,
     VerificationToken NVARCHAR(255)
 
-USE Marketplace;
-GO
+-- USE Marketplace;
+-- GO
 
--- Step 1: Drop the default constraint
-ALTER TABLE Users
-DROP CONSTRAINT DF__Users__IsEmailVe__3335971A;
-GO
+-- -- Step 1: Drop the default constraint
+-- ALTER TABLE Users
+-- DROP CONSTRAINT DF__Users__IsEmailVe__3335971A;
+-- GO
 
--- Step 2: Drop both columns
-ALTER TABLE Users
-DROP COLUMN IsEmailVerified, VerificationToken;
-GO
+-- -- Step 2: Drop both columns
+-- ALTER TABLE Users
+-- DROP COLUMN IsEmailVerified, VerificationToken;
+-- GO
 
-SELECT COLUMN_NAME
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'Users';
+-- SELECT COLUMN_NAME
+-- FROM INFORMATION_SCHEMA.COLUMNS
+-- WHERE TABLE_NAME = 'Users';
 
 
 Use Marketplace

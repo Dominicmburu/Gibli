@@ -65,7 +65,7 @@ const CategorySideBar = () => {
 				isCollapsed ? 'w-16' : 'w-64'
 			}`}
 		>
-			{/* <SearchBar placeholder='Search categories' /> */}
+			<SearchBar placeholder='Search categories' />
 
 			<div className='flex items-center justify-between p-3 border-b border-gray-300'>
 				{!isCollapsed && <h2 className='font-bold text-gray-700'>Available Categories</h2>}

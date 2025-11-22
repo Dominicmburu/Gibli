@@ -5,11 +5,13 @@ CREATE OR ALTER PROCEDURE CreateUser
     @Username NVARCHAR(50),
     @Email NVARCHAR(255),
     @PasswordHash NVARCHAR(255),
-    @Role VARCHAR(20) = 'Buyer'
+    @Role VARCHAR(20) = 'Buyer',
+    @VerificationToken NVARCHAR(255)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO Users (UserId, Username, Email, PasswordHash, Role)
-    VALUES (@UserId, @Username, @Email, @PasswordHash, @Role);
+    INSERT INTO Users (UserId, Username, Email, PasswordHash, Role, VerificationToken)
+    VALUES (@UserId, @Username, @Email, @PasswordHash, @Role, @VerificationToken);
 END;
+ 

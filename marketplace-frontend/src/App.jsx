@@ -26,16 +26,23 @@ import CategoryPage from './features/filters/categories/CategoryPage';
 import FinalizeCheckout from './features/checkout/FinalizeCheckout';
 import Addresses from './features/address-book/Addresses';
 import SearchResultsPage from './features/products/components/SearchResultsPage';
+import VerifyPage from './features/auth/components/VerifyPage';
+import ResendVerification from './features/auth/components/ResendVerification';
 
 function App() {
 	return (
 		<>
 			<Routes>
+				{/* AUTH ROUTES */}
 				<Route path='/' element={<Home />} />
 				<Route path='/signup' element={<SignupForm />} />
 				<Route path='/login' element={<LoginForm />} />
 				<Route path='/forgot-password' element={<ForgotPassword />} />
 				<Route path='/reset-password' element={<ResetPassword />} />
+				<Route path='/verify/:token' element={<VerifyPage />} />
+				<Route path='/resend-verification' element={<ResendVerification />} />
+
+				{/* BUYING JOURNEY ROUTES */}
 				<Route path='/product/:id' element={<ProductDetails />} />
 				<Route path='/search' element={<SearchResultsPage />} />
 				<Route path='/cart' element={<Cart />} />
