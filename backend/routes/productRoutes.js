@@ -17,6 +17,36 @@ productRouter.get('/all', async (req, res) => {
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });
 	}
 });
+productRouter.get('/search', async (req, res) => {
+	try {
+		const { q } = req.query;
+		// Handle null, undefined, or empty string
+		if (!q || q.trim().length === 0) {
+			return res.json({
+				results: [],
+				count: 0,
+				message: 'Please enter a search term',
+			});
+		}
+		if (!q || q.trim().length < 2) {
+			return res.status(400).json({
+				error: 'Search term must be at least 2 characters',
+			});
+		}
+
+		let result = await db.executeProcedure('SearchProducts', { SearchTerm: q.trim() });
+
+		res.json({
+			results: result.recordset,
+			count: result.recordset.length,
+		});
+	} catch (error) {
+		console.error('Search error:', error);
+		res.status(500).json({
+			error: 'Search failed. Please try again.',
+		});
+	}
+});
 productRouter.get('/similar', async (req, res) => {
 	const id = req.params;
 	try {
