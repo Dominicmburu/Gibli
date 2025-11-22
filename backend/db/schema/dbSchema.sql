@@ -11,6 +11,30 @@ CREATE TABLE Users (
     UpdatedAt DATETIME NULL,
     IsDeleted BIT NOT NULL DEFAULT 0
 );
+
+USE Marketplace
+ALTER TABLE Users
+ADD IsEmailVerified BIT Default 0,
+    VerificationToken NVARCHAR(255)
+
+USE Marketplace;
+GO
+
+-- Step 1: Drop the default constraint
+ALTER TABLE Users
+DROP CONSTRAINT DF__Users__IsEmailVe__3335971A;
+GO
+
+-- Step 2: Drop both columns
+ALTER TABLE Users
+DROP COLUMN IsEmailVerified, VerificationToken;
+GO
+
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Users';
+
+
 Use Marketplace
 CREATE TABLE PasswordResetRequests (
     ResetId VARCHAR(50) PRIMARY KEY,

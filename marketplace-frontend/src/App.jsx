@@ -25,6 +25,7 @@ import AddProduct from './features/seller/AddProduct';
 import CategoryPage from './features/filters/categories/CategoryPage';
 import FinalizeCheckout from './features/checkout/FinalizeCheckout';
 import Addresses from './features/address-book/Addresses';
+import SearchResultsPage from './features/products/components/SearchResultsPage';
 
 function App() {
 	return (
@@ -36,6 +37,7 @@ function App() {
 				<Route path='/forgot-password' element={<ForgotPassword />} />
 				<Route path='/reset-password' element={<ResetPassword />} />
 				<Route path='/product/:id' element={<ProductDetails />} />
+				<Route path='/search' element={<SearchResultsPage />} />
 				<Route path='/cart' element={<Cart />} />
 				<Route path='/profile' element={<Profile />} />
 				<Route path='/wishlist' element={<WishList />} />

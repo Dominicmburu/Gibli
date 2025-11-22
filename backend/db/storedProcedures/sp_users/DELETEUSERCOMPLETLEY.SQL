@@ -1,6 +1,6 @@
 USE Marketplace;
 GO
-
+---NOT SAFE -------- USE ONLY IN TEST MODE--------
 CREATE OR ALTER PROCEDURE DeleteUserCompletely
     @UserId VARCHAR(50)
 AS
@@ -57,4 +57,4 @@ BEGIN
 END;
 GO
 
-EXEC DeleteUserCompletely @UserId = '098e0162-9aa9-4d5e-8e70-8809f7d0023b';
+EXEC DeleteUserCompletely @UserId = '83089f03-14f1-4a16-8229-b9515f1e0192';

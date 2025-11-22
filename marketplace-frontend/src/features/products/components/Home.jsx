@@ -11,15 +11,8 @@ const Home = () => {
 	return (
 		<>
 			<Navbar />
-			{/* <HeroCarousel /> */}
-			{/* <div className='mt-20'>
-				<ProductList />
-			</div> */}
-			{/* <Footer /> */}
-
 			<div className='flex mt-10 px-10 gap-8'>
 				{/* Sidebar (fixed width) */}
-				{/* <div className='w-64'> */}
 				<div className='w-64 h-screen sticky top-0 overflow-y-auto'>
 					<CategorySideBar />
 				</div>

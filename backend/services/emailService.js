@@ -1,10 +1,33 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
+import { Resend } from 'resend';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
+
+// const resendTransporter = new Resend(process.env.RESEND_KEY);
+// export async function sendWelcomeEmail(recipient) {
+// 	try {
+// 		await resendTransporter.emails.send({
+// 			from: `Marketplace <${process.env.EMAIL_USER}>`,
+// 			to: `${recipient}`,
+// 			subject: `Thanks for registering `,
+// 			html: `
+//                 <h1>Hello and Welcome to Marketplace!</h1>
+//                 <p>We’re excited to have you on board.</p><br/>
+// 				<br/>
+// 				<p>Whether you are just looking around or actively searching for your next purchase, we have you covered.</p>
+// 				<p>To ensure trust and authenticity we would like you to verify your email.</p>
+// 				<p>=====NOTE TO SELF: =========== Verification link will go here</p>
+//                 <p>, <br/>Best regards, Support Team</p>
+//             `,
+// 		});
+// 	} catch (error) {
+// 		console.error('Error while sending email', error);
+// 	}
+// }
 
 const transporter = nodemailer.createTransport({
 	host: 'smtp.gmail.com',
@@ -81,60 +104,6 @@ export async function sellerRegistrationEmail(recipient) {
 		console.error('Error while sending email', error);
 	}
 }
-// export async function sendOrderPlacedEmail(recipient, cartItems) {
-// 	try {
-// 		const itemRows = cartItems
-// 			.map(
-// 				(item) => `
-// 			<tr>
-// 				<td style="padding: 8px; border: 1px solid #ddd;">${item.Name}</td>
-// 				<td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.Quantity}</td>
-// 				<td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.Price}</td>
-// 			</tr>
-// 		`
-// 			)
-// 			.join('');
-
-// 		const htmlContent = `
-// 			<div style="font-family: Arial, sans-serif; color: #333;">
-// 				<h2 style="color: #006B1A;">Hi Sokoni Customer,</h2>
-// 				<p>Thanks for shopping with <strong>Sokoni</strong>!</p>
-// 				<p>Your order has been placed successfully. Here’s a summary of what you’ve ordered:</p>
-
-// 				<table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-// 					<thead>
-// 						<tr style="background-color: #f4f4f4;">
-// 							<th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Product</th>
-// 							<th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Quantity</th>
-// 							<th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Price Per Unit</th>
-// 						</tr>
-// 					</thead>
-// 					<tbody>
-// 						${itemRows}
-// 					</tbody>
-// 				</table>
-
-// 				<p style="margin-top: 20px;">We’ll keep you posted on the delivery status. If you have any questions, feel free to reply to this email.</p>
-
-// 				<p>Thanks again for choosing Sokoni!</p>
-
-// 				<p style="color: #555;"><strong>Sokoni Team</strong><br/>E-commerce made simple, it should be illegal </p>
-
-// 				<hr style="margin-top: 30px;">
-
-// 			</div>
-// 		`;
-
-// 		await transporter.sendMail({
-// 			from: `Sokoni <${process.env.EMAIL_USER}>`,
-// 			to: recipient,
-// 			subject: '🛒 Your Sokoni Order Confirmation',
-// 			html: htmlContent,
-// 		});
-// 	} catch (error) {
-// 		console.error('Error while sending order email', error);
-// 	}
-// }
 
 /**
  * Utility to format item rows into HTML
