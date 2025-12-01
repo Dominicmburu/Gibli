@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../../api/axios';
-import SearchBar from '../../../components/SearchBar';
+import CategorySearchBar from './CategorySearchBar';
 
 const CategorySideBar = () => {
 	const [categories, setCategories] = useState([]);
 	const [isCollapsed, setIsCollapsed] = useState(false);
-	const [activeCategory, setActiveCategory] = useState(null); // store as string
+	const [activeCategory, setActiveCategory] = useState(null);
 	const navigate = useNavigate();
 	const location = useLocation();
 
@@ -28,29 +28,25 @@ const CategorySideBar = () => {
 		};
 	}, []);
 
-	// Sync activeCategory after categories load or when pathname changes.
-	// We wait for categories so we can compare properly (and avoid a flicker).
+	// Sync activeCategory after categories load or when pathname changes
 	useEffect(() => {
 		if (!categories.length) return;
 
-		// try to extract category id from path e.g. /category/123 or /category/abc
 		const match = location.pathname.match(/\/category\/([^/]+)/);
 		if (match) {
-			setActiveCategory(String(match[1])); // always store as string
+			setActiveCategory(String(match[1]));
 			return;
 		}
 
-		// optional: if not on a category route, unset or set to first category — choose what you prefer.
 		setActiveCategory(null);
 	}, [location.pathname, categories]);
 
 	const handleCategoryClick = (CategoryId) => {
 		const catIdStr = String(CategoryId);
-		// avoid navigating if already on the same category to prevent transient state changes
 		const match = location.pathname.match(/\/category\/([^/]+)/);
 		const current = match ? String(match[1]) : null;
+
 		if (current === catIdStr) {
-			// still set the activeCategory to keep UI consistent (no navigation)
 			setActiveCategory(catIdStr);
 			return;
 		}
@@ -65,13 +61,21 @@ const CategorySideBar = () => {
 				isCollapsed ? 'w-16' : 'w-64'
 			}`}
 		>
-			<SearchBar placeholder='Search categories' />
-
+			{/* Header */}
 			<div className='flex items-center justify-between p-3 border-b border-gray-300'>
 				{!isCollapsed && <h2 className='font-bold text-gray-700'>Available Categories</h2>}
-				{/* collapse toggle if you want */}
 			</div>
 
+			{/* Search Bar - Only show when not collapsed */}
+			{!isCollapsed && (
+				<CategorySearchBar
+					categories={categories}
+					onCategorySelect={handleCategoryClick}
+					placeholder='Search categories'
+				/>
+			)}
+
+			{/* Categories List */}
 			<ul className='mt-2'>
 				{categories.map((cat) => {
 					const catId = String(cat.CategoryId);

@@ -21,7 +21,7 @@ const CategoryPage = () => {
 					api.get(`/categories/category-details/${id}`),
 				]);
 
-				setProducts(productRes.data);
+				setProducts(productRes.data.products);
 				setSubcategories(subRes.data);
 				setCategoryName(categoryRes.data.CategoryName);
 			} catch (err) {
