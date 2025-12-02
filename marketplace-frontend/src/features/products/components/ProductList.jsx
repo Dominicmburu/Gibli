@@ -38,7 +38,7 @@ const ProductList = () => {
 	return (
 		<>
 			<h2 className='text-3xl font-bold text-primary mb-10'>{loading ? 'Fetching Products....' : 'Products'}</h2>
-			<section className='grid grid-cols-3 gap-6'>
+			<section className='grid grid-cols-4 gap-3'>
 				{products.map((product) => (
 					<ProductCard key={product.ProductId} {...product} />
 				))}
