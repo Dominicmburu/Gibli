@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import api from '../../../api/axios';
+import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import { storageService } from '../../../services/localStorageService';
+//
 
 const LoginForm = () => {
 	const [email, setEmail] = useState('');
@@ -9,6 +11,8 @@ const LoginForm = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
+	const [verificationError, setVerificationError] = useState(false);
+	const [userEmail, setUserEmail] = useState('');
 	const navigate = useNavigate();
 
 	const handleSubmit = async (e) => {
@@ -33,6 +37,21 @@ const LoginForm = () => {
 			navigate('/');
 		} catch (err) {
 			setError(err.response?.data?.message || 'Login failed. Please try again.');
+			//Login component's error handling that directs
+			if (err.response?.status === 403) {
+				toast.error(
+					<div>
+						Email not verified.{' '}
+						<Link to='/resend-verification' className='underline font-bold'>
+							Resend verification email
+						</Link>
+					</div>
+				);
+			}
+			if (err.response?.status === 403 && err.response?.data?.message?.includes('verify your email')) {
+				setVerificationError(true);
+				// setUserEmail(email); // Store the email they tried to login with == disabled now because not necessary
+			}
 		}
 	};
 
@@ -87,6 +106,39 @@ const LoginForm = () => {
 					>
 						Login
 					</button>
+					{verificationError && (
+						<div className='mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl'>
+							<div className='flex items-start'>
+								<svg
+									className='w-5 h-5 text-amber-500 mt-0.5 mr-3'
+									fill='currentColor'
+									viewBox='0 0 20 20'
+								>
+									<path
+										fillRule='evenodd'
+										d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+										clipRule='evenodd'
+									/>
+								</svg>
+								<div className='flex-1'>
+									<h3 className='text-sm font-semibold text-amber-800'>Email Not Verified</h3>
+									<p className='text-sm text-amber-700 mt-1'>
+										Check your inbox for the verification link. <br />
+										Didn't get it?
+									</p>
+									<button
+										onClick={
+											() => navigate('/resend-verification')
+											// navigate('/resend-verification', { state: { email: userEmail } })
+										}
+										className='mt-2 text-sm font-semibold text-amber-600 hover:text-amber-800 underline'
+									>
+										Resend verification email →
+									</button>
+								</div>
+							</div>
+						</div>
+					)}
 				</form>
 
 				<p className='text-sm text-center mt-4'>
