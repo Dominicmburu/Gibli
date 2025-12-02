@@ -1,34 +1,14 @@
-import { useEffect, useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios'; // ✅ adjust path if different
+import { useCart } from '../context/CartContext';
 
 const CartIcon = () => {
 	const navigate = useNavigate();
-	const [cartCount, setCartCount] = useState(0);
+	const { cartCount } = useCart();
 
 	const handleClick = () => {
 		navigate('/cart');
 	};
-
-	useEffect(() => {
-		const fetchCartCount = async () => {
-			try {
-				const res = await api.get('/cart/items');
-				if (Array.isArray(res.data)) {
-					setCartCount(res.data.length);
-				}
-			} catch (err) {
-				console.error('Error fetching cart count:', err);
-			}
-		};
-
-		fetchCartCount();
-
-		// optional: auto-refresh every 30 seconds
-		// const interval = setInterval(fetchCartCount, 30000);
-		// return () => clearInterval(interval);
-	}, []);
 
 	return (
 		<div className='relative'>
