@@ -28,45 +28,48 @@ import Addresses from './features/address-book/Addresses';
 import SearchResultsPage from './features/products/components/SearchResultsPage';
 import VerifyPage from './features/auth/components/VerifyPage';
 import ResendVerification from './features/auth/components/ResendVerification';
+import { CartProvider } from './context/CartContext';
 
 function App() {
 	return (
 		<>
-			<Routes>
-				{/* AUTH ROUTES */}
-				<Route path='/' element={<Home />} />
-				<Route path='/signup' element={<SignupForm />} />
-				<Route path='/login' element={<LoginForm />} />
-				<Route path='/forgot-password' element={<ForgotPassword />} />
-				<Route path='/reset-password' element={<ResetPassword />} />
-				<Route path='/verify/:token' element={<VerifyPage />} />
-				<Route path='/resend-verification' element={<ResendVerification />} />
+			<CartProvider>
+				<Routes>
+					{/* AUTH ROUTES */}
+					<Route path='/' element={<Home />} />
+					<Route path='/signup' element={<SignupForm />} />
+					<Route path='/login' element={<LoginForm />} />
+					<Route path='/forgot-password' element={<ForgotPassword />} />
+					<Route path='/reset-password' element={<ResetPassword />} />
+					<Route path='/verify/:token' element={<VerifyPage />} />
+					<Route path='/resend-verification' element={<ResendVerification />} />
 
-				{/* BUYING JOURNEY ROUTES */}
-				<Route path='/product/:id' element={<ProductDetails />} />
-				<Route path='/search' element={<SearchResultsPage />} />
-				<Route path='/cart' element={<Cart />} />
-				<Route path='/profile' element={<Profile />} />
-				<Route path='/wishlist' element={<WishList />} />
-				<Route path='/address-book' element={<Addresses />} />
-				{/* CHECKOUT ROUTES */}
-				<Route path='/finalize-checkout' element={<FinalizeCheckout />} />
-				<Route path='/payment/success' element={<CheckoutSuccess />} />
-				<Route path='/payment/fail' element={<CheckoutFail />} />
-				<Route path='/orders' element={<OrdersPage />} />
-				{/* SELLER ROUTES */}
-				<Route path='/become-seller' element={<BecomeSeller />} />
-				<Route path='/seller/register' element={<SellerRegistration />} />
-				<Route path='/seller-dashboard' element={<SellerDashboard />} />
-				<Route path='/my-products' element={<SellerProducts />} />
-				<Route path='/my-orders' element={<SellerOrders />} />
-				<Route path='/restock' element={<NeedsRestock />} />
-				<Route path='/new-product' element={<AddProduct />} />
-				<Route path='/store-settings' element={<StoreSettings />} />
-				{/* CATEGORY ROUTES */}
-				<Route path='/category/:id' element={<CategoryPage />} />
-			</Routes>
-			<Toaster position='top-center' reverseOrder={false} />
+					{/* BUYING JOURNEY ROUTES */}
+					<Route path='/product/:id' element={<ProductDetails />} />
+					<Route path='/search' element={<SearchResultsPage />} />
+					<Route path='/cart' element={<Cart />} />
+					<Route path='/profile' element={<Profile />} />
+					<Route path='/wishlist' element={<WishList />} />
+					<Route path='/address-book' element={<Addresses />} />
+					{/* CHECKOUT ROUTES */}
+					<Route path='/finalize-checkout' element={<FinalizeCheckout />} />
+					<Route path='/payment/success' element={<CheckoutSuccess />} />
+					<Route path='/payment/fail' element={<CheckoutFail />} />
+					<Route path='/orders' element={<OrdersPage />} />
+					{/* SELLER ROUTES */}
+					<Route path='/become-seller' element={<BecomeSeller />} />
+					<Route path='/seller/register' element={<SellerRegistration />} />
+					<Route path='/seller-dashboard' element={<SellerDashboard />} />
+					<Route path='/my-products' element={<SellerProducts />} />
+					<Route path='/my-orders' element={<SellerOrders />} />
+					<Route path='/restock' element={<NeedsRestock />} />
+					<Route path='/new-product' element={<AddProduct />} />
+					<Route path='/store-settings' element={<StoreSettings />} />
+					{/* CATEGORY ROUTES */}
+					<Route path='/category/:id' element={<CategoryPage />} />
+				</Routes>
+				<Toaster position='top-center' reverseOrder={false} />
+			</CartProvider>
 		</>
 	);
 }

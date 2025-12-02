@@ -4,12 +4,14 @@ import api from '../../../api/axios';
 import NavBar from '../../../components/NavBar';
 import { MapPin, Store } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useCart } from '../../../context/CartContext';
 
 const Cart = () => {
 	const navigate = useNavigate();
 	const [cartItems, setCartItems] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
+	const { refreshCart } = useCart();
 
 	console.log(cartItems);
 	// Check for token presence on mount
@@ -60,6 +62,7 @@ const Cart = () => {
 	const removeItem = async (cartItemId) => {
 		try {
 			await api.delete(`/cart/remove/${cartItemId}`);
+			refreshCart();
 			setCartItems((prev) => prev.filter((i) => i.CartItemId !== cartItemId));
 		} catch (err) {
 			console.error('Error removing item:', err);
@@ -70,6 +73,7 @@ const Cart = () => {
 	const clearCart = async () => {
 		try {
 			await api.delete('/cart/clear');
+			refreshCart();
 			setCartItems([]);
 		} catch (err) {
 			console.error('Error clearing cart:', err);

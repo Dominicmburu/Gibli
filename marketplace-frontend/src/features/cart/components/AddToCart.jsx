@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../../api/axios';
 import toast from 'react-hot-toast';
+import { useCart } from '../../../context/CartContext';
 
 const AddToCart = ({ ProductId }) => {
-	// const { id } = useParams();
 	const params = useParams();
+	const { refreshCart } = useCart();
 	const id = ProductId || params.id;
 	// const [message, setMessage] = useState(null);
 
@@ -20,9 +21,9 @@ const AddToCart = ({ ProductId }) => {
 		}
 
 		try {
-			// console.log('Token being sent:', localStorage.getItem('token'));
 			console.log('/cart/additem', { ProductId: id });
 			const response = await api.post('/cart/additem', { ProductId: id });
+			refreshCart();
 			toast.success(' Item added to cart successfully!');
 			console.log('Item added:', response.data);
 		} catch (error) {
