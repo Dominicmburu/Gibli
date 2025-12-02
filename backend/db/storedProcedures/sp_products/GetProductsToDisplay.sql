@@ -7,10 +7,10 @@ BEGIN
         p.ProductId,
         p.ProductName,
         -- p.Description,
-        p.InStock,
+        --p.InStock,
         p.Price,
-        p.CreatedAt,
-        p.UpdatedAt,
+        --p.CreatedAt,
+        --p.UpdatedAt,
         s.BusinessName,
         s.Country,
         -- Get only the first image per product (can be changed if needed)

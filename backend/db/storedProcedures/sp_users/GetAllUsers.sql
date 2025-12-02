@@ -5,9 +5,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT UserId, Username, Email, Role, CreatedAt, UpdatedAt
+    -- SELECT UserId, Username, Email, Role, CreatedAt, UpdatedAt
+    SELECT *
     FROM Users
     -- WHERE IsDeleted = 0;
 END;
 
-EXEC GetAllUsers
+SELECT *
+    FROM Sellers
