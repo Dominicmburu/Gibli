@@ -56,6 +56,7 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 
 		// 💳 Create Stripe Checkout Session
 		const session = await stripe.checkout.sessions.create({
+			//payment_method_types: ['card', 'sepa_debit', 'giropay', 'paypal', 'revolut_pay'],
 			payment_method_types: ['card', 'sepa_debit'],
 			mode: 'payment',
 			line_items: lineItems,
@@ -187,19 +188,31 @@ export const stripeWebhook = async (req, res) => {
 
 			// Loop sellers and insert orders
 			for (const [sellerId, items] of Object.entries(groupedBySeller)) {
+				const sellerOrderTotal = items.reduce((sum, i) => sum + i.TotalPrice, 0);
+
 				await db.executeProcedure('CreateOrder', {
 					OrderId: uuidv4(),
 					BuyerId: userId,
 					SellerId: sellerId,
 					ShippingId: shippingId,
-					TotalAmount: items.reduce((sum, i) => sum + i.TotalPrice, 0),
+					TotalAmount: sellerOrderTotal,
 					PaymentIntentId: session.payment_intent,
 					DeliveryStatus: 'Processing',
 					CartItemsJson: JSON.stringify(items),
 				});
+
 				const seller = await db.executeProcedure('GetSellerDetails', { SellerId: sellerId });
 				const sellerDetails = seller.recordset[0];
-				await sendSellerOrderNotificationEmail(sellerDetails.Email, sellerDetails.BusinessName, cartItems);
+
+				// Send seller notification with shipping options, address, and total
+				await sendSellerOrderNotificationEmail(
+					sellerDetails.Email,
+					sellerDetails.BusinessName,
+					items,
+					shippingOptions,
+					shippingAddress,
+					sellerOrderTotal
+				);
 			}
 
 			await db.executeProcedure('MarkCheckoutDraftAsUsed', { DraftId: draftId });
@@ -208,11 +221,14 @@ export const stripeWebhook = async (req, res) => {
 			await db.executeProcedure('ClearUserCart', { UserId: userId });
 			const buyer = await db.executeProcedure('GetUserById', { UserId: userId });
 			const buyerDetails = buyer.recordset[0];
+
+			// Send buyer confirmation with shipping options
 			await sendBuyerOrderConfirmationEmail(
 				buyerDetails.Email,
 				buyerDetails.Username,
 				cartItems,
-				draftRow.TotalAmount
+				draftRow.TotalAmount,
+				shippingOptions
 			);
 		} catch (err) {
 			console.error('❌ Error processing webhook:', err);
@@ -222,221 +238,5 @@ export const stripeWebhook = async (req, res) => {
 		res.status(200).end();
 	}
 };
-//===============USE THIS IF THE EXPORT ONE FAILS
-// checkoutRouter.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-// 	const sig = req.headers['stripe-signature'];
 
-// 	let event;
-// 	try {
-// 		event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-// 	} catch (err) {
-// 		console.error('⚠️ Webhook signature verification failed.', err.message);
-// 		return res.sendStatus(400);
-// 	}
-
-// 	if (event.type === 'checkout.session.completed') {
-// 		const session = event.data.object;
-
-// 		try {
-// 			// Parse metadata
-// 			const userId = session.metadata.userId;
-// 			const shippingId = session.metadata.shippingAddressId;
-// 			const shippingOptions = JSON.parse(session.metadata.shippingDetails);
-// 			const cartItems = JSON.parse(session.metadata.cartItems); // You’ll stringify these at session creation
-
-// 			// ✅ Group items by SellerId
-// 			const groupedBySeller = cartItems.reduce((acc, item) => {
-// 				if (!acc[item.SellerId]) acc[item.SellerId] = [];
-// 				acc[item.SellerId].push(item);
-// 				return acc;
-// 			}, {});
-
-// 			// Loop sellers and insert orders
-// 			for (const [sellerId, items] of Object.entries(groupedBySeller)) {
-// 				await db.executeStoredProcedure('sp_CreateOrder', {
-// 					OrderId: uuidv4(),
-// 					BuyerId: userId,
-// 					SellerId: sellerId,
-// 					ShippingId: shippingId,
-// 					TotalAmount: items.reduce((sum, i) => sum + i.TotalPrice, 0),
-// 					PaymentIntentId: session.payment_intent,
-// 					DeliveryStatus: 'Processing',
-// 					CartItemsJson: JSON.stringify(items),
-// 				});
-// 			}
-
-// 			res.status(200).send('✅ Orders inserted successfully');
-// 		} catch (err) {
-// 			console.error('❌ Error processing webhook:', err);
-// 			res.status(500).send('Webhook processing failed');
-// 		}
-// 	} else {
-// 		res.status(200).end();
-// 	}
-// });
-// ---------THIS IS THE DRY WEBHOOK ROUTE WITH NO WHSEC AS WELL.
-// checkoutRouter.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-// 	const sig = req.headers['stripe-signature'];
-
-// 	let event;
-// 	try {
-// 		// If you don’t have webhook secret yet, skip verification during local testing
-// 		event = req.body;
-// 	} catch (err) {
-// 		console.error('⚠️ Webhook signature verification failed.', err.message);
-// 		return res.sendStatus(400);
-// 	}
-
-// 	if (event.type === 'checkout.session.completed') {
-// 		const session = event.data.object;
-
-// 		try {
-// 			// Parse metadata
-// 			const userId = session.metadata.userId;
-// 			const shippingId = session.metadata.shippingAddressId;
-// 			const shippingOptions = JSON.parse(session.metadata.shippingDetails);
-// 			const cartItems = JSON.parse(session.metadata.cartItems); // You’ll stringify these at session creation
-
-// 			// ✅ Group items by SellerId
-// 			const groupedBySeller = cartItems.reduce((acc, item) => {
-// 				if (!acc[item.SellerId]) acc[item.SellerId] = [];
-// 				acc[item.SellerId].push(item);
-// 				return acc;
-// 			}, {});
-
-// 			// Loop sellers and insert orders
-// 			for (const [sellerId, items] of Object.entries(groupedBySeller)) {
-// 				await db.executeStoredProcedure('sp_CreateOrder', {
-// 					OrderId: uuidv4(),
-// 					BuyerId: userId,
-// 					SellerId: sellerId,
-// 					ShippingId: shippingId,
-// 					TotalAmount: items.reduce((sum, i) => sum + i.TotalPrice, 0),
-// 					PaymentIntentId: session.payment_intent,
-// 					DeliveryStatus: 'Processing',
-// 					CartItemsJson: JSON.stringify(items),
-// 				});
-// 			}
-
-// 			res.status(200).send('✅ Orders inserted successfully');
-// 		} catch (err) {
-// 			console.error('❌ Error processing webhook:', err);
-// 			res.status(500).send('Webhook processing failed');
-// 		}
-// 	} else {
-// 		res.status(200).end();
-// 	}
-// });
-
-//-----THIS VERSION HAS VERIFICATION OF WEBHOOK SECRET-------
-// export const stripeWebhook = async (req, res) => {
-// 	const sig = req.headers['stripe-signature'];
-
-// 	let event;
-
-// 	try {
-// 		// ✅ Verify the event came from Stripe
-// 		event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-// 	} catch (err) {
-// 		console.error('⚠️ Webhook signature verification failed:', err.message);
-// 		return res.status(400).send(`Webhook Error: ${err.message}`);
-// 	}
-
-// 	// 🎯 Handle successful checkout
-// 	if (event.type === 'checkout.session.completed') {
-// 		const session = event.data.object;
-// 		const metadata = session.metadata || {};
-// 		const userId = metadata.userId;
-// 		const shippingAddressId = metadata.shippingAddressId;
-// 		const shippingDetails = JSON.parse(metadata.shippingDetails || '{}');
-// 		const paymentIntentId = session.payment_intent;
-// 		const totalAmount = session.amount_total / 100;
-
-// 		try {
-// 			// --- 1️⃣ Create Order Record ---
-// 			const orderId = uuidv4();
-
-// 			await db.exec('spCreateOrder', {
-// 				OrderId: orderId,
-// 				BuyerId: userId,
-// 				ShippingAddressId: shippingAddressId,
-// 				PaymentIntentId: paymentIntentId,
-// 				TotalAmount: totalAmount,
-// 				Status: 'paid',
-// 			});
-
-// 			// --- 2️⃣ Insert Order Items ---
-// 			// If you stored items in metadata (recommended later)
-// 			// Here we’ll assume you'll add that field later
-// 			console.log(`✅ Order created for user ${userId}:`, orderId);
-
-// 			// --- 3️⃣ Placeholder for Emails ---
-// 			console.log(`📧 Send confirmation email to Buyer (${userId})`);
-// 			console.log(`📧 Send notification email to Seller(s)`);
-
-// 			// --- 4️⃣ Respond to Stripe ---
-// 			res.status(200).json({ received: true });
-// 		} catch (dbError) {
-// 			console.error('❌ Database error while processing order:', dbError);
-// 			return res.status(500).json({ error: 'Failed to record order.' });
-// 		}
-// 	} else {
-// 		// For other event types (ignored for now)
-// 		res.status(200).send('Unhandled event type');
-// 	}
-// };
-
-//-----THIS IS THE NO WEBHOOK SECRET VERSION -------
-// export const stripeWebhook = async (req, res) => {
-// 	const sig = req.headers['stripe-signature'];
-
-// 	let event;
-// 	try {
-// 		// If you don’t have webhook secret yet, skip verification during local testing
-// 		event = req.body;
-// 	} catch (err) {
-// 		console.error('⚠️ Webhook signature verification failed.', err.message);
-// 		return res.sendStatus(400);
-// 	}
-
-// 	if (event.type === 'checkout.session.completed') {
-// 		const session = event.data.object;
-
-// 		try {
-// 			// Parse metadata
-// 			const userId = session.metadata.userId;
-// 			const shippingId = session.metadata.shippingAddressId;
-// 			const shippingOptions = JSON.parse(session.metadata.shippingDetails);
-// 			const cartItems = JSON.parse(session.metadata.cartItems); // You’ll stringify these at session creation
-
-// 			// ✅ Group items by SellerId
-// 			const groupedBySeller = cartItems.reduce((acc, item) => {
-// 				if (!acc[item.SellerId]) acc[item.SellerId] = [];
-// 				acc[item.SellerId].push(item);
-// 				return acc;
-// 			}, {});
-
-// 			// Loop sellers and insert orders
-// 			for (const [sellerId, items] of Object.entries(groupedBySeller)) {
-// 				await db.executeStoredProcedure('sp_CreateOrder', {
-// 					OrderId: uuidv4(),
-// 					BuyerId: userId,
-// 					SellerId: sellerId,
-// 					ShippingId: shippingId,
-// 					TotalAmount: items.reduce((sum, i) => sum + i.TotalPrice, 0),
-// 					PaymentIntentId: session.payment_intent,
-// 					DeliveryStatus: 'Processing',
-// 					CartItemsJson: JSON.stringify(items),
-// 				});
-// 			}
-
-// 			res.status(200).send('✅ Orders inserted successfully');
-// 		} catch (err) {
-// 			console.error('❌ Error processing webhook:', err);
-// 			res.status(500).send('Webhook processing failed');
-// 		}
-// 	} else {
-// 		res.status(200).end();
-// 	}
-// };
 export default checkoutRouter;
