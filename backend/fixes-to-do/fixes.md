@@ -16,3 +16,5 @@
 
 7. Remember to change the products to be displayed to only ever show products from verified sellers only in the 'GetProductsToDisplay' stored procedure by ALTERING THE WHERE CLAUSE TO 1
    And in the search products sp or do a global search of IsVerified = 0
+
+8. Currently the verification Link is not expiring, make it expire
