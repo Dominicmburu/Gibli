@@ -9,12 +9,13 @@ import { authenticateToken } from '../middlewares/authMiddleware.js';
 const sellerRouter = express.Router();
 const db = new DbHelper();
 
-sellerRouter.post('/upload/product', upload.array('images', 4), authenticateToken, async (req, res) => {
+sellerRouter.post('/upload/product/', authenticateToken, upload.array('images', 4), async (req, res) => {
 	try {
 		if (!req.files || req.files.length !== 4) {
 			return res.status(400).json({ error: 'You must upload exactly 4 images of the product.' });
 		}
 		const UserId = req.user.id;
+
 		const {
 			CategoryId,
 			SubCategoryId,

@@ -148,10 +148,10 @@ productRouter.get('/category/:id', async (req, res) => {
 
 		const foundProduct = await db.executeProcedure('GetProductsFromCategory', { CategoryId: id });
 		if (!foundProduct || foundProduct.recordset.length == 0) {
-			return res.status(404).json({ message: 'No product was found from that category' });
+			return res.status(200).json({ products: [], message: 'No products found in this category yet' });
 		}
 
-		res.status(200).json(foundProduct.recordset);
+		res.status(200).json({ products: foundProduct.recordset });
 	} catch (error) {
 		console.error('Something went wrong, pertainig: ', error);
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });
