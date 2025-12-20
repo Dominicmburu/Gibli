@@ -11,38 +11,59 @@ categoryRouter.post('/add-category', validateSchema(newCategorySchema), async (r
 	try {
 		const { CategoryName } = req.body;
 
+		// Check if category exists
 		const result = await db.executeProcedure('GetCategoryByName', { CategoryName });
 		if (result.recordset.length > 0) {
 			return res.status(400).json({ message: 'There is a category already with that name' });
 		}
+
 		const categoryId = uid();
+
+		// Create category
 		await db.executeProcedure('UpsertCategory', {
 			CategoryId: categoryId,
 			CategoryName,
 		});
+
+		// Auto-create mandatory sub-category "Other"
+		await db.executeProcedure('UpsertSubCategory', {
+			SubCategoryId: uid(),
+			CategoryId: categoryId,
+			SubCategoryName: 'Other',
+		});
+
 		res.status(200).json({ message: `${CategoryName} has been added successfully` });
 	} catch (error) {
-		console.error('Something went wrong, pertainig: ', error);
-		res.status(500).json({ message: `Something went wrong: ${error.message}` });
+		console.error(error);
+		res.status(500).json({ message: error.message });
 	}
 });
+
 categoryRouter.post('/add-sub-category', async (req, res) => {
 	try {
 		const { SubCategoryName, CategoryId } = req.body;
-		const result = await db.executeProcedure('GetSubCategoryByName', { SubCategoryName });
-		if (result.recordset.length > 0) {
-			return res.status(400).json({ message: 'There is a sub-category already with that name' });
-		}
-		const subCategoryId = uid();
-		await db.executeProcedure('UpsertSubCategory', {
-			SubCategoryId: subCategoryId,
+
+		const result = await db.executeProcedure('GetSubCategoryByName', {
 			SubCategoryName,
 			CategoryId,
 		});
-		res.status(200).json({ message: ` Sub category${SubCategoryName} has been added successfully` });
+
+		if (result.recordset.length > 0) {
+			return res
+				.status(400)
+				.json({ message: 'There is a sub-category already with that name for this category' });
+		}
+
+		await db.executeProcedure('UpsertSubCategory', {
+			SubCategoryId: uid(),
+			SubCategoryName,
+			CategoryId,
+		});
+
+		res.status(200).json({ message: `Sub category ${SubCategoryName} has been added successfully` });
 	} catch (error) {
-		console.error('Something went wrong, pertaining: ', error);
-		res.status(500).json({ message: `Something went wrong: ${error.message}` });
+		console.error(error);
+		res.status(500).json({ message: error.message });
 	}
 });
 
