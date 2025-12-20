@@ -57,4 +57,6 @@ BEGIN
 END;
 GO
 
-EXEC DeleteUserCompletely @UserId = 'e529cafe-c861-4d85-9115-5464a8478235';
+EXEC DeleteUserCompletely @UserId = '01729081-fe12-4f8f-a5f1-f34e2b99a046';
+EXEC DeleteUserCompletely @UserId = '7d22bf5a-49f1-42f4-a8da-810327419ac4';
+

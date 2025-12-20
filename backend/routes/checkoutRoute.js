@@ -67,7 +67,7 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 			metadata: {
 				userId: cartItems[0].UserId,
 				checkoutDraftId: draftId,
-				shippingDetails: JSON.stringify(shippingOptions),
+				// shippingDetails: JSON.stringify(shippingOptions),
 				shippingAddressId: shippingAddress.ShippingId,
 			}, //Infuture you can pass the amount total for amount computation and tracking
 		});

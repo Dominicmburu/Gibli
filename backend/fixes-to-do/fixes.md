@@ -1,3 +1,12 @@
+0. ENSURE YOU HAVE ADMIN PROTECTED ENDPOINTS, AND AN ENSURE ADMIN MIDLLEWARE
+   EXAMPLE ======== "function ensureAdmin(req, res, next) {
+   if (!req.user || req.user.Role !== 'Admin') {
+   return res.status(403).json({ message: 'Admins only' });
+   }
+   next();
+   }
+   " =============
+
 1. Sellers get emails but they also receive a list of what they are not selling.
    -Fix that by possibly checking where you send the emails and how you pass the ids. in the webhook event
 

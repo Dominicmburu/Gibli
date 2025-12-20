@@ -1,6 +1,6 @@
 import express from 'express';
 import upload from '../middlewares/multerSetup.js';
-import { uploadToS3 } from '../services/s3UploadService.js';
+import { uploadToS3, deleteMultipleFromS3 } from '../services/s3UploadService.js';
 import { v4 as uuidv4 } from 'uuid';
 import sql from 'mssql';
 import DbHelper from '../db/dbHelper.js';
@@ -122,19 +122,44 @@ sellerRouter.patch('/snooze/:id', async (req, res) => {
 	}
 });
 
-sellerRouter.delete('/delete/product/:id', async (req, res) => {
+sellerRouter.delete('/delete/product/:id', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.params;
 
+		// 1. Get product details
 		const foundProduct = await db.executeProcedure('GetProductById', { ProductId: id });
-		if (!foundProduct) {
-			res.status(404).json({ message: 'No product was found with that id' });
+		if (!foundProduct || !foundProduct.recordset || foundProduct.recordset.length === 0) {
+			return res.status(404).json({ message: 'No product was found with that id' });
 		}
+
+		// 2. Get all associated images
+		const productImages = await db.executeProcedure('GetProductImages', { ProductId: id });
+		const imageUrls = productImages.recordset.map((img) => img.ImageUrl);
+
+		// 3. Delete from database first (this should cascade delete images if FK is set up)
 		await db.executeProcedure('DeleteProduct', { ProductId: id });
-		//------------SUPPOSED TO ALSO DELETE ASSOCIATED IMAGES FROM S3 ---------ADD THAT LATER
-		res.status(200).json({ message: `${foundProduct.recordset[0].Name} has been deleted successfully` });
+
+		// 4. Delete images from S3
+		if (imageUrls.length > 0) {
+			try {
+				const deleteResult = await deleteMultipleFromS3(imageUrls);
+				console.log(`S3 cleanup: ${deleteResult.successful}/${deleteResult.total} images deleted`);
+
+				if (deleteResult.failed > 0) {
+					console.warn(`Warning: ${deleteResult.failed} images failed to delete from S3`);
+				}
+			} catch (s3Error) {
+				// Log error but don't fail the request since DB deletion succeeded
+				console.error('S3 deletion error:', s3Error);
+			}
+		}
+
+		res.status(200).json({
+			message: `${foundProduct.recordset[0].Name} has been deleted successfully`,
+			imagesDeleted: imageUrls.length,
+		});
 	} catch (error) {
-		console.error('Something went wrong, pertainig: ', error);
+		console.error('Product deletion error:', error);
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });
 	}
 });
