@@ -1,7 +1,7 @@
 // pages/SearchResultsPage.jsx
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Menu, X } from 'lucide-react';
 
 import api from '../../../api/axios';
 
@@ -14,9 +14,14 @@ const SearchResultsPage = () => {
 	const [searchParams] = useSearchParams();
 	const query = searchParams.get('q') || '';
 
+	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [results, setResults] = useState([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState(null);
+
+	const toggleSidebar = () => {
+		setIsSidebarOpen(!isSidebarOpen);
+	};
 
 	useEffect(() => {
 		if (!query || query.trim().length < 2) {
@@ -48,68 +53,124 @@ const SearchResultsPage = () => {
 	}, [query]);
 
 	return (
-		<>
+		<div className='min-h-screen flex flex-col'>
 			<NavBar />
 
-			<div className='flex mt-10 px-10 gap-8'>
-				{/* Sidebar */}
-				<div className='w-64 h-screen sticky top-0 overflow-y-auto'>
-					<CategorySideBar />
-				</div>
+			{/* Mobile/Tablet: Floating Filter Button (hidden on desktop) */}
+			<button
+				onClick={toggleSidebar}
+				className='lg:hidden fixed bottom-6 right-4 sm:right-6 z-50 bg-baseGreen hover:bg-green-700 text-black p-3 sm:p-4 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2'
+				aria-label='Toggle filters'
+			>
+				<Menu size={20} className='sm:w-6 sm:h-6' />
+				<span className='font-medium text-sm sm:text-base'>Categories</span>
+			</button>
 
-				{/* Results Section */}
-				<div className='flex-1 p-4 overflow-y-auto'>
-					{/* Page Title */}
-					<h1 className='text-xl font-semibold mb-4'>Search results for: "{query}"</h1>
-					<h2 className='text-xl font-semibold mb-4 text-gray-900'>
-						{results.length > 0
-							? `${results.length} result${results.length !== 1 ? 's' : ''} for “${query}”`
-							: `No results found for “${searchParams.get('q')}”`}
-					</h2>
+			{/* Mobile/Tablet: Overlay */}
+			{isSidebarOpen && (
+				<div
+					className='fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden'
+					onClick={toggleSidebar}
+					aria-hidden='true'
+				/>
+			)}
 
-					{/* Loading */}
-					{isLoading && (
-						<div className='flex justify-center items-center py-20'>
-							<Loader2 size={48} className='animate-spin text-green-600' />
+			{/* Main Content Wrapper */}
+			<div className='flex flex-1 relative'>
+				{/* Sidebar - Responsive behavior for all screen sizes */}
+				<aside
+					className={`
+            fixed lg:sticky top-0 left-0 h-screen z-50 lg:z-auto
+            w-72 sm:w-80 lg:w-64 xl:w-72
+            bg-white shadow-2xl lg:shadow-none
+            transition-transform duration-300 ease-in-out
+            overflow-y-auto
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          `}
+				>
+					{/* Mobile/Tablet: Close Button Header */}
+					<div className='lg:hidden flex justify-between items-center p-4 border-b border-gray-200 sticky top-0 bg-white z-10'>
+						<h2 className='text-base sm:text-lg font-bold text-gray-800'>Categories</h2>
+						<button
+							onClick={toggleSidebar}
+							className='p-2 hover:bg-gray-100 rounded-full transition-colors'
+							aria-label='Close filters'
+						>
+							<X size={20} className='sm:w-6 sm:h-6' />
+						</button>
+					</div>
+
+					{/* Sidebar Content */}
+					<div className='lg:pt-0'>
+						<CategorySideBar />
+					</div>
+				</aside>
+
+				{/* Main Content Area - Responsive spacing */}
+				<main className='flex-1 mt-4 sm:mt-6 lg:mt-10 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10'>
+					<div className='pb-8 sm:pb-10 lg:pb-12'>
+						{/* Page Title - Responsive */}
+						<div className='mb-4 sm:mb-6'>
+							<h1 className='text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 mb-2'>
+								Search results for: <span className='text-baseGreen'>"{query}"</span>
+							</h1>
+							{!isLoading && results.length > 0 && (
+								<p className='text-sm sm:text-base text-gray-600'>
+									{results.length} result{results.length !== 1 ? 's' : ''} found
+								</p>
+							)}
 						</div>
-					)}
 
-					{/* Error */}
-					{error && (
-						<div className='bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg max-w-lg'>
-							{error}
-						</div>
-					)}
+						{/* Loading State */}
+						{isLoading && (
+							<div className='flex flex-col justify-center items-center py-16 sm:py-20'>
+								<Loader2 size={40} className='sm:w-12 sm:h-12 animate-spin text-green-600 mb-4' />
+								<p className='text-sm sm:text-base text-gray-600'>Searching products...</p>
+							</div>
+						)}
 
-					{/* No Query */}
-					{!isLoading && !query && (
-						<div className='text-center py-20'>
-							<Search size={64} className='mx-auto text-gray-300 mb-4' />
-							<p className='text-gray-500 text-lg'>Search for products above</p>
-						</div>
-					)}
+						{/* Error State */}
+						{error && (
+							<div className='bg-red-50 border border-red-200 text-red-700 p-4 sm:p-5 rounded-lg max-w-2xl mx-auto'>
+								<p className='text-sm sm:text-base font-medium'>{error}</p>
+							</div>
+						)}
 
-					{/* No Results */}
-					{!isLoading && query && results.length === 0 && (
-						<div className='text-center py-20'>
-							<p className='text-gray-500 text-lg mb-4'>No results found for "{query}"</p>
-							<p className='text-gray-400 text-sm'>Try different keywords or check spelling</p>
-						</div>
-					)}
+						{/* No Query State */}
+						{!isLoading && !query && (
+							<div className='text-center py-16 sm:py-20'>
+								<Search size={48} className='sm:w-16 sm:h-16 mx-auto text-gray-300 mb-4' />
+								<p className='text-gray-500 text-base sm:text-lg'>Search for products in the navbar</p>
+							</div>
+						)}
 
-					{/* Results Grid */}
-					{!isLoading && results.length > 0 && (
-						<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-6'>
-							{results.map((product) => (
-								<ProductCard key={product.ProductId} {...product} />
-							))}
-						</div>
-					)}
-				</div>
+						{/* No Results State */}
+						{!isLoading && query && results.length === 0 && !error && (
+							<div className='text-center py-16 sm:py-20'>
+								<Search size={48} className='sm:w-16 sm:h-16 mx-auto text-gray-300 mb-4' />
+								<p className='text-gray-600 text-base sm:text-lg font-medium mb-2'>
+									No results found for "{query}"
+								</p>
+								<p className='text-gray-400 text-sm sm:text-base'>
+									Try different keywords or check spelling
+								</p>
+							</div>
+						)}
+
+						{/* Results Grid - Fully Responsive */}
+						{!isLoading && results.length > 0 && (
+							<div className='grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 xl:gap-6'>
+								{results.map((product) => (
+									<ProductCard key={product.ProductId} {...product} />
+								))}
+							</div>
+						)}
+					</div>
+				</main>
 			</div>
 
 			<Footer />
-		</>
+		</div>
 	);
 };
 
