@@ -32,14 +32,20 @@ cartRouter.get('/items', authenticateToken, async (req, res) => {
 	try {
 		const UserId = req.user.id;
 
+		if (!UserId) {
+			return res.status(200).json([]);
+		}
+
 		const result = await db.executeProcedure('GetUserCart', { UserId });
 
 		const cartItems = result?.recordset || [];
 		res.status(200).json(cartItems);
 	} catch (err) {
+		console.error('Cart fetch error:', err);
 		res.status(500).json({ message: 'Failed to fetch cart', error: err.message });
 	}
 });
+
 cartRouter.put('/increment', authenticateToken, async (req, res) => {
 	const { ProductId } = req.body;
 	const UserId = req.user.id;
@@ -52,6 +58,7 @@ cartRouter.put('/increment', authenticateToken, async (req, res) => {
 		res.status(500).json({ message: 'Failed to increase quantity' });
 	}
 });
+
 cartRouter.put('/decrement', authenticateToken, async (req, res) => {
 	const { ProductId } = req.body;
 	const UserId = req.user.id;
@@ -64,6 +71,7 @@ cartRouter.put('/decrement', authenticateToken, async (req, res) => {
 		res.status(500).json({ message: 'Failed to decrease quantity' });
 	}
 });
+
 // Update quantity of a cart item
 cartRouter.put('/update/:id', authenticateToken, async (req, res) => {
 	try {

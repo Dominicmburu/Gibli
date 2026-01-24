@@ -7,6 +7,14 @@ export const CartProvider = ({ children }) => {
 	const [cartCount, setCartCount] = useState(0);
 
 	const fetchCartCount = async () => {
+		
+		// Only fetch if user has a token
+		const token = localStorage.getItem('token');
+		if (!token) {
+			setCartCount(0);
+			return;
+		}
+
 		try {
 			const res = await api.get('/cart/items');
 			if (Array.isArray(res.data)) {

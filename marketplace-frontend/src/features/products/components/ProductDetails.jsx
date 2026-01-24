@@ -3,11 +3,12 @@ import api from '../../../api/axios';
 import { useParams } from 'react-router-dom';
 import NavBar from '../../../components/NavBar';
 import AddToCart from '../../cart/components/AddToCart';
+import BuyNow from '../../checkout/BuyNow';
 import Footer from '../../../components/Footer';
 import Suggestions from './Suggestions';
 import AddToWishList from '../../wishlist/components/AddToWishlist';
 
-import { Heart, Truck, Zap, Package, ArrowLeft } from 'lucide-react';
+import { Truck, Zap, Package, ArrowLeft } from 'lucide-react';
 
 const ProductDetails = () => {
 	const [productDetails, setProductDetails] = useState(null);
@@ -182,9 +183,7 @@ const ProductDetails = () => {
 
 							{/* Action Buttons - Responsive sizing and stacking */}
 							<div className='space-y-3 sm:space-y-4 pt-2 sm:pt-4 border-t'>
-								<button className='w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-md text-sm sm:text-base'>
-									Buy Now
-								</button>
+								<BuyNow product={productDetails} />
 								<AddToCart ProductId={productDetails.ProductId} />
 							</div>
 						</div>

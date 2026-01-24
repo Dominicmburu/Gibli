@@ -80,6 +80,139 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 	}
 });
 
+// POST /checkout/buy-now - Direct checkout for single product (Buy Now button)
+checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
+	const { productId, quantity = 1, shippingType = 'standard' } = req.body;
+	const userId = req.user.id;
+
+	if (!productId) {
+		return res.status(400).json({ message: 'Product ID is required.' });
+	}
+
+	try {
+		// 1. Get product details in checkout format
+		const productResult = await db.executeProcedure('GetProductForCheckout', {
+			ProductId: productId,
+			UserId: userId,
+			Quantity: quantity,
+		});
+
+		const product = productResult.recordset?.[0];
+		if (!product) {
+			return res.status(404).json({ message: 'Product not found.' });
+		}
+
+		// Check stock availability
+		if (product.InStock < quantity) {
+			return res.status(400).json({
+				message: `Insufficient stock. Only ${product.InStock} units available.`
+			});
+		}
+
+		// 2. Get user's default shipping address
+		const addressResult = await db.executeProcedure('GetDefaultShipping', { UserId: userId });
+		const shippingAddress = addressResult.recordset?.[0];
+
+		if (!shippingAddress) {
+			return res.status(400).json({
+				message: 'No default shipping address found. Please add a shipping address first.',
+				code: 'NO_ADDRESS'
+			});
+		}
+
+		// Validate address completeness
+		if (!shippingAddress.AddressLine1 || !shippingAddress.City ||
+			!shippingAddress.Country || !shippingAddress.FullName || !shippingAddress.PhoneNumber) {
+			return res.status(400).json({
+				message: 'Your default address is incomplete. Please update it before checkout.',
+				code: 'INCOMPLETE_ADDRESS'
+			});
+		}
+
+		// 3. Prepare cart items array (single product for buy now)
+		const cartItems = [product];
+		const shippingOptions = { [productId]: shippingType };
+
+		// 4. Calculate total
+		const computeTotal = (items, shippingOpts) => {
+			let total = 0;
+			for (const it of items) {
+				const qty = Number(it.Quantity || 0);
+				const unit = Number(it.Price || 0);
+				const shipType = shippingOpts?.[it.ProductId] || 'standard';
+				const shipPrice =
+					shipType === 'express'
+						? Number(it.ExpressShippingPrice || it.ShippingPrice || 0)
+						: Number(it.ShippingPrice || 0);
+				const itemTotal = qty * unit + shipPrice;
+				total += itemTotal;
+			}
+			return Number(total.toFixed(2));
+		};
+
+		const draftId = v4();
+		const totalAmount = computeTotal(cartItems, shippingOptions);
+
+		// 5. Create checkout draft
+		const CartItemsJson = JSON.stringify(cartItems);
+		const ShippingOptionsJson = JSON.stringify(shippingOptions);
+		const ShippingAddressJson = JSON.stringify(shippingAddress);
+
+		await db.executeProcedure('CreateCheckoutDraft', {
+			DraftId: draftId,
+			BuyerId: userId,
+			CartItemsJson,
+			ShippingOptionsJson,
+			ShippingAddressJson,
+			TotalAmount: totalAmount,
+			SessionId: null,
+		});
+
+		// 6. Create Stripe session
+		const lineItems = cartItems.map((item) => {
+			const shipType = shippingOptions[item.ProductId];
+			const totalPrice = shipType === 'express' ? item.ExpressTotalPrice : item.TotalPrice;
+
+			return {
+				price_data: {
+					currency: 'eur',
+					product_data: {
+						name: item.ProductName,
+						images: item.ProductImageUrl ? [item.ProductImageUrl] : [],
+					},
+					unit_amount: Math.round(totalPrice * 100),
+				},
+				quantity: item.Quantity,
+			};
+		});
+
+		const session = await stripe.checkout.sessions.create({
+			payment_method_types: ['card', 'sepa_debit'],
+			mode: 'payment',
+			line_items: lineItems,
+			success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+			cancel_url: `${process.env.FRONTEND_URL}/payment/fail`,
+			metadata: {
+				userId: userId,
+				checkoutDraftId: draftId,
+				shippingAddressId: shippingAddress.ShippingId,
+				isBuyNow: 'true',
+			},
+		});
+
+		await db.executeProcedure('InsertSessionIdToDraft', { DraftId: draftId, SessionId: session.id });
+
+		return res.json({
+			url: session.url,
+			draftId,
+			totalAmount
+		});
+	} catch (err) {
+		console.error('Buy Now error:', err);
+		res.status(500).json({ message: 'Failed to process buy now request.' });
+	}
+});
+
 // POST /checkout/draft
 checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 	const { cartItems, shippingOptions, shippingAddress } = req.body;
