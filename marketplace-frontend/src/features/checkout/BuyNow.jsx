@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Truck, Zap, X } from 'lucide-react';
+import { Loader2, Truck, Zap, X, MapPin, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 
@@ -9,7 +9,33 @@ const BuyNow = ({ product }) => {
 	const [showModal, setShowModal] = useState(false);
 	const [shippingType, setShippingType] = useState('standard');
 	const [quantity, setQuantity] = useState(1);
+	const [defaultAddress, setDefaultAddress] = useState(null);
+	const [addressLoading, setAddressLoading] = useState(false);
 	const navigate = useNavigate();
+
+	// Fetch default address when modal opens
+	useEffect(() => {
+		if (showModal) {
+			fetchDefaultAddress();
+		}
+	}, [showModal]);
+
+	const fetchDefaultAddress = async () => {
+		setAddressLoading(true);
+		try {
+			const res = await api.get('/shipping/default-address/me');
+			if (res.data && res.data.length > 0) {
+				setDefaultAddress(res.data[0]);
+			} else {
+				setDefaultAddress(null);
+			}
+		} catch (err) {
+			console.error('Error fetching default address:', err);
+			setDefaultAddress(null);
+		} finally {
+			setAddressLoading(false);
+		}
+	};
 
 	const handleBuyNowClick = () => {
 		const token = localStorage.getItem('token');
@@ -60,7 +86,13 @@ const BuyNow = ({ product }) => {
 			setShowModal(false);
 			setShippingType('standard');
 			setQuantity(1);
+			setDefaultAddress(null);
 		}
+	};
+
+	const handleEditAddress = () => {
+		setShowModal(false);
+		navigate('/address-book');
 	};
 
 	const calculateTotal = () => {
@@ -120,8 +152,55 @@ const BuyNow = ({ product }) => {
 							)}
 							<div className='flex-1 min-w-0'>
 								<p className='font-medium text-gray-900 truncate'>{product.ProductName}</p>
-								<p className='text-green-600 font-bold'>{product.Price?.toFixed(2)}</p>
+								<p className='text-green-600 font-bold'>€{product.Price?.toFixed(2)}</p>
 							</div>
+						</div>
+
+						{/* Shipping Address */}
+						<div>
+							<div className='flex items-center justify-between mb-2'>
+								<label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
+									<MapPin size={16} className='text-green-600' />
+									Shipping To
+								</label>
+								{defaultAddress && (
+									<button
+										onClick={handleEditAddress}
+										className='text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1'
+									>
+										<Edit2 size={12} />
+										Change
+									</button>
+								)}
+							</div>
+
+							{addressLoading ? (
+								<div className='p-3 bg-gray-50 rounded-lg flex items-center justify-center'>
+									<Loader2 size={20} className='animate-spin text-gray-400' />
+								</div>
+							) : defaultAddress ? (
+								<div className='p-3 bg-green-50 rounded-lg border border-green-200 text-sm'>
+									<p className='font-semibold text-gray-900'>{defaultAddress.FullName}</p>
+									<p className='text-gray-700'>
+										{defaultAddress.AddressLine1}
+										{defaultAddress.AddressLine2 && `, ${defaultAddress.AddressLine2}`}
+									</p>
+									<p className='text-gray-700'>
+										{defaultAddress.City}, {defaultAddress.PostalCode}
+									</p>
+									<p className='text-gray-700'>{defaultAddress.Country}</p>
+								</div>
+							) : (
+								<div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-center'>
+									<p className='text-sm text-yellow-800 mb-2'>No shipping address found</p>
+									<button
+										onClick={handleEditAddress}
+										className='text-sm bg-yellow-600 text-white px-4 py-1.5 rounded-lg hover:bg-yellow-700 transition-colors font-medium'
+									>
+										Add Address
+									</button>
+								</div>
+							)}
 						</div>
 
 						{/* Quantity Selector */}
@@ -186,7 +265,7 @@ const BuyNow = ({ product }) => {
 										<p className='font-medium text-gray-900'>Standard Shipping</p>
 										<p className='text-xs text-gray-500'>5-7 business days</p>
 									</div>
-									<span className='font-bold text-gray-900'>{product.ShippingPrice?.toFixed(2)}</span>
+									<span className='font-bold text-gray-900'>€{product.ShippingPrice?.toFixed(2)}</span>
 								</label>
 
 								{/* Express Shipping */}
@@ -218,7 +297,7 @@ const BuyNow = ({ product }) => {
 										<p className='font-medium text-gray-900'>Express Shipping</p>
 										<p className='text-xs text-gray-500'>1-2 business days</p>
 									</div>
-									<span className='font-bold text-gray-900'>{product.ExpressShippingPrice?.toFixed(2)}</span>
+									<span className='font-bold text-gray-900'>€{product.ExpressShippingPrice?.toFixed(2)}</span>
 								</label>
 							</div>
 						</div>
@@ -227,15 +306,15 @@ const BuyNow = ({ product }) => {
 						<div className='pt-4 border-t border-gray-200'>
 							<div className='flex justify-between items-center'>
 								<span className='text-gray-600'>Total</span>
-								<span className='text-2xl font-bold text-green-600'>{calculateTotal()}</span>
+								<span className='text-2xl font-bold text-green-600'>€{calculateTotal()}</span>
 							</div>
 						</div>
 
 						{/* Confirm Button */}
 						<button
 							onClick={handleConfirmPurchase}
-							disabled={loading}
-							className='w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2'
+							disabled={loading || !defaultAddress || addressLoading}
+							className='w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2'
 						>
 							{loading ? (
 								<>
