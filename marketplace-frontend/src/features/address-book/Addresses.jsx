@@ -1,36 +1,38 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import NavBar from '../../components/NavBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
-import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Building, Globe, Loader2, CheckCircle } from 'lucide-react';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
+import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Globe, Loader2, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Addresses = () => {
+	const navigate = useNavigate();
 	const [addresses, setAddresses] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [showModal, setShowModal] = useState(false);
 	const [formData, setFormData] = useState({
 		FullName: '',
 		PhoneNumber: '',
-		AddressLine1: '',
-		AddressLine2: '',
+		StreetName: '',
+		HouseNumber: '',
+		PostalCode: '',
 		City: '',
 		StateOrProvince: '',
-		PostalCode: '',
 		Country: '',
 		IsDefault: 0,
 	});
 	const [editId, setEditId] = useState(null);
 	const [errors, setErrors] = useState({});
 
-	// ✅ Fetch addresses
+	// Fetch addresses
 	useEffect(() => {
 		const fetchAddresses = async () => {
 			try {
 				const res = await api.get('/shipping/addresses/me');
 				setAddresses(res.data || []);
-				console.log('Found Addressses', addresses);
 			} catch (err) {
 				console.error('Failed to fetch addresses:', err);
 			} finally {
@@ -53,17 +55,29 @@ const Addresses = () => {
 		}
 	};
 
-	// ✅ Handle Edit (open modal pre-filled with only editable fields)
+	// Handle Edit (open modal pre-filled)
 	const handleEdit = (address) => {
 		setEditId(address.ShippingId);
+
+		// Parse AddressLine1 back into StreetName and HouseNumber
+		const addressLine = address.AddressLine1 || '';
+		const match = addressLine.match(/^(\d+\S*)\s+(.+)$/);
+		let houseNumber = '';
+		let streetName = addressLine;
+
+		if (match) {
+			houseNumber = match[1];
+			streetName = match[2];
+		}
+
 		setFormData({
 			FullName: address.FullName || '',
 			PhoneNumber: address.PhoneNumber || '',
-			AddressLine1: address.AddressLine1 || '',
-			AddressLine2: address.AddressLine2 || '',
+			StreetName: streetName,
+			HouseNumber: houseNumber,
+			PostalCode: address.PostalCode || '',
 			City: address.City || '',
 			StateOrProvince: address.StateOrProvince || '',
-			PostalCode: address.PostalCode || '',
 			Country: address.Country || '',
 			IsDefault: address.IsDefault || 0,
 		});
@@ -72,9 +86,8 @@ const Addresses = () => {
 
 	// Handle Set Default
 	const handleSetDefault = async (id, currentState) => {
-		// Check if already default
 		const isCurrentlyDefault = currentState === 1 || currentState === true;
-		if (isCurrentlyDefault) return; // Already default, do nothing
+		if (isCurrentlyDefault) return;
 
 		try {
 			await api.patch(`/shipping/set-as-default/${id}`);
@@ -92,15 +105,33 @@ const Addresses = () => {
 		}
 	};
 
+	const resetForm = () => {
+		setFormData({
+			FullName: '',
+			PhoneNumber: '',
+			StreetName: '',
+			HouseNumber: '',
+			PostalCode: '',
+			City: '',
+			StateOrProvince: '',
+			Country: '',
+			IsDefault: 0,
+		});
+		setErrors({});
+		setEditId(null);
+	};
+
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		const { FullName, PhoneNumber, AddressLine1, City, Country } = formData;
-		// ✅ Client-side validation
+		const { FullName, StreetName, HouseNumber, PostalCode, City, Country } = formData;
+
+		// Client-side validation
 		const newErrors = {};
 		if (!FullName) newErrors.FullName = 'Full name is required';
-		if (!PhoneNumber) newErrors.PhoneNumber = 'Phone number is required';
-		if (!AddressLine1) newErrors.AddressLine1 = 'Address Line 1 is required';
+		if (!StreetName) newErrors.StreetName = 'Street name is required';
+		if (!HouseNumber) newErrors.HouseNumber = 'House number is required';
+		if (!PostalCode) newErrors.PostalCode = 'Postal code is required';
 		if (!City) newErrors.City = 'City is required';
 		if (!Country) newErrors.Country = 'Country is required';
 
@@ -108,36 +139,42 @@ const Addresses = () => {
 			setErrors(newErrors);
 			return;
 		}
+
+		// Combine into AddressLine1 for backend
+		const payload = {
+			FullName: formData.FullName,
+			PhoneNumber: formData.PhoneNumber || '',
+			AddressLine1: `${HouseNumber} ${StreetName}`.trim(),
+			AddressLine2: '',
+			City: formData.City,
+			StateOrProvince: formData.StateOrProvince || '',
+			PostalCode: formData.PostalCode,
+			Country: formData.Country,
+			IsDefault: formData.IsDefault,
+		};
+
 		try {
 			if (editId) {
-				await api.patch(`/shipping/edit-address/${editId}`, formData);
+				await api.patch(`/shipping/edit-address/${editId}`, payload);
 				toast.success('Address updated successfully');
 			} else {
-				await api.post('/shipping/add-shipping', formData);
+				await api.post('/shipping/add-shipping', payload);
 				toast.success('Address added successfully');
 			}
 
 			const res = await api.get('/shipping/addresses/me');
 			setAddresses(res.data || []);
 
-			// Reset state after submit
 			setShowModal(false);
-			setEditId(null);
-			setErrors({});
-			setFormData({
-				FullName: '',
-				PhoneNumber: '',
-				AddressLine1: '',
-				AddressLine2: '',
-				City: '',
-				StateOrProvince: '',
-				PostalCode: '',
-				Country: '',
-				IsDefault: 0,
-			});
+			resetForm();
 		} catch (err) {
 			console.error('Failed to save address:', err);
-			toast.error('Failed to save address. Please try again.');
+			if (err.response?.status === 401 || err.response?.status === 403) {
+				toast.error('Please log in to save your address.');
+				navigate('/login');
+			} else {
+				toast.error('Failed to save address. Please try again.');
+			}
 		}
 	};
 
@@ -150,7 +187,7 @@ const Addresses = () => {
 				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8'>
 					<div>
 						<h1 className='text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3'>
-							<MapPin className='w-6 h-6 sm:w-7 sm:h-7 text-green-600' />
+							<MapPin className='w-6 h-6 sm:w-7 sm:h-7 text-primary-500' />
 							My Addresses
 						</h1>
 						<p className='text-sm sm:text-base text-gray-600 mt-1'>
@@ -160,22 +197,10 @@ const Addresses = () => {
 
 					<button
 						onClick={() => {
-							setEditId(null);
-							setFormData({
-								FullName: '',
-								PhoneNumber: '',
-								AddressLine1: '',
-								AddressLine2: '',
-								City: '',
-								StateOrProvince: '',
-								PostalCode: '',
-								Country: '',
-								IsDefault: 0,
-							});
-							setErrors({});
+							resetForm();
 							setShowModal(true);
 						}}
-						className='w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2 shadow-sm'
+						className='w-full sm:w-auto bg-primary-500 text-white px-5 py-2.5 rounded-lg hover:bg-primary-600 transition-colors font-medium flex items-center justify-center gap-2 shadow-sm'
 					>
 						<Plus size={20} />
 						Add New Address
@@ -186,7 +211,7 @@ const Addresses = () => {
 				{loading ? (
 					<div className='flex items-center justify-center py-16'>
 						<div className='text-center'>
-							<Loader2 size={40} className='animate-spin text-green-600 mx-auto mb-3' />
+							<Loader2 size={40} className='animate-spin text-primary-500 mx-auto mb-3' />
 							<p className='text-gray-600'>Loading addresses...</p>
 						</div>
 					</div>
@@ -199,22 +224,10 @@ const Addresses = () => {
 						<p className='text-gray-600 mb-6'>Add a shipping address to get started with your orders.</p>
 						<button
 							onClick={() => {
-								setEditId(null);
-								setFormData({
-									FullName: '',
-									PhoneNumber: '',
-									AddressLine1: '',
-									AddressLine2: '',
-									City: '',
-									StateOrProvince: '',
-									PostalCode: '',
-									Country: '',
-									IsDefault: 0,
-								});
-								setErrors({});
+								resetForm();
 								setShowModal(true);
 							}}
-							className='bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors font-medium inline-flex items-center gap-2'
+							className='bg-primary-500 text-white px-6 py-2.5 rounded-lg hover:bg-primary-600 transition-colors font-medium inline-flex items-center gap-2'
 						>
 							<Plus size={20} />
 							Add Your First Address
@@ -227,7 +240,7 @@ const Addresses = () => {
 								key={addr.ShippingId}
 								className={`bg-white p-5 rounded-xl shadow-sm border-2 transition-all ${
 									addr.IsDefault === 1 || addr.IsDefault === true
-										? 'border-green-500 ring-1 ring-green-100'
+										? 'border-primary-500 ring-1 ring-primary-100'
 										: 'border-gray-200 hover:border-gray-300'
 								}`}
 								whileHover={{ y: -2 }}
@@ -236,7 +249,7 @@ const Addresses = () => {
 								{/* Default Badge */}
 								{(addr.IsDefault === 1 || addr.IsDefault === true) && (
 									<div className='flex items-center gap-1.5 mb-3'>
-										<span className='inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-1 rounded-full'>
+										<span className='inline-flex items-center gap-1 text-xs font-semibold text-primary-600 bg-primary-100 px-2.5 py-1 rounded-full'>
 											<CheckCircle size={12} />
 											Default Address
 										</span>
@@ -249,20 +262,21 @@ const Addresses = () => {
 										<User size={16} className='text-gray-400' />
 										{addr.FullName}
 									</h2>
-									<p className='text-sm text-gray-600 flex items-center gap-2 mt-1'>
-										<Phone size={14} className='text-gray-400' />
-										{addr.PhoneNumber}
-									</p>
+									{addr.PhoneNumber && (
+										<p className='text-sm text-gray-600 flex items-center gap-2 mt-1'>
+											<Phone size={14} className='text-gray-400' />
+											{addr.PhoneNumber}
+										</p>
+									)}
 								</div>
 
 								{/* Address */}
 								<div className='text-sm text-gray-600 space-y-1 mb-4 pl-6'>
 									<p>{addr.AddressLine1}</p>
-									{addr.AddressLine2 && <p>{addr.AddressLine2}</p>}
 									<p>
+										{addr.PostalCode && `${addr.PostalCode} `}
 										{addr.City}
 										{addr.StateOrProvince && `, ${addr.StateOrProvince}`}
-										{addr.PostalCode && ` ${addr.PostalCode}`}
 									</p>
 									<p className='font-medium text-gray-700'>{addr.Country}</p>
 								</div>
@@ -275,7 +289,7 @@ const Addresses = () => {
 										name='defaultAddress'
 										checked={addr.IsDefault === 1 || addr.IsDefault === true}
 										onChange={() => handleSetDefault(addr.ShippingId, addr.IsDefault)}
-										className='w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500'
+										className='w-4 h-4 text-primary-500 border-gray-300 focus:ring-primary-500'
 									/>
 									<label
 										htmlFor={`default-${addr.ShippingId}`}
@@ -289,7 +303,7 @@ const Addresses = () => {
 								<div className='flex items-center gap-3 pt-4 border-t border-gray-100'>
 									<button
 										onClick={() => handleEdit(addr)}
-										className='text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors'
+										className='text-sm text-primary-500 hover:text-primary-600 font-medium flex items-center gap-1 transition-colors'
 									>
 										<Edit2 size={14} />
 										Edit
@@ -328,8 +342,8 @@ const Addresses = () => {
 							{/* Modal Header */}
 							<div className='flex items-center justify-between p-5 border-b border-gray-200'>
 								<div className='flex items-center gap-3'>
-									<div className='w-10 h-10 bg-green-100 rounded-full flex items-center justify-center'>
-										<MapPin size={20} className='text-green-600' />
+									<div className='w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center'>
+										<MapPin size={20} className='text-primary-500' />
 									</div>
 									<div>
 										<h2 className='text-lg font-bold text-gray-900'>
@@ -349,183 +363,184 @@ const Addresses = () => {
 							</div>
 
 							{/* Modal Body */}
-							<form onSubmit={handleSubmit} className='p-5 space-y-5'>
-								{/* Personal Information */}
-								<div className='space-y-4'>
-									<h3 className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
-										<User size={16} className='text-green-600' />
-										Personal Information
-									</h3>
+							<form onSubmit={handleSubmit} className='p-5 space-y-4'>
+								{/* Line 1: Full Name */}
+								<div>
+									<label className='block text-sm font-medium text-gray-700 mb-1.5'>
+										Full Name <span className='text-red-500'>*</span>
+									</label>
+									<div className='relative'>
+										<User size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+										<input
+											type='text'
+											placeholder='John Doe'
+											value={formData.FullName}
+											onChange={(e) => {
+												setFormData({ ...formData, FullName: e.target.value });
+												setErrors({ ...errors, FullName: '' });
+											}}
+											className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
+												errors.FullName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+											}`}
+										/>
+									</div>
+									{errors.FullName && (
+										<p className='text-xs text-red-500 mt-1'>{errors.FullName}</p>
+									)}
+								</div>
 
-									<div className='grid sm:grid-cols-2 gap-4'>
-										{/* Full Name */}
-										<div className='sm:col-span-2'>
-											<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-												Full Name <span className='text-red-500'>*</span>
-											</label>
-											<input
-												type='text'
-												placeholder='John Doe'
-												value={formData.FullName}
-												onChange={(e) => {
-													setFormData({ ...formData, FullName: e.target.value });
-													setErrors({ ...errors, FullName: '' });
-												}}
-												className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all ${
-													errors.FullName ? 'border-red-500 bg-red-50' : 'border-gray-300'
-												}`}
-											/>
-											{errors.FullName && (
-												<p className='text-xs text-red-500 mt-1'>{errors.FullName}</p>
-											)}
-										</div>
-
-										{/* Phone Number */}
-										<div className='sm:col-span-2'>
-											<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-												Phone Number <span className='text-red-500'>*</span>
-											</label>
-											<div className='relative'>
-												<Phone size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
-												<input
-													type='tel'
-													placeholder='+1 234 567 8900'
-													value={formData.PhoneNumber}
-													onChange={(e) => {
-														setFormData({ ...formData, PhoneNumber: e.target.value });
-														setErrors({ ...errors, PhoneNumber: '' });
-													}}
-													className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all ${
-														errors.PhoneNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
-													}`}
-												/>
-											</div>
-											{errors.PhoneNumber && (
-												<p className='text-xs text-red-500 mt-1'>{errors.PhoneNumber}</p>
-											)}
-										</div>
+								{/* Line 2: Phone Number (Optional) */}
+								<div>
+									<label className='block text-sm font-medium text-gray-700 mb-1.5'>
+										Phone Number <span className='text-gray-400'>(Optional)</span>
+									</label>
+									<div className='relative'>
+										<Phone size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+										<input
+											type='tel'
+											placeholder='+49 123 456 7890'
+											value={formData.PhoneNumber}
+											onChange={(e) => setFormData({ ...formData, PhoneNumber: e.target.value })}
+											className='w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all'
+										/>
 									</div>
 								</div>
 
-								{/* Address Details */}
-								<div className='space-y-4'>
-									<h3 className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
-										<Home size={16} className='text-green-600' />
-										Address Details
-									</h3>
-
-									{/* Address Line 1 */}
-									<div>
+								{/* Line 3: Street Name + House Number (side-by-side) */}
+								<div className='grid grid-cols-3 gap-3'>
+									<div className='col-span-2'>
 										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-											Street Address <span className='text-red-500'>*</span>
+											Street Name <span className='text-red-500'>*</span>
 										</label>
-										<input
-											type='text'
-											placeholder='123 Main Street'
-											value={formData.AddressLine1}
-											onChange={(e) => {
-												setFormData({ ...formData, AddressLine1: e.target.value });
-												setErrors({ ...errors, AddressLine1: '' });
-											}}
-											className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all ${
-												errors.AddressLine1 ? 'border-red-500 bg-red-50' : 'border-gray-300'
-											}`}
-										/>
-										{errors.AddressLine1 && (
-											<p className='text-xs text-red-500 mt-1'>{errors.AddressLine1}</p>
-										)}
-									</div>
-
-									{/* Address Line 2 */}
-									<div>
-										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-											Apartment, Suite, etc. <span className='text-gray-400'>(Optional)</span>
-										</label>
-										<input
-											type='text'
-											placeholder='Apt 4B, Floor 2'
-											value={formData.AddressLine2}
-											onChange={(e) => setFormData({ ...formData, AddressLine2: e.target.value })}
-											className='w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all'
-										/>
-									</div>
-
-									<div className='grid sm:grid-cols-2 gap-4'>
-										{/* City */}
-										<div>
-											<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-												City <span className='text-red-500'>*</span>
-											</label>
+										<div className='relative'>
+											<Home size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
 											<input
 												type='text'
-												placeholder='New York'
-												value={formData.City}
+												placeholder='e.g. Nikolaistraße'
+												value={formData.StreetName}
 												onChange={(e) => {
-													setFormData({ ...formData, City: e.target.value });
-													setErrors({ ...errors, City: '' });
+													setFormData({ ...formData, StreetName: e.target.value });
+													setErrors({ ...errors, StreetName: '' });
 												}}
-												className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all ${
-													errors.City ? 'border-red-500 bg-red-50' : 'border-gray-300'
+												className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
+													errors.StreetName ? 'border-red-500 bg-red-50' : 'border-gray-300'
 												}`}
 											/>
-											{errors.City && (
-												<p className='text-xs text-red-500 mt-1'>{errors.City}</p>
-											)}
 										</div>
-
-										{/* State/Province */}
-										<div>
-											<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-												State / Province <span className='text-gray-400'>(Optional)</span>
-											</label>
-											<input
-												type='text'
-												placeholder='NY'
-												value={formData.StateOrProvince}
-												onChange={(e) => setFormData({ ...formData, StateOrProvince: e.target.value })}
-												className='w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all'
-											/>
-										</div>
-
-										{/* Postal Code */}
-										<div>
-											<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-												Postal Code <span className='text-gray-400'>(Optional)</span>
-											</label>
-											<input
-												type='text'
-												placeholder='10001'
-												value={formData.PostalCode}
-												onChange={(e) => setFormData({ ...formData, PostalCode: e.target.value })}
-												className='w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all'
-											/>
-										</div>
-
-										{/* Country */}
-										<div>
-											<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-												Country <span className='text-red-500'>*</span>
-											</label>
-											<div className='relative'>
-												<Globe size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
-												<input
-													type='text'
-													placeholder='United States'
-													value={formData.Country}
-													onChange={(e) => {
-														setFormData({ ...formData, Country: e.target.value });
-														setErrors({ ...errors, Country: '' });
-													}}
-													className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all ${
-														errors.Country ? 'border-red-500 bg-red-50' : 'border-gray-300'
-													}`}
-												/>
-											</div>
-											{errors.Country && (
-												<p className='text-xs text-red-500 mt-1'>{errors.Country}</p>
-											)}
-										</div>
+										{errors.StreetName && (
+											<p className='text-xs text-red-500 mt-1'>{errors.StreetName}</p>
+										)}
 									</div>
+									<div>
+										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
+											Number <span className='text-red-500'>*</span>
+										</label>
+										<input
+											type='text'
+											placeholder='10'
+											value={formData.HouseNumber}
+											onChange={(e) => {
+												setFormData({ ...formData, HouseNumber: e.target.value });
+												setErrors({ ...errors, HouseNumber: '' });
+											}}
+											className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
+												errors.HouseNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
+											}`}
+										/>
+										{errors.HouseNumber && (
+											<p className='text-xs text-red-500 mt-1'>{errors.HouseNumber}</p>
+										)}
+									</div>
+								</div>
+
+								{/* Line 4: Postal Code + City/State/Province (side-by-side) */}
+								<div className='grid grid-cols-2 gap-3'>
+									<div>
+										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
+											Postal Code <span className='text-red-500'>*</span>
+										</label>
+										<input
+											type='text'
+											placeholder='04109'
+											value={formData.PostalCode}
+											onChange={(e) => {
+												setFormData({ ...formData, PostalCode: e.target.value });
+												setErrors({ ...errors, PostalCode: '' });
+											}}
+											className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
+												errors.PostalCode ? 'border-red-500 bg-red-50' : 'border-gray-300'
+											}`}
+										/>
+										{errors.PostalCode && (
+											<p className='text-xs text-red-500 mt-1'>{errors.PostalCode}</p>
+										)}
+									</div>
+									<div>
+										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
+											City / State / County <span className='text-red-500'>*</span>
+										</label>
+										<AddressAutocomplete
+											value={formData.City}
+											onChange={(value) => {
+												setFormData((prev) => ({ ...prev, City: value }));
+												setErrors((prev) => ({ ...prev, City: '' }));
+											}}
+											onAddressSelect={(addressData) => {
+												// Parse street and house number from AddressLine1 if available
+												const line = addressData.AddressLine1 || '';
+												const match = line.match(/^(\d+\S*)\s+(.+)$/);
+												let houseNum = '';
+												let street = line;
+
+												if (match) {
+													houseNum = match[1];
+													street = match[2];
+												}
+
+												setFormData((prev) => ({
+													...prev,
+													City: addressData.City || prev.City,
+													StateOrProvince: addressData.StateOrProvince || '',
+													PostalCode: addressData.PostalCode || prev.PostalCode,
+													Country: addressData.Country || prev.Country,
+													// Only fill street/house if they were included in the result and fields are still empty
+													StreetName: prev.StreetName || street || prev.StreetName,
+													HouseNumber: prev.HouseNumber || houseNum || prev.HouseNumber,
+												}));
+												setErrors({});
+											}}
+											placeholder='e.g. Leipzig'
+											error={errors.City}
+										/>
+										{errors.City && (
+											<p className='text-xs text-red-500 mt-1'>{errors.City}</p>
+										)}
+									</div>
+								</div>
+
+								{/* Line 5: Country */}
+								<div>
+									<label className='block text-sm font-medium text-gray-700 mb-1.5'>
+										Country <span className='text-red-500'>*</span>
+									</label>
+									<div className='relative'>
+										<Globe size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+										<input
+											type='text'
+											placeholder='Germany'
+											value={formData.Country}
+											onChange={(e) => {
+												setFormData({ ...formData, Country: e.target.value });
+												setErrors({ ...errors, Country: '' });
+											}}
+											className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
+												errors.Country ? 'border-red-500 bg-red-50' : 'border-gray-300'
+											}`}
+										/>
+									</div>
+									{errors.Country && (
+										<p className='text-xs text-red-500 mt-1'>{errors.Country}</p>
+									)}
 								</div>
 
 								{/* Set as Default Checkbox */}
@@ -535,7 +550,7 @@ const Addresses = () => {
 										id='setDefault'
 										checked={formData.IsDefault === 1}
 										onChange={(e) => setFormData({ ...formData, IsDefault: e.target.checked ? 1 : 0 })}
-										className='w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500'
+										className='w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500'
 									/>
 									<label htmlFor='setDefault' className='text-sm text-gray-700 cursor-pointer'>
 										Set as my default shipping address
@@ -553,7 +568,7 @@ const Addresses = () => {
 									</button>
 									<button
 										type='submit'
-										className='w-full sm:w-auto px-6 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium transition-colors flex items-center justify-center gap-2'
+										className='w-full sm:w-auto px-6 py-2.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 font-medium transition-colors flex items-center justify-center gap-2'
 									>
 										{editId ? (
 											<>

@@ -14,7 +14,7 @@ const CartIcon = () => {
 		<div className='relative'>
 			<button
 				onClick={handleClick}
-				className='text-gray-500 hover:text-baseGreen transition-colors'
+				className='text-gray-500 hover:text-primary-500 transition-colors'
 				aria-label='Go to Cart'
 			>
 				<ShoppingCart size={30} />

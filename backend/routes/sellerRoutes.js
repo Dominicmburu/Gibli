@@ -9,10 +9,10 @@ import { authenticateToken } from '../middlewares/authMiddleware.js';
 const sellerRouter = express.Router();
 const db = new DbHelper();
 
-sellerRouter.post('/upload/product/', authenticateToken, upload.array('images', 4), async (req, res) => {
+sellerRouter.post('/upload/product/', authenticateToken, upload.array('images'), async (req, res) => {
 	try {
-		if (!req.files || req.files.length !== 4) {
-			return res.status(400).json({ error: 'You must upload exactly 4 images of the product.' });
+		if (!req.files || !(req.files.length <= 4)) {
+			return res.status(400).json({ error: 'You must upload at most 4 images of the product.' });
 		}
 		const UserId = req.user.id;
 
@@ -74,28 +74,166 @@ sellerRouter.post('/upload/product/', authenticateToken, upload.array('images', 
 	}
 });
 
-sellerRouter.patch('/update/product/:id', async (req, res) => {
+sellerRouter.patch('/update/product/:id', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.params;
 
 		const foundProduct = await db.executeProcedure('GetProductById', { ProductId: id });
-		if (!foundProduct) {
-			res.status(404).json({ message: 'No product was found with that id' });
+		if (!foundProduct || !foundProduct.recordset || foundProduct.recordset.length === 0) {
+			return res.status(404).json({ message: 'No product was found with that id' });
 		}
 
-		const { ProductName, CategoryId, Price, Description, InStock } = req.body;
-		await db.executeProcedure('UpdateProduct', {
+		const { ProductName, CategoryId, SubCategoryId, Price, Description, InStock, ShippingPrice, ExpressShippingPrice } = req.body;
+		const result = await db.executeProcedure('UpdateProduct', {
 			ProductId: id,
 			ProductName,
 			CategoryId,
-			Price,
+			SubCategoryId,
+			Price: parseFloat(Price),
 			Description,
-			InStock,
+			InStock: parseInt(InStock),
+			ShippingPrice: parseFloat(ShippingPrice),
+			ExpressShippingPrice: parseFloat(ExpressShippingPrice),
 		});
-		res.status(200).json({ message: `Product ${ProductName} has been Updated successfully` });
+
+		const updated = result.recordset?.[0];
+		res.status(200).json({ success: true, message: `Product updated successfully`, data: updated });
 	} catch (error) {
-		console.error('Something went wrong, pertainig: ', error);
+		console.error('Product update failed:', error);
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });
+	}
+});
+
+// Get all images for a product
+sellerRouter.get('/product-images/:id', authenticateToken, async (req, res) => {
+	try {
+		const { id } = req.params;
+		const result = await db.executeProcedure('GetProductImages', { ProductId: id });
+		res.status(200).json({ success: true, data: result.recordset || [] });
+	} catch (error) {
+		console.error('Error fetching product images:', error);
+		res.status(500).json({ success: false, message: 'Failed to fetch product images.' });
+	}
+});
+
+// Delete a specific product image
+sellerRouter.delete('/product-image/:imageId', authenticateToken, async (req, res) => {
+	try {
+		const { imageId } = req.params;
+		const UserId = req.user.id;
+
+		const result = await db.executeProcedure('DeleteProductImage', {
+			ImageId: imageId,
+			UserId,
+		});
+
+		const imageUrl = result.recordset?.[0]?.ImageUrl;
+		if (imageUrl) {
+			try {
+				await deleteMultipleFromS3([imageUrl]);
+			} catch (s3Error) {
+				console.error('S3 deletion error (non-fatal):', s3Error);
+			}
+		}
+
+		res.status(200).json({ success: true, message: 'Image deleted successfully.' });
+	} catch (error) {
+		console.error('Error deleting product image:', error);
+		const message = error.message || 'Failed to delete image.';
+		res.status(400).json({ success: false, message });
+	}
+});
+
+// Add images to an existing product
+sellerRouter.post('/product-images/:id', authenticateToken, upload.array('images'), async (req, res) => {
+	try {
+		const { id } = req.params;
+		const UserId = req.user.id;
+
+		// Verify product ownership
+		const foundProduct = await db.executeProcedure('GetProductById', { ProductId: id });
+		if (!foundProduct?.recordset?.length) {
+			return res.status(404).json({ success: false, message: 'Product not found.' });
+		}
+
+		// Check current image count
+		const currentImages = await db.executeProcedure('GetProductImages', { ProductId: id });
+		const currentCount = currentImages.recordset?.length || 0;
+		const newCount = req.files?.length || 0;
+
+		if (currentCount + newCount > 4) {
+			return res.status(400).json({
+				success: false,
+				message: `Cannot add ${newCount} images. Product already has ${currentCount} image(s). Maximum is 4.`,
+			});
+		}
+
+		if (!req.files || newCount === 0) {
+			return res.status(400).json({ success: false, message: 'No images provided.' });
+		}
+
+		// Upload to S3 and insert into DB via SP
+		for (const file of req.files) {
+			const url = await uploadToS3(file.buffer, file.originalname, file.mimetype, 'products');
+			await db.executeProcedure('AddProductImage', {
+				ImageId: uuidv4(),
+				ProductId: id,
+				UserId,
+				ImageUrl: url,
+			});
+		}
+
+		// Fetch updated images list
+		const updatedImages = await db.executeProcedure('GetProductImages', { ProductId: id });
+
+		res.status(201).json({
+			success: true,
+			message: `${newCount} image(s) added successfully.`,
+			data: updatedImages.recordset || [],
+		});
+	} catch (error) {
+		console.error('Error adding product images:', error);
+		res.status(500).json({ success: false, message: 'Failed to add images.' });
+	}
+});
+
+// Toggle NeedsRestock flag on a product
+sellerRouter.patch('/toggle-restock/:id', authenticateToken, async (req, res) => {
+	try {
+		const { id } = req.params;
+		const UserId = req.user.id;
+
+		const result = await db.executeProcedure('ToggleNeedsRestock', {
+			ProductId: id,
+			UserId,
+		});
+
+		const updated = result.recordset?.[0];
+		if (!updated) {
+			return res.status(404).json({ success: false, message: 'Product not found.' });
+		}
+
+		res.status(200).json({
+			success: true,
+			message: updated.NeedsRestock ? 'Product marked as needs restocking.' : 'Restock flag removed.',
+			data: updated,
+		});
+	} catch (error) {
+		console.error('Toggle restock failed:', error);
+		const message = error.message || 'Failed to toggle restock flag.';
+		res.status(400).json({ success: false, message });
+	}
+});
+
+// Get all products flagged as needing restock
+sellerRouter.get('/needs-restock', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const result = await db.executeProcedure('GetNeedsRestockProducts', { UserId });
+		res.status(200).json({ success: true, data: result.recordset || [] });
+	} catch (error) {
+		console.error('Error fetching restock products:', error);
+		res.status(500).json({ success: false, message: 'Failed to fetch restock products.' });
 	}
 });
 // sellerRouter.js

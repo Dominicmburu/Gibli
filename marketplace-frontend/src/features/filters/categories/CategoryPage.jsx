@@ -48,7 +48,7 @@ const CategoryPage = () => {
 			{/* Mobile/Tablet: Floating Filter Button (hidden on desktop) */}
 			<button
 				onClick={toggleSidebar}
-				className='lg:hidden fixed bottom-6 right-4 sm:right-6 z-50 bg-baseGreen hover:bg-green-700 text-black p-3 sm:p-4 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2'
+				className='lg:hidden fixed bottom-6 right-4 sm:right-6 z-50 bg-secondary-500 hover:bg-secondary-600 text-black p-3 sm:p-4 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2'
 				aria-label='Toggle filters'
 			>
 				<Menu size={20} className='sm:w-6 sm:h-6' />
@@ -100,7 +100,7 @@ const CategoryPage = () => {
 					{loading ? (
 						<div className='flex items-center justify-center min-h-[400px]'>
 							<div className='text-center'>
-								<div className='animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-green-600 mx-auto'></div>
+								<div className='animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-primary-500 mx-auto'></div>
 								<p className='mt-4 text-gray-600 text-sm sm:text-base'>Loading products...</p>
 							</div>
 						</div>
@@ -121,7 +121,7 @@ const CategoryPage = () => {
 										{subcategories.map((sub) => (
 											<button
 												key={sub.SubCategoryId}
-												className='px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full bg-gray-200 hover:bg-green-600 hover:text-white transition-colors duration-200 whitespace-nowrap'
+												className='px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full bg-gray-200 hover:bg-primary-500 hover:text-white transition-colors duration-200 whitespace-nowrap'
 											>
 												{sub.SubCategoryName}
 											</button>

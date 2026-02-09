@@ -21,9 +21,9 @@ const SearchBar = ({ placeholder = 'Search products...' }) => {
 				placeholder={placeholder}
 				value={searchTerm}
 				onChange={(e) => setSearchTerm(e.target.value)}
-				className='border border-gray-300 rounded-lg pl-3 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-baseGreen w-full'
+				className='border border-gray-300 rounded-lg pl-3 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 w-full'
 			/>
-			<button type='submit' className='absolute right-2 top-2 text-gray-500 hover:text-baseGreen'>
+			<button type='submit' className='absolute right-2 top-2 text-gray-500 hover:text-primary-500'>
 				<Search size={20} />
 			</button>
 		</form>

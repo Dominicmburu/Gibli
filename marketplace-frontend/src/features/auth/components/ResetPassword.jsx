@@ -63,7 +63,7 @@ const ResetPassword = () => {
 				<h4 className='text-2xl font-bold mb-6 text-center text-gray-800'>Reset Password</h4>
 
 				{error && <p className='text-red-600 text-sm mb-4'>{error}</p>}
-				{success && <p className='text-green-600 text-sm mb-4'>{success}</p>}
+				{success && <p className='text-primary-500 text-sm mb-4'>{success}</p>}
 
 				<form className='space-y-4' onSubmit={handleSubmit} noValidate>
 					<div className='relative'>
@@ -71,7 +71,7 @@ const ResetPassword = () => {
 							New Password
 						</label>
 						<input
-							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 							type='password'
 							id='password'
 							placeholder='Enter new password'
@@ -86,7 +86,7 @@ const ResetPassword = () => {
 							Confirm Password
 						</label>
 						<input
-							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 							type='password'
 							id='confirmPassword'
 							placeholder='Confirm new password'
@@ -98,7 +98,7 @@ const ResetPassword = () => {
 					</div>
 
 					<button
-						className='w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-md disabled:opacity-50'
+						className='w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl shadow-md disabled:opacity-50'
 						type='submit'
 						disabled={loading}
 					>

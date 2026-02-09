@@ -76,12 +76,12 @@ const SellerSidebar = () => {
 			{/* Logo */}
 			<div className='flex items-center justify-between p-4 border-b'>
 				<div className='flex items-center space-x-2'>
-					<Store className='w-6 h-6 text-green-700' />
-					{isOpen && <span className='text-lg font-semibold text-green-700'>{businessName} </span>}
+					<Store className='w-6 h-6 text-primary-600' />
+					{isOpen && <span className='text-lg font-semibold text-primary-600'>{businessName} </span>}
 				</div>
 
 				<button
-					className='hidden md:block text-gray-600 hover:text-green-700'
+					className='hidden md:block text-gray-600 hover:text-primary-600'
 					onClick={() => setIsOpen(!isOpen)}
 				>
 					{isOpen ? <X size={20} /> : <Menu size={20} />}
@@ -96,8 +96,8 @@ const SellerSidebar = () => {
 						to={item.path}
 						className={`flex items-center px-4 py-2 rounded-lg mx-2 transition-colors ${
 							isActive(item.path)
-								? 'bg-green-100 text-green-700 font-medium'
-								: 'text-gray-700 hover:bg-gray-100 hover:text-green-700'
+								? 'bg-primary-100 text-primary-600 font-medium'
+								: 'text-gray-700 hover:bg-gray-100 hover:text-primary-600'
 						}`}
 					>
 						{item.icon}
@@ -121,16 +121,16 @@ const SellerSidebar = () => {
 			{/* Mobile header */}
 			<div className='md:hidden flex items-center justify-between p-4 bg-white shadow'>
 				<div className='flex items-center space-x-2'>
-					<Store className='w-6 h-6 text-green-700' />
-					<span className='font-semibold text-green-700'>{businessName}</span>
+					<Store className='w-6 h-6 text-primary-600' />
+					<span className='font-semibold text-primary-600'>{businessName}</span>
 				</div>
-				<button onClick={() => setMobileOpen(true)} className='text-gray-600 hover:text-green-700'>
+				<button onClick={() => setMobileOpen(true)} className='text-gray-600 hover:text-primary-600'>
 					<Menu size={24} />
 				</button>
 			</div>
 
 			{/* Sidebar for desktop/tablet */}
-			<div className='hidden md:flex h-screen'>{sidebarContent}</div>
+			<div className='hidden md:flex sticky top-0 h-screen'>{sidebarContent}</div>
 
 			{/* Mobile drawer */}
 			{mobileOpen && (

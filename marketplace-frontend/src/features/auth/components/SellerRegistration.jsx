@@ -97,7 +97,7 @@ const SellerRegistration = () => {
 					<h4 className='text-2xl font-bold mb-6 text-center text-gray-800'>Become a Seller</h4>
 
 					{error && <p className='text-red-600 mb-3'>{error}</p>}
-					{success && <p className='text-green-600 mb-3'>{success}</p>}
+					{success && <p className='text-primary-500 mb-3'>{success}</p>}
 
 					<form className='space-y-4' onSubmit={handleSubmit} noValidate>
 						<div>
@@ -111,7 +111,7 @@ const SellerRegistration = () => {
 								value={businessNumber}
 								onChange={(e) => setBusinessNumber(e.target.value)}
 								required
-								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-600'
+								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 							/>
 						</div>
 
@@ -126,7 +126,7 @@ const SellerRegistration = () => {
 								value={businessName}
 								onChange={(e) => setBusinessName(e.target.value)}
 								required
-								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-600'
+								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 							/>
 						</div>
 
@@ -141,14 +141,14 @@ const SellerRegistration = () => {
 								value={country}
 								onChange={(e) => setCountry(e.target.value)}
 								required
-								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-600'
+								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 							/>
 						</div>
 
 						<button
 							type='submit'
 							disabled={loading}
-							className='w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-2 px-4 rounded-xl shadow-md'
+							className='w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl shadow-md'
 						>
 							{loading ? 'Registering Seller...' : 'Register Seller Account'}
 						</button>

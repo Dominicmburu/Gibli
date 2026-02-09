@@ -55,8 +55,8 @@ const ResendVerification = () => {
 		<div className='bg-white-100 flex items-center justify-center min-h-screen'>
 			<div className='bg-white p-8 rounded-2xl shadow-xl w-full max-w-md'>
 				<div className='text-center mb-6'>
-					<div className='inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4'>
-						<svg className='w-8 h-8 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+					<div className='inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4'>
+						<svg className='w-8 h-8 text-primary-500' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
 							<path
 								strokeLinecap='round'
 								strokeLinejoin='round'
@@ -77,7 +77,7 @@ const ResendVerification = () => {
 						<input
 							type='email'
 							id='email'
-							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+							className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 							placeholder='your.email@example.com'
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
@@ -87,7 +87,7 @@ const ResendVerification = () => {
 					</div>
 
 					<button
-						className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-colors'
+						className='w-full bg-primary-500 hover:bg-primary-600 disabled:bg-primary-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-colors'
 						type='submit'
 						disabled={isLoading}
 					>
@@ -124,13 +124,13 @@ const ResendVerification = () => {
 				<div className='mt-6 text-center space-y-2'>
 					<p className='text-sm text-gray-600'>
 						Already verified?{' '}
-						<Link className='text-blue-600 hover:underline font-semibold' to='/login'>
+						<Link className='text-primary-500 hover:underline font-semibold' to='/login'>
 							Log in
 						</Link>
 					</p>
 					<p className='text-sm text-gray-600'>
 						Need an account?{' '}
-						<Link className='text-blue-600 hover:underline font-semibold' to='/signup'>
+						<Link className='text-primary-500 hover:underline font-semibold' to='/signup'>
 							Sign up
 						</Link>
 					</p>

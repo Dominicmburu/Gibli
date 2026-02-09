@@ -14,10 +14,12 @@ import SellerRegistration from './features/auth/components/SellerRegistration';
 import ForgotPassword from './features/auth/components/ForgotPassword';
 import ResetPassword from './features/auth/components/ResetPassword';
 import OrdersPage from './features/orders/OrdersPage';
+import OrderDetail from './features/orders/OrderDetail';
 import CheckoutFail from './features/stripe/CheckoutFail';
 import SellerDashboard from './features/seller/SellerDashboard';
 import SellerProducts from './features/seller/SellerProducts';
 import SellerOrders from './features/seller/SellerOrders';
+import SellerOrderDetail from './features/seller/SellerOrderDetail';
 import SellerAnalytics from './features/seller/SellerAnalytics';
 import StoreSettings from './features/seller/StoreSettings';
 import NeedsRestock from './features/seller/NeedsRestock';
@@ -56,12 +58,14 @@ function App() {
 					<Route path='/payment/success' element={<CheckoutSuccess />} />
 					<Route path='/payment/fail' element={<CheckoutFail />} />
 					<Route path='/orders' element={<OrdersPage />} />
+					<Route path='/orders/:orderId' element={<OrderDetail />} />
 					{/* SELLER ROUTES */}
 					<Route path='/become-seller' element={<BecomeSeller />} />
 					<Route path='/seller/register' element={<SellerRegistration />} />
 					<Route path='/seller-dashboard' element={<SellerDashboard />} />
 					<Route path='/my-products' element={<SellerProducts />} />
 					<Route path='/my-orders' element={<SellerOrders />} />
+					<Route path='/my-orders/:orderId' element={<SellerOrderDetail />} />
 					<Route path='/restock' element={<NeedsRestock />} />
 					<Route path='/new-product' element={<AddProduct />} />
 					<Route path='/store-settings' element={<StoreSettings />} />

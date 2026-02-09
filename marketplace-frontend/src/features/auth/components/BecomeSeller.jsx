@@ -15,7 +15,7 @@ const BecomeSeller = () => {
 					{/* Left Text Content */}
 					<div className='lg:w-1/2 space-y-6'>
 						<h1 className='text-4xl lg:text-5xl font-bold text-gray-900'>
-							How to start selling on <span className='text-green-700'>OurPlatform</span>:
+							How to start selling on <span className='text-primary-500'>OurPlatform</span>:
 							<br />
 							Become a Seller
 						</h1>
@@ -25,7 +25,7 @@ const BecomeSeller = () => {
 						</p>
 						<button
 							onClick={handleCreateAccountClick}
-							className='bg-amber-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-full shadow-lg transition'
+							className='bg-secondary-500 hover:bg-secondary-600 text-white font-semibold px-8 py-3 rounded-full shadow-lg transition'
 						>
 							Create Seller Account.
 						</button>
@@ -35,7 +35,7 @@ const BecomeSeller = () => {
 					{/* Right Image Card */}
 					<div className='lg:w-1/2 mt-10 lg:mt-0 flex justify-center'>
 						<div className='bg-white p-6 rounded-2xl shadow-md max-w-md'>
-							<span className='bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full'>
+							<span className='bg-primary-100 text-primary-700 text-sm font-semibold px-3 py-1 rounded-full'>
 								New Seller Policy or Guidelines
 							</span>
 							<h2 className='mt-4 text-xl font-bold text-gray-800'>

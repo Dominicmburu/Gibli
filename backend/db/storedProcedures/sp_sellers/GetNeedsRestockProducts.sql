@@ -1,6 +1,7 @@
-USE Marketplace
+USE Marketplace;
 GO
-CREATE OR ALTER PROCEDURE GetProductsBySeller
+
+CREATE OR ALTER PROCEDURE GetNeedsRestockProducts
     @UserId VARCHAR(50)
 AS
 BEGIN
@@ -14,8 +15,6 @@ BEGIN
         p.Price,
         p.ShippingPrice,
         p.ExpressShippingPrice,
-        p.TotalPrice,
-        p.ExpressTotalPrice,
         p.CategoryId,
         p.SubCategoryId,
         p.NeedsRestock,
@@ -23,7 +22,6 @@ BEGIN
         p.UpdatedAt,
         c.CategoryName,
         sc.SubCategoryName,
-        -- Fetch the first image for preview purposes
         pi.ImageUrl
     FROM Products p
     LEFT JOIN Categories c ON p.CategoryId = c.CategoryId
@@ -34,7 +32,7 @@ BEGIN
         WHERE ProductId = p.ProductId
         ORDER BY ImageId
     ) pi
-    WHERE p.UserId = @UserId
-    ORDER BY p.CreatedAt DESC;
-END
+    WHERE p.UserId = @UserId AND p.NeedsRestock = 1
+    ORDER BY p.InStock ASC, p.UpdatedAt DESC;
+END;
 GO

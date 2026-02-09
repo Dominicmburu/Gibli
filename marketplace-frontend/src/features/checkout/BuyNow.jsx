@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Truck, Zap, X, MapPin, Edit2 } from 'lucide-react';
+import { Loader2, Truck, Zap, X, MapPin, ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 
@@ -9,33 +9,43 @@ const BuyNow = ({ product }) => {
 	const [showModal, setShowModal] = useState(false);
 	const [shippingType, setShippingType] = useState('standard');
 	const [quantity, setQuantity] = useState(1);
-	const [defaultAddress, setDefaultAddress] = useState(null);
+	const [addresses, setAddresses] = useState([]);
+	const [selectedAddressId, setSelectedAddressId] = useState(null);
 	const [addressLoading, setAddressLoading] = useState(false);
 	const navigate = useNavigate();
 
-	// Fetch default address when modal opens
+	// Fetch all addresses when modal opens
 	useEffect(() => {
 		if (showModal) {
-			fetchDefaultAddress();
+			fetchAddresses();
 		}
 	}, [showModal]);
 
-	const fetchDefaultAddress = async () => {
+	const fetchAddresses = async () => {
 		setAddressLoading(true);
 		try {
-			const res = await api.get('/shipping/default-address/me');
-			if (res.data && res.data.length > 0) {
-				setDefaultAddress(res.data[0]);
+			const res = await api.get('/shipping/addresses/me');
+			const data = res.data || [];
+			setAddresses(data);
+
+			// Pre-select default address
+			const defaultAddr = data.find((a) => a.IsDefault === 1 || a.IsDefault === true);
+			if (defaultAddr) {
+				setSelectedAddressId(defaultAddr.ShippingId);
+			} else if (data.length > 0) {
+				setSelectedAddressId(data[0].ShippingId);
 			} else {
-				setDefaultAddress(null);
+				setSelectedAddressId(null);
 			}
 		} catch (err) {
-			console.error('Error fetching default address:', err);
-			setDefaultAddress(null);
+			console.error('Error fetching addresses:', err);
+			setAddresses([]);
 		} finally {
 			setAddressLoading(false);
 		}
 	};
+
+	const selectedAddress = addresses.find((a) => a.ShippingId === selectedAddressId) || null;
 
 	const handleBuyNowClick = () => {
 		const token = localStorage.getItem('token');
@@ -48,12 +58,18 @@ const BuyNow = ({ product }) => {
 	};
 
 	const handleConfirmPurchase = async () => {
+		if (!selectedAddress) {
+			toast.error('Please select a shipping address.');
+			return;
+		}
+
 		setLoading(true);
 		try {
 			const response = await api.post('/checkout/buy-now', {
 				productId: product.ProductId,
 				quantity,
-				shippingType
+				shippingType,
+				shippingId: selectedAddressId,
 			});
 
 			if (response.data?.url) {
@@ -86,13 +102,9 @@ const BuyNow = ({ product }) => {
 			setShowModal(false);
 			setShippingType('standard');
 			setQuantity(1);
-			setDefaultAddress(null);
+			setAddresses([]);
+			setSelectedAddressId(null);
 		}
-	};
-
-	const handleEditAddress = () => {
-		setShowModal(false);
-		navigate('/address-book');
 	};
 
 	const calculateTotal = () => {
@@ -110,7 +122,7 @@ const BuyNow = ({ product }) => {
 			<button
 				onClick={handleBuyNowClick}
 				disabled={product.InStock < 1}
-				className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-md text-sm sm:text-base'
+				className='w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-md text-sm sm:text-base'
 			>
 				{product.InStock < 1 ? 'Out of Stock' : 'Buy Now'}
 			</button>
@@ -125,7 +137,7 @@ const BuyNow = ({ product }) => {
 					/>
 
 					{/* Modal Content */}
-					<div className='relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in duration-200'>
+					<div className='relative bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-5'>
 						{/* Close Button */}
 						<button
 							onClick={handleCloseModal}
@@ -152,52 +164,67 @@ const BuyNow = ({ product }) => {
 							)}
 							<div className='flex-1 min-w-0'>
 								<p className='font-medium text-gray-900 truncate'>{product.ProductName}</p>
-								<p className='text-green-600 font-bold'>€{product.Price?.toFixed(2)}</p>
+								<p className='text-primary-500 font-bold'>€{product.Price?.toFixed(2)}</p>
 							</div>
 						</div>
 
-						{/* Shipping Address */}
+						{/* Shipping Address Selector */}
 						<div>
-							<div className='flex items-center justify-between mb-2'>
-								<label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
-									<MapPin size={16} className='text-green-600' />
-									Shipping To
-								</label>
-								{defaultAddress && (
-									<button
-										onClick={handleEditAddress}
-										className='text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1'
-									>
-										<Edit2 size={12} />
-										Change
-									</button>
-								)}
-							</div>
+							<label className='text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2'>
+								<MapPin size={16} className='text-primary-500' />
+								Ship To
+							</label>
 
 							{addressLoading ? (
 								<div className='p-3 bg-gray-50 rounded-lg flex items-center justify-center'>
 									<Loader2 size={20} className='animate-spin text-gray-400' />
 								</div>
-							) : defaultAddress ? (
-								<div className='p-3 bg-green-50 rounded-lg border border-green-200 text-sm'>
-									<p className='font-semibold text-gray-900'>{defaultAddress.FullName}</p>
-									<p className='text-gray-700'>
-										{defaultAddress.AddressLine1}
-										{defaultAddress.AddressLine2 && `, ${defaultAddress.AddressLine2}`}
-									</p>
-									<p className='text-gray-700'>
-										{defaultAddress.City}, {defaultAddress.PostalCode}
-									</p>
-									<p className='text-gray-700'>{defaultAddress.Country}</p>
-								</div>
-							) : (
+							) : addresses.length === 0 ? (
 								<div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-center'>
 									<p className='text-sm text-yellow-800 mb-2'>No shipping address found</p>
 									<button
-										onClick={handleEditAddress}
+										onClick={() => { setShowModal(false); navigate('/address-book'); }}
 										className='text-sm bg-yellow-600 text-white px-4 py-1.5 rounded-lg hover:bg-yellow-700 transition-colors font-medium'
 									>
 										Add Address
+									</button>
+								</div>
+							) : (
+								<div className='space-y-2'>
+									<div className='relative'>
+										<select
+											value={selectedAddressId || ''}
+											onChange={(e) => setSelectedAddressId(e.target.value)}
+											className='w-full appearance-none border border-gray-300 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white'
+										>
+											{addresses.map((addr) => (
+												<option key={addr.ShippingId} value={addr.ShippingId}>
+													{addr.FullName} - {addr.AddressLine1}, {addr.PostalCode} {addr.City}, {addr.Country}
+													{(addr.IsDefault === 1 || addr.IsDefault === true) ? ' (Default)' : ''}
+												</option>
+											))}
+										</select>
+										<ChevronDown size={16} className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none' />
+									</div>
+
+									{/* Selected address preview */}
+									{selectedAddress && (
+										<div className='p-3 bg-primary-50 rounded-lg border border-primary-200 text-sm'>
+											<p className='font-semibold text-gray-900'>{selectedAddress.FullName}</p>
+											<p className='text-gray-700'>{selectedAddress.AddressLine1}</p>
+											<p className='text-gray-700'>
+												{selectedAddress.PostalCode} {selectedAddress.City}
+											</p>
+											<p className='text-gray-700'>{selectedAddress.Country}</p>
+										</div>
+									)}
+
+									<button
+										onClick={() => { setShowModal(false); navigate('/address-book'); }}
+										className='text-xs text-primary-500 hover:text-primary-600 font-medium flex items-center gap-1'
+									>
+										<Plus size={12} />
+										Add new address
 									</button>
 								</div>
 							)}
@@ -236,7 +263,6 @@ const BuyNow = ({ product }) => {
 								Shipping Method
 							</label>
 							<div className='space-y-2'>
-								{/* Standard Shipping */}
 								<label
 									className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
 										shippingType === 'standard'
@@ -268,7 +294,6 @@ const BuyNow = ({ product }) => {
 									<span className='font-bold text-gray-900'>€{product.ShippingPrice?.toFixed(2)}</span>
 								</label>
 
-								{/* Express Shipping */}
 								<label
 									className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
 										shippingType === 'express'
@@ -306,15 +331,15 @@ const BuyNow = ({ product }) => {
 						<div className='pt-4 border-t border-gray-200'>
 							<div className='flex justify-between items-center'>
 								<span className='text-gray-600'>Total</span>
-								<span className='text-2xl font-bold text-green-600'>€{calculateTotal()}</span>
+								<span className='text-2xl font-bold text-primary-500'>€{calculateTotal()}</span>
 							</div>
 						</div>
 
 						{/* Confirm Button */}
 						<button
 							onClick={handleConfirmPurchase}
-							disabled={loading || !defaultAddress || addressLoading}
-							className='w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2'
+							disabled={loading || !selectedAddress || addressLoading}
+							className='w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2'
 						>
 							{loading ? (
 								<>

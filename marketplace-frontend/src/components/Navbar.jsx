@@ -1,12 +1,12 @@
 // components/NavBar.jsx
 import { useEffect, useState } from 'react';
-import { Menu, Store, X, Search } from 'lucide-react';
+import { Menu, Store, X, Search, Heart } from 'lucide-react';
 import SearchBar from './SearchBar';
 import AuthButton from '../features/auth/components/AuthButton';
 import CartIcon from './CartIcon';
 import DropdownNav from './DropdownNav';
 import { getUserRole } from '../utils/userRole';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../utils/useAuth';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,7 @@ const NavBar = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [role, setRole] = useState(null);
+	const [scrolled, setScrolled] = useState(false);
 	const { isLoggedIn, tokenExpired } = useAuth();
 	const navigate = useNavigate();
 
@@ -22,6 +23,15 @@ const NavBar = () => {
 
 	useEffect(() => {
 		setRole(getUserRole());
+	}, []);
+
+	// Handle scroll effect
+	useEffect(() => {
+		const handleScroll = () => {
+			setScrolled(window.scrollY > 10);
+		};
+		window.addEventListener('scroll', handleScroll);
+		return () => window.removeEventListener('scroll', handleScroll);
 	}, []);
 
 	// Close mobile menu when resizing to desktop
@@ -48,36 +58,63 @@ const NavBar = () => {
 		setIsOpen(false); // Close mobile menu after navigation
 	};
 
+	const handleWishlistClick = () => {
+		if (!isLoggedIn || tokenExpired) {
+			toast.error('Please log in to view your wishlist');
+			navigate('/login');
+			return;
+		}
+		navigate('/wishlist');
+	};
+
 	return (
-		<nav className='bg-white shadow-md sticky top-0 z-50'>
+		<nav className={`bg-white sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-lg shadow-gray-200/50' : 'shadow-sm'}`}>
+			{/* Top accent bar */}
+			<div className='h-1 bg-gradient-to-r from-primary-500 via-primary-600 to-secondary-400'></div>
+
 			<div className='max-w-7xl mx-auto px-3 sm:px-4 lg:px-8'>
-				<div className='flex justify-between h-14 sm:h-16 items-center gap-2 sm:gap-4'>
-					{/* Logo - Responsive sizing */}
-					<a href='/' className='hover:text-baseGreen flex-shrink-0'>
-						<div className='text-lg sm:text-xl lg:text-2xl font-bold text-baseGreen'>GibLi</div>
-					</a>
+				<div className='flex justify-between h-16 sm:h-18 items-center gap-2 sm:gap-4'>
+					{/* Logo */}
+					<Link to='/' className='hover:opacity-80 transition-opacity flex-shrink-0 group'>
+						<div className='text-xl sm:text-2xl lg:text-3xl font-bold'>
+							<span className='text-primary-600 group-hover:text-primary-700 transition-colors'>Gib</span>
+							<span className='text-secondary-500 group-hover:text-secondary-600 transition-colors'>Li</span>
+						</div>
+					</Link>
 
 					{/* Desktop: My Store Link (hidden on mobile/tablet) */}
 					<div className='hidden lg:flex items-center'>
 						{role === 'Seller' && (
 							<button
 								onClick={handleClick}
-								className='flex items-center space-x-1 text-green-700 hover:text-green-900 transition-colors'
+								className='flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 hover:text-primary-700 transition-all'
 							>
-								<Store className='w-5 h-5' />
+								<Store className='w-4 h-4' />
 								<span className='text-sm font-medium'>My Store</span>
 							</button>
 						)}
 					</div>
 
 					{/* Desktop: Search Bar (hidden on mobile/tablet) */}
-					<div className='hidden md:flex flex-1 max-w-md mx-4 lg:mx-6'>
-						<SearchBar placeholder='Search products...' />
+					<div className='hidden md:flex flex-1 max-w-lg mx-4 lg:mx-8'>
+						<SearchBar placeholder='Search for products...' />
 					</div>
 
 					{/* Desktop: User Actions (hidden on mobile/tablet) */}
-					<div className='hidden md:flex items-center space-x-3 lg:space-x-6'>
+					<div className='hidden md:flex items-center gap-2 lg:gap-3'>
+						{/* Wishlist Icon */}
+						<button
+							onClick={handleWishlistClick}
+							className='relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group'
+							aria-label='View wishlist'
+						>
+							<Heart size={22} className='text-gray-600 group-hover:text-red-500 transition-colors' />
+						</button>
+
+						{/* Cart Icon */}
 						<CartIcon />
+
+						{/* Profile Dropdown */}
 						<DropdownNav />
 					</div>
 
@@ -87,14 +124,23 @@ const NavBar = () => {
 					</div>
 
 					{/* Mobile/Tablet: Right side icons */}
-					<div className='flex md:hidden items-center space-x-2 sm:space-x-3'>
+					<div className='flex md:hidden items-center gap-1 sm:gap-2'>
 						{/* Search Icon for Mobile/Tablet */}
 						<button
 							onClick={toggleSearch}
-							className='p-2 hover:bg-gray-100 rounded-full transition-colors'
+							className={`p-2.5 rounded-xl transition-all ${isSearchOpen ? 'bg-primary-100 text-primary-600' : 'hover:bg-gray-100 text-gray-600'}`}
 							aria-label='Toggle search'
 						>
-							<Search size={20} className='text-gray-700' />
+							<Search size={20} />
+						</button>
+
+						{/* Wishlist Icon Mobile */}
+						<button
+							onClick={handleWishlistClick}
+							className='p-2.5 rounded-xl hover:bg-gray-100 transition-colors'
+							aria-label='View wishlist'
+						>
+							<Heart size={20} className='text-gray-600' />
 						</button>
 
 						{/* Cart Icon */}
@@ -105,7 +151,7 @@ const NavBar = () => {
 						{/* Hamburger Menu Button */}
 						<button
 							onClick={toggleMenu}
-							className='p-2 hover:bg-gray-100 rounded-full transition-colors'
+							className={`p-2.5 rounded-xl transition-all ${isOpen ? 'bg-primary-100 text-primary-600' : 'hover:bg-gray-100 text-gray-600'}`}
 							aria-label='Toggle menu'
 						>
 							{isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -115,43 +161,63 @@ const NavBar = () => {
 
 				{/* Mobile/Tablet: Search Bar Dropdown */}
 				{isSearchOpen && (
-					<div className='md:hidden py-3 border-t border-gray-200 animate-slideDown'>
-						<SearchBar placeholder='Search products...' />
+					<div className='md:hidden py-3 border-t border-gray-100 animate-slideDown'>
+						<SearchBar placeholder='Search for products...' />
 					</div>
 				)}
 			</div>
 
 			{/* Mobile Menu Dropdown */}
 			{isOpen && (
-				<div className='md:hidden px-3 sm:px-4 pb-4 space-y-3 border-t border-gray-200 bg-white shadow-lg'>
-					{/* Home Link */}
-					<a
-						href='/'
-						className='block py-2 px-3 hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base'
-						onClick={() => setIsOpen(false)}
-					>
-						Home
-					</a>
-
-					{/* My Store Link for Sellers (Mobile only) */}
-					{role === 'Seller' && (
-						<button
-							onClick={handleClick}
-							className='flex items-center space-x-2 py-2 px-3 w-full text-left text-green-700 hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base'
+				<div className='md:hidden border-t border-gray-100 bg-white shadow-xl'>
+					<div className='px-4 py-4 space-y-2'>
+						{/* Home Link */}
+						<Link
+							to='/'
+							className='flex items-center gap-3 py-3 px-4 hover:bg-gray-50 rounded-xl transition-colors text-gray-700 font-medium'
+							onClick={() => setIsOpen(false)}
 						>
-							<Store className='w-5 h-5' />
-							<span>My Store</span>
+							Home
+						</Link>
+
+						{/* Wishlist Link */}
+						<button
+							onClick={() => {
+								handleWishlistClick();
+								setIsOpen(false);
+							}}
+							className='flex items-center gap-3 py-3 px-4 w-full text-left hover:bg-gray-50 rounded-xl transition-colors text-gray-700 font-medium'
+						>
+							<Heart size={18} className='text-red-500' />
+							My Wishlist
 						</button>
-					)}
 
-					{/* Dropdown Nav (Mobile) */}
-					<div className='py-2 border-t border-gray-200'>
-						<DropdownNav />
-					</div>
+						{/* My Store Link for Sellers (Mobile only) */}
+						{role === 'Seller' && (
+							<button
+								onClick={handleClick}
+								className='flex items-center gap-3 py-3 px-4 w-full text-left bg-primary-50 text-primary-600 hover:bg-primary-100 rounded-xl transition-colors font-medium'
+							>
+								<Store className='w-5 h-5' />
+								My Store
+							</button>
+						)}
 
-					{/* Auth Button (Mobile) */}
-					<div className='pt-2 border-t border-gray-200'>
-						<AuthButton />
+						{/* Divider */}
+						<div className='h-px bg-gray-100 my-2'></div>
+
+						{/* Dropdown Nav (Mobile) */}
+						<div className='py-2'>
+							<DropdownNav />
+						</div>
+
+						{/* Divider */}
+						<div className='h-px bg-gray-100 my-2'></div>
+
+						{/* Auth Button (Mobile) */}
+						<div className='pt-2'>
+							<AuthButton />
+						</div>
 					</div>
 				</div>
 			)}

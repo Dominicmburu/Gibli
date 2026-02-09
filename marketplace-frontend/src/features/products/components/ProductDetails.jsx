@@ -40,7 +40,7 @@ const ProductDetails = () => {
 		return (
 			<div className='min-h-screen flex items-center justify-center'>
 				<div className='text-center'>
-					<div className='animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-green-600 mx-auto'></div>
+					<div className='animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-primary-500 mx-auto'></div>
 					<p className='mt-4 text-gray-600 text-sm sm:text-base'>Loading product details...</p>
 				</div>
 			</div>
@@ -90,8 +90,8 @@ const ProductDetails = () => {
                         object-cover rounded-lg cursor-pointer border-2 transition-all
                         ${
 							selectedImage === img.ImageUrl
-								? 'border-green-600 scale-105 shadow-md'
-								: 'border-gray-200 hover:border-green-400'
+								? 'border-primary-500 scale-105 shadow-md'
+								: 'border-gray-200 hover:border-primary-400'
 						}
                       `}
 											onClick={() => setSelectedImage(img.ImageUrl)}
@@ -113,8 +113,8 @@ const ProductDetails = () => {
 							</div>
 
 							{/* Price Section - Responsive layout */}
-							<div className='bg-green-50 p-4 sm:p-6 rounded-lg border-2 border-green-200'>
-								<p className='text-3xl sm:text-4xl lg:text-5xl text-green-600 font-bold'>
+							<div className='bg-primary-50 p-4 sm:p-6 rounded-lg border-2 border-primary-200'>
+								<p className='text-3xl sm:text-4xl lg:text-5xl text-primary-500 font-bold'>
 									€{productDetails.Price?.toFixed(2)}
 								</p>
 
@@ -122,7 +122,7 @@ const ProductDetails = () => {
 								<div className='mt-3 sm:mt-4 flex items-center gap-2'>
 									<Package className='w-5 h-5 text-gray-600' />
 									<span className='text-sm sm:text-base text-gray-700'>
-										<span className='font-semibold text-green-600'>{productDetails.InStock}</span>{' '}
+										<span className='font-semibold text-primary-500'>{productDetails.InStock}</span>{' '}
 										units in stock
 									</span>
 								</div>
@@ -170,13 +170,13 @@ const ProductDetails = () => {
 								<div className='space-y-1.5 sm:space-y-2'>
 									<p className='text-sm sm:text-base'>
 										<span className='text-gray-600'>Business:</span>{' '}
-										<span className='font-semibold text-green-600'>
+										<span className='font-semibold text-primary-500'>
 											{productDetails.BusinessName}
 										</span>
 									</p>
 									<p className='text-sm sm:text-base'>
 										<span className='text-gray-600'>Location:</span>{' '}
-										<span className='font-semibold text-green-600'>{productDetails.Country}</span>
+										<span className='font-semibold text-primary-500'>{productDetails.Country}</span>
 									</p>
 								</div>
 							</div>
@@ -227,10 +227,10 @@ const ProductDetails = () => {
 // 				<div className=' relative flex-1 space-y-4'>
 // 					<AddToWishList ProductId={productDetails.ProductId} />
 // 					<h1 className='text-3xl font-bold text-primary'>{productDetails.ProductName}</h1>
-// 					{/* <p className='text-xl text-green-600 font-semibold'>€ {productDetails.Price}</p> */}
+// 					{/* <p className='text-xl text-primary-500 font-semibold'>€ {productDetails.Price}</p> */}
 // 					{/* <p className='text-sm text-gray-500'>Stock: {productDetails.InStock}</p> */}
 // 					<p className='text-gray-600'>{productDetails.Description}</p>
-// 					<p className='text-xl text-green-600 font-semibold'>Selling at: € {productDetails.Price}</p>
+// 					<p className='text-xl text-primary-500 font-semibold'>Selling at: € {productDetails.Price}</p>
 // 					<p>
 // 						<span className='text-sm text-gray-500'>Shipping Fee: €{productDetails.ShippingPrice}</span> |{' '}
 // 						<span className='text-sm text-gray-500'>
@@ -239,11 +239,11 @@ const ProductDetails = () => {
 // 					</p>
 
 // 					<p className='text-sm text-muted'>
-// 						<span className='text-sm text-green-600 font-semibold'>
+// 						<span className='text-sm text-primary-500 font-semibold'>
 // 							Seller: {productDetails.BusinessName}
 // 						</span>{' '}
 // 						|{' '}
-// 						<span className='text-sm text-green-600 font-semibold'>Country: {productDetails.Country}</span>
+// 						<span className='text-sm text-primary-500 font-semibold'>Country: {productDetails.Country}</span>
 // 					</p>
 // 					<p className='text-sm text-gray-500'>Units in stock: {productDetails.InStock}</p>
 
@@ -273,7 +273,7 @@ const ProductDetails = () => {
 // 								src={img.ImageUrl}
 // 								alt={`Thumbnail ${idx}`}
 // 								className={`w-20 h-20 object-cover rounded cursor-pointer border-2 ${
-// 									selectedImage === img.ImageUrl ? 'border-green-600' : 'border-transparent'
+// 									selectedImage === img.ImageUrl ? 'border-primary-500' : 'border-transparent'
 // 								}`}
 // 								onClick={() => setSelectedImage(img.ImageUrl)}
 // 							/>

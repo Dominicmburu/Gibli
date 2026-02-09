@@ -1,1 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
+
+/* EU Flag Color Palette
+ * Blue: #003399 (official EU blue)
+ * Gold: #FFCC00 (official EU gold)
+ */
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@theme {
+  /* Primary - EU Blue */
+  --color-primary-50: #e6ecf7;
+  --color-primary-100: #b3c4e6;
+  --color-primary-200: #809cd5;
+  --color-primary-300: #4d74c4;
+  --color-primary-400: #1a4cb3;
+  --color-primary-500: #003399;
+  --color-primary-600: #002d87;
+  --color-primary-700: #002675;
+  --color-primary-800: #001f63;
+  --color-primary-900: #001851;
+
+  /* Secondary - EU Gold */
+  --color-secondary-50: #fffbeb;
+  --color-secondary-100: #fff3c4;
+  --color-secondary-200: #ffe999;
+  --color-secondary-300: #ffdf6e;
+  --color-secondary-400: #ffd543;
+  --color-secondary-500: #FFCC00;
+  --color-secondary-600: #e6b800;
+  --color-secondary-700: #cc9900;
+  --color-secondary-800: #b38600;
+  --color-secondary-900: #997300;
+
+  /* Accent - For hover states and highlights */
+  --color-accent-50: #f0f4ff;
+  --color-accent-100: #dbe4ff;
+  --color-accent-200: #bac8ff;
+  --color-accent-300: #91a7ff;
+  --color-accent-400: #5c7cfa;
+  --color-accent-500: #4263eb;
+  --color-accent-600: #3b5bdb;
+  --color-accent-700: #364fc7;
+  --color-accent-800: #2f44ad;
+  --color-accent-900: #283d8f;
+}

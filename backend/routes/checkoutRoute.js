@@ -15,6 +15,30 @@ const db = new DbHelper();
 const checkoutRouter = express.Router();
 const stripe = new Stripe(process.env.SK_TEST);
 
+// Helper: Parse shipping address from draft (handles both old and new format)
+const parseShippingAddress = (shippingAddress) => {
+	// New format: { default: {...}, perItem: { ProductId: {...}, ... } }
+	if (shippingAddress && shippingAddress.default) {
+		return {
+			defaultAddress: shippingAddress.default,
+			perItem: shippingAddress.perItem || {},
+		};
+	}
+	// Old format: single address object
+	return {
+		defaultAddress: shippingAddress,
+		perItem: {},
+	};
+};
+
+// Helper: Get the shipping address for a specific item
+const getAddressForItem = (item, defaultAddress, perItem) => {
+	if (perItem[item.ProductId]) {
+		return perItem[item.ProductId];
+	}
+	return defaultAddress;
+};
+
 // ✅ Create Checkout Session
 checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 	const { draftId } = req.body;
@@ -26,9 +50,10 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 	// Parse JSON fields
 	const cartItems = JSON.parse(draft.CartItemsJson);
 	const shippingOptions = JSON.parse(draft.ShippingOptionsJson);
-	const shippingAddress = JSON.parse(draft.ShippingAddressJson);
+	const shippingAddressRaw = JSON.parse(draft.ShippingAddressJson);
+	const { defaultAddress } = parseShippingAddress(shippingAddressRaw);
 
-	if (!cartItems?.length || !shippingOptions || !shippingAddress) {
+	if (!cartItems?.length || !shippingOptions || !defaultAddress) {
 		console.log('Missing cart, shipping, or address details.');
 		return res.status(400).json({ message: 'Missing cart, shipping, or address details.' });
 	}
@@ -60,16 +85,13 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 			payment_method_types: ['card', 'sepa_debit'],
 			mode: 'payment',
 			line_items: lineItems,
-			// success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-			// cancel_url: `${process.env.FRONTEND_URL}/payment-cancelled`,
 			success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
 			cancel_url: `${process.env.FRONTEND_URL}/payment/fail`,
 			metadata: {
 				userId: cartItems[0].UserId,
 				checkoutDraftId: draftId,
-				// shippingDetails: JSON.stringify(shippingOptions),
-				shippingAddressId: shippingAddress.ShippingId,
-			}, //Infuture you can pass the amount total for amount computation and tracking
+				shippingAddressId: defaultAddress.ShippingId,
+			},
 		});
 
 		await db.executeProcedure('InsertSessionIdToDraft', { DraftId: draftId, SessionId: session.id });
@@ -82,7 +104,7 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 
 // POST /checkout/buy-now - Direct checkout for single product (Buy Now button)
 checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
-	const { productId, quantity = 1, shippingType = 'standard' } = req.body;
+	const { productId, quantity = 1, shippingType = 'standard', shippingId } = req.body;
 	const userId = req.user.id;
 
 	if (!productId) {
@@ -109,22 +131,38 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 			});
 		}
 
-		// 2. Get user's default shipping address
-		const addressResult = await db.executeProcedure('GetDefaultShipping', { UserId: userId });
-		const shippingAddress = addressResult.recordset?.[0];
+		// 2. Get shipping address - use specific address if shippingId provided, otherwise default
+		let shippingAddress;
+		if (shippingId) {
+			// Fetch all user addresses and find the selected one
+			const allAddressesResult = await db.executeProcedure('GetShippingDetailsByUser', { UserId: userId });
+			const allAddresses = allAddressesResult.recordset || [];
+			shippingAddress = allAddresses.find((a) => String(a.ShippingId) === String(shippingId));
+
+			if (!shippingAddress) {
+				return res.status(400).json({
+					message: 'Selected shipping address not found.',
+					code: 'NO_ADDRESS'
+				});
+			}
+		} else {
+			// Fall back to default address
+			const addressResult = await db.executeProcedure('GetDefaultShipping', { UserId: userId });
+			shippingAddress = addressResult.recordset?.[0];
+		}
 
 		if (!shippingAddress) {
 			return res.status(400).json({
-				message: 'No default shipping address found. Please add a shipping address first.',
+				message: 'No shipping address found. Please add a shipping address first.',
 				code: 'NO_ADDRESS'
 			});
 		}
 
 		// Validate address completeness
 		if (!shippingAddress.AddressLine1 || !shippingAddress.City ||
-			!shippingAddress.Country || !shippingAddress.FullName || !shippingAddress.PhoneNumber) {
+			!shippingAddress.Country || !shippingAddress.FullName || !shippingAddress.PostalCode) {
 			return res.status(400).json({
-				message: 'Your default address is incomplete. Please update it before checkout.',
+				message: 'Your shipping address is incomplete. Please update it before checkout.',
 				code: 'INCOMPLETE_ADDRESS'
 			});
 		}
@@ -156,7 +194,10 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 		// 5. Create checkout draft
 		const CartItemsJson = JSON.stringify(cartItems);
 		const ShippingOptionsJson = JSON.stringify(shippingOptions);
-		const ShippingAddressJson = JSON.stringify(shippingAddress);
+		const ShippingAddressJson = JSON.stringify({
+			default: shippingAddress,
+			perItem: {},
+		});
 
 		await db.executeProcedure('CreateCheckoutDraft', {
 			DraftId: draftId,
@@ -246,11 +287,12 @@ checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 		const totalAmount = computeTotal(cartItems, shippingOptions);
 
 		// stringify JSON payloads before sending to DB
+		// shippingAddress can be either old format (single object) or new format ({ default, perItem })
 		const CartItemsJson = JSON.stringify(cartItems);
 		const ShippingOptionsJson = JSON.stringify(shippingOptions);
 		const ShippingAddressJson = JSON.stringify(shippingAddress);
 
-		// call stored proc (adjust to your db helper signature)
+		// call stored proc
 		await db.executeProcedure('CreateCheckoutDraft', {
 			DraftId: draftId,
 			BuyerId,
@@ -288,7 +330,6 @@ export const stripeWebhook = async (req, res) => {
 
 			const draftId = session.metadata.checkoutDraftId;
 			const userId = session.metadata.userId;
-			const shippingId = session.metadata.shippingAddressId;
 
 			console.log('Looking for draft in DB with ID:', draftId);
 			const draftResult = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
@@ -303,31 +344,46 @@ export const stripeWebhook = async (req, res) => {
 
 			console.log('✅ Found checkout draft in DB:', draftRow.DraftId);
 
-			// Corrected property names
+			// Parse draft data
 			const cartItems = JSON.parse(draftRow.CartItemsJson);
 			const shippingOptions = JSON.parse(draftRow.ShippingOptionsJson);
-			const shippingAddress = JSON.parse(draftRow.ShippingAddressJson);
+			const shippingAddressRaw = JSON.parse(draftRow.ShippingAddressJson);
 
-			// Parse metadata
-			// const shippingId = session.metadata.shippingAddressId;
-			// const shippingOptions = JSON.parse(session.metadata.shippingDetails);
+			// Parse address format (handles both old single-object and new {default, perItem})
+			const { defaultAddress, perItem } = parseShippingAddress(shippingAddressRaw);
 
-			// ✅ Group items by SellerId
-			const groupedBySeller = cartItems.reduce((acc, item) => {
-				if (!acc[item.SellerId]) acc[item.SellerId] = [];
-				acc[item.SellerId].push(item);
+			// ✅ Group items by SellerId + ShippingAddressId
+			// Items going to different addresses from the same seller get separate orders
+			const groupKey = (item) => {
+				const itemAddr = getAddressForItem(item, defaultAddress, perItem);
+				const addrId = itemAddr?.ShippingId || 'default';
+				return `${item.SellerId}__${addrId}`;
+			};
+
+			const groupedBySellerAndAddress = cartItems.reduce((acc, item) => {
+				const key = groupKey(item);
+				if (!acc[key]) acc[key] = [];
+				acc[key].push(item);
 				return acc;
 			}, {});
 
-			// Loop sellers and insert orders
-			for (const [sellerId, items] of Object.entries(groupedBySeller)) {
-				const sellerOrderTotal = items.reduce((sum, i) => sum + i.TotalPrice, 0);
+			// Loop seller+address groups and insert orders
+			for (const [key, items] of Object.entries(groupedBySellerAndAddress)) {
+				const sellerId = items[0].SellerId;
+				const orderAddress = getAddressForItem(items[0], defaultAddress, perItem);
+				const orderShippingId = orderAddress?.ShippingId || session.metadata.shippingAddressId;
+
+				const sellerOrderTotal = items.reduce((sum, i) => {
+					const shipType = shippingOptions?.[i.ProductId] || 'standard';
+					const totalPrice = shipType === 'express' ? (i.ExpressTotalPrice || i.TotalPrice) : i.TotalPrice;
+					return sum + totalPrice;
+				}, 0);
 
 				await db.executeProcedure('CreateOrder', {
 					OrderId: uuidv4(),
 					BuyerId: userId,
 					SellerId: sellerId,
-					ShippingId: shippingId,
+					ShippingId: orderShippingId,
 					TotalAmount: sellerOrderTotal,
 					PaymentIntentId: session.payment_intent,
 					DeliveryStatus: 'Processing',
@@ -337,13 +393,13 @@ export const stripeWebhook = async (req, res) => {
 				const seller = await db.executeProcedure('GetSellerDetails', { SellerId: sellerId });
 				const sellerDetails = seller.recordset[0];
 
-				// Send seller notification with shipping options, address, and total
+				// Send seller notification with the specific order address
 				await sendSellerOrderNotificationEmail(
 					sellerDetails.Email,
 					sellerDetails.BusinessName,
 					items,
 					shippingOptions,
-					shippingAddress,
+					orderAddress,
 					sellerOrderTotal
 				);
 			}

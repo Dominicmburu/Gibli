@@ -27,7 +27,7 @@ const AuthButton = () => {
 	return (
 		<button
 			onClick={handleClick}
-			className='bg-amber-500 text-green px-4 py-2 rounded-lg hover:bg-amber-700 transition'
+			className='bg-secondary-500 text-primary-800 px-4 py-2 rounded-lg hover:bg-secondary-600 transition'
 		>
 			{isLoggedIn && !tokenExpired ? 'Logout' : 'Login'}
 		</button>

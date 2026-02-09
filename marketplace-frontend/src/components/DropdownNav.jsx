@@ -63,19 +63,30 @@ const DropdownNav = () => {
 	return (
 		<div className='relative' onMouseEnter={() => setIsOpen(true)} onMouseLeave={() => setIsOpen(false)}>
 			{/* Main Nav Button */}
-			<button className='flex items-center gap-1 px-4 py-2 hover:text-green-600 transition'>
-				<User size={30} />
-				{isLoggedIn && userInfo ? `Hi, ${userInfo.name}` : 'Account'}
-				<ChevronDown size={16} />
+			<button className='flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-primary-600 transition-all'>
+				<div className='w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center'>
+					<User size={18} className='text-primary-600' />
+				</div>
+				<span className='text-sm font-medium hidden lg:inline'>
+					{isLoggedIn && userInfo ? `Hi, ${userInfo.name}` : 'Account'}
+				</span>
+				<ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
 			</button>
 
 			{/* Dropdown List */}
 			<div
-				className={`absolute left-0 mt-2 w-48 bg-amber-500 border border-gray-200 rounded-lg shadow-lg z-20 transition-all duration-200 ${
+				className={`absolute right-0 mt-2 w-52 bg-white border border-gray-100 rounded-xl shadow-xl z-20 transition-all duration-200 overflow-hidden ${
 					isOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
 				}`}
 			>
-				<ul className='flex flex-col'>
+				{/* User Info Header */}
+				{isLoggedIn && userInfo && (
+					<div className='px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 border-b border-primary-100'>
+						<p className='text-sm font-semibold text-primary-700'>{userInfo.name}</p>
+						{userInfo.email && <p className='text-xs text-primary-500 truncate'>{userInfo.email}</p>}
+					</div>
+				)}
+				<ul className='py-2'>
 					{menuItems
 						.filter((item) => {
 							// Only show "Become Seller" if the user's role is "Buyer"
@@ -88,7 +99,7 @@ const DropdownNav = () => {
 							<li key={item.path}>
 								<button
 									onClick={() => handleClick(item.path)}
-									className='w-full text-left block px-4 py-2 hover:bg-gray-100 cursor-pointer'
+									className='w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-600 cursor-pointer transition-colors'
 								>
 									{item.label}
 								</button>

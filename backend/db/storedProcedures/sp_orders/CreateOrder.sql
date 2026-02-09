@@ -61,7 +61,14 @@ BEGIN
             GETDATE() AS CreatedAt
         FROM OPENJSON(@CartItemsJson) AS item;
 
-        -- ✅ 3️⃣ Snapshot user shipping info at order time
+        -- 📦 3️⃣ Reduce stock for each ordered product
+        UPDATE p
+        SET p.InStock = p.InStock - CAST(JSON_VALUE(item.value, '$.Quantity') AS INT)
+        FROM Products p
+        INNER JOIN OPENJSON(@CartItemsJson) AS item
+            ON p.ProductId = JSON_VALUE(item.value, '$.ProductId');
+
+        -- ✅ 4️⃣ Snapshot user shipping info at order time
         INSERT INTO OrderShippingDetails (
             OrderShippingId, OrderId, FullName, PhoneNumber,
             AddressLine1, AddressLine2, City, StateOrProvince,

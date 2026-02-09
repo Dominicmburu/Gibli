@@ -59,7 +59,7 @@ const SearchResultsPage = () => {
 			{/* Mobile/Tablet: Floating Filter Button (hidden on desktop) */}
 			<button
 				onClick={toggleSidebar}
-				className='lg:hidden fixed bottom-6 right-4 sm:right-6 z-50 bg-baseGreen hover:bg-green-700 text-black p-3 sm:p-4 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2'
+				className='lg:hidden fixed bottom-6 right-4 sm:right-6 z-50 bg-secondary-500 hover:bg-secondary-600 text-black p-3 sm:p-4 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2'
 				aria-label='Toggle filters'
 			>
 				<Menu size={20} className='sm:w-6 sm:h-6' />
@@ -112,7 +112,7 @@ const SearchResultsPage = () => {
 						{/* Page Title - Responsive */}
 						<div className='mb-4 sm:mb-6'>
 							<h1 className='text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 mb-2'>
-								Search results for: <span className='text-baseGreen'>"{query}"</span>
+								Search results for: <span className='text-primary-500'>"{query}"</span>
 							</h1>
 							{!isLoading && results.length > 0 && (
 								<p className='text-sm sm:text-base text-gray-600'>
@@ -124,7 +124,7 @@ const SearchResultsPage = () => {
 						{/* Loading State */}
 						{isLoading && (
 							<div className='flex flex-col justify-center items-center py-16 sm:py-20'>
-								<Loader2 size={40} className='sm:w-12 sm:h-12 animate-spin text-green-600 mb-4' />
+								<Loader2 size={40} className='sm:w-12 sm:h-12 animate-spin text-primary-500 mb-4' />
 								<p className='text-sm sm:text-base text-gray-600'>Searching products...</p>
 							</div>
 						)}

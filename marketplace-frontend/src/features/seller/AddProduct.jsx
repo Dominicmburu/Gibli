@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
 import { jwtDecode } from 'jwt-decode';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { Plus, X, ImagePlus } from 'lucide-react';
 
 const AddProduct = () => {
 	const [formData, setFormData] = useState({
@@ -23,6 +24,7 @@ const AddProduct = () => {
 	const [previewUrls, setPreviewUrls] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [message, setMessage] = useState('');
+	const fileInputRef = useRef(null);
 
 	// Fetch all categories on mount
 	useEffect(() => {
@@ -32,7 +34,7 @@ const AddProduct = () => {
 				setCategories(res.data || []);
 			} catch (error) {
 				console.error('Error fetching categories:', error);
-				setMessage('⚠️ Failed to load categories.');
+				setMessage('Failed to load categories.');
 			}
 		};
 		fetchCategories();
@@ -47,7 +49,7 @@ const AddProduct = () => {
 				setSubCategories(res.data || []);
 			} catch (error) {
 				console.error('Error fetching subcategories:', error);
-				setMessage('⚠️ Failed to load subcategories.');
+				setMessage('Failed to load subcategories.');
 			}
 		};
 		fetchSubCategories();
@@ -58,22 +60,50 @@ const AddProduct = () => {
 		setFormData((prev) => ({ ...prev, [name]: value }));
 	};
 
-	const handleImageChange = (e) => {
+	// Add new images to existing ones
+	const handleAddImages = (e) => {
 		const files = Array.from(e.target.files);
-		if (files.length !== 4) {
-			setMessage('⚠️ Please upload exactly 4 images.');
-			setImages([]);
-			setPreviewUrls([]);
+		if (files.length === 0) return;
+
+		const totalImages = images.length + files.length;
+		if (totalImages > 4) {
+			setMessage('Maximum 4 images allowed.');
+			toast.error('Maximum 4 images allowed.');
 			return;
 		}
-		setImages(files);
-		setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
+
+		const newImages = [...images, ...files];
+		const newPreviewUrls = [...previewUrls, ...files.map((file) => URL.createObjectURL(file))];
+
+		setImages(newImages);
+		setPreviewUrls(newPreviewUrls);
 		setMessage('');
+
+		// Reset file input
+		if (fileInputRef.current) {
+			fileInputRef.current.value = '';
+		}
+	};
+
+	// Remove a specific image
+	const handleRemoveImage = (indexToRemove) => {
+		// Revoke the object URL to prevent memory leaks
+		URL.revokeObjectURL(previewUrls[indexToRemove]);
+
+		setImages((prev) => prev.filter((_, index) => index !== indexToRemove));
+		setPreviewUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setMessage('');
+
+		if (images.length === 0) {
+			setMessage('Please upload at least 1 image.');
+			toast.error('Please upload at least 1 image.');
+			return;
+		}
+
 		setLoading(true);
 
 		try {
@@ -92,7 +122,7 @@ const AddProduct = () => {
 				headers: { 'Content-Type': 'multipart/form-data' },
 			});
 
-			setMessage(`✅ ${response.data.message}`);
+			setMessage(`${response.data.message}`);
 			toast.success(response.data.message);
 			setFormData({
 				ProductName: '',
@@ -104,24 +134,27 @@ const AddProduct = () => {
 				ShippingPrice: '',
 				ExpressShippingPrice: '',
 			});
+			// Cleanup preview URLs
+			previewUrls.forEach((url) => URL.revokeObjectURL(url));
 			setImages([]);
 			setPreviewUrls([]);
 			setSubCategories([]);
 		} catch (error) {
 			console.error('Product upload failed:', error);
-			setMessage(`❌ ${error.response?.data?.error || error.message}`);
+			setMessage(`${error.response?.data?.error || error.message}`);
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	return (
-		<div className='flex'>
-			<SellerSidebar />
-			<div className='flex-1 bg-gray-50 min-h-screen'>
-				<NavBar />
-				<div className='max-w-3xl mx-auto p-6 mt-6 bg-white shadow rounded-xl'>
-					<h2 className='text-2xl font-semibold text-green-700 mb-4'>Add a New Product</h2>
+		<>
+			<NavBar />
+			<div className='flex min-h-screen bg-gray-50'>
+				<SellerSidebar />
+				<div className='flex-1 p-6 overflow-y-auto'>
+					<div className='max-w-3xl mx-auto bg-white shadow-sm border border-gray-100 rounded-2xl p-6'>
+						<h2 className='text-2xl font-bold text-gray-900 mb-6'>Add a New Product</h2>
 
 					<form onSubmit={handleSubmit} className='space-y-4'>
 						{/* Product Name */}
@@ -131,7 +164,7 @@ const AddProduct = () => {
 							value={formData.ProductName}
 							onChange={handleChange}
 							placeholder='Product Name'
-							className='w-full border border-gray-300 rounded-lg px-4 py-2'
+							className='w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 							required
 						/>
 
@@ -141,7 +174,8 @@ const AddProduct = () => {
 							value={formData.Description}
 							onChange={handleChange}
 							placeholder='Description'
-							className='w-full border border-gray-300 rounded-lg px-4 py-2'
+							className='w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
+							rows={4}
 							required
 						/>
 
@@ -153,7 +187,7 @@ const AddProduct = () => {
 								value={formData.Price}
 								onChange={handleChange}
 								placeholder='Price (€)'
-								className='border border-gray-300 rounded-lg px-4 py-2'
+								className='border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 								required
 							/>
 							<input
@@ -162,7 +196,7 @@ const AddProduct = () => {
 								value={formData.InStock}
 								onChange={handleChange}
 								placeholder='Stock Quantity'
-								className='border border-gray-300 rounded-lg px-4 py-2'
+								className='border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 								required
 							/>
 						</div>
@@ -172,7 +206,7 @@ const AddProduct = () => {
 							name='CategoryId'
 							value={formData.CategoryId}
 							onChange={handleChange}
-							className='w-full border border-gray-300 rounded-lg px-4 py-2'
+							className='w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 							required
 						>
 							<option value=''>Select Category</option>
@@ -188,7 +222,7 @@ const AddProduct = () => {
 							name='SubCategoryId'
 							value={formData.SubCategoryId}
 							onChange={handleChange}
-							className='w-full border border-gray-300 rounded-lg px-4 py-2'
+							className='w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed'
 							required
 							disabled={!formData.CategoryId}
 						>
@@ -208,7 +242,7 @@ const AddProduct = () => {
 								value={formData.ShippingPrice}
 								onChange={handleChange}
 								placeholder='Standard Shipping (€)'
-								className='border border-gray-300 rounded-lg px-4 py-2'
+								className='border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 								required
 							/>
 							<input
@@ -217,50 +251,87 @@ const AddProduct = () => {
 								value={formData.ExpressShippingPrice}
 								onChange={handleChange}
 								placeholder='Express Shipping (€)'
-								className='border border-gray-300 rounded-lg px-4 py-2'
+								className='border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 								required
 							/>
 						</div>
 
 						{/* Image Upload */}
 						<div>
-							<label className='block mb-2 font-medium text-gray-700'>Upload 4 Images</label>
+							<label className='block mb-2 font-medium text-gray-700'>
+								Product Images <span className='text-gray-400 font-normal'>(1-4 images)</span>
+							</label>
+
+							{/* Hidden file input */}
 							<input
+								ref={fileInputRef}
 								type='file'
 								accept='image/*'
 								multiple
-								onChange={handleImageChange}
-								className='w-full'
+								onChange={handleAddImages}
+								className='hidden'
 							/>
-							{previewUrls.length > 0 && (
-								<div className='mt-4 grid grid-cols-4 gap-2'>
-									{previewUrls.map((url, index) => (
+
+							{/* Image preview grid */}
+							<div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
+								{/* Existing images */}
+								{previewUrls.map((url, index) => (
+									<div key={index} className='relative group'>
 										<img
-											key={index}
 											src={url}
 											alt={`preview-${index}`}
-											className='w-full h-24 object-cover rounded-md border'
+											className='w-full h-28 object-cover rounded-lg border border-gray-200'
 										/>
-									))}
-								</div>
-							)}
+										{/* Remove button */}
+										<button
+											type='button'
+											onClick={() => handleRemoveImage(index)}
+											className='absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-colors'
+										>
+											<X size={14} />
+										</button>
+									</div>
+								))}
+
+								{/* Add image button */}
+								{images.length < 4 && (
+									<button
+										type='button'
+										onClick={() => fileInputRef.current?.click()}
+										className='w-full h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-primary-500 hover:text-primary-500 hover:bg-primary-50 transition-all cursor-pointer'
+									>
+										<ImagePlus size={24} />
+										<span className='text-xs font-medium'>Add Image</span>
+									</button>
+								)}
+							</div>
+
+							{/* Image count indicator */}
+							<p className='text-xs text-gray-500 mt-2'>
+								{images.length}/4 images uploaded
+							</p>
 						</div>
 
 						{/* Status Message */}
-						{message && <p className='text-sm text-center text-gray-700 mt-2'>{message}</p>}
+						{message && (
+							<p className={`text-sm text-center mt-2 ${message.includes('Failed') || message.includes('Maximum') || message.includes('Please') ? 'text-red-600' : 'text-green-600'}`}>
+								{message}
+							</p>
+						)}
 
 						{/* Submit Button */}
 						<button
 							type='submit'
-							disabled={loading}
-							className='w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition'
+							disabled={loading || images.length === 0}
+							className='w-full bg-primary-500 text-white py-2.5 rounded-lg hover:bg-primary-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium'
 						>
 							{loading ? 'Uploading...' : 'Add Product'}
 						</button>
 					</form>
+					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 };
 

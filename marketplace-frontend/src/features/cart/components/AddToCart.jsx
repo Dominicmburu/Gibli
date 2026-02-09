@@ -1,54 +1,42 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import toast from 'react-hot-toast';
 import { useCart } from '../../../context/CartContext';
+import { ShoppingCart } from 'lucide-react';
 
 const AddToCart = ({ ProductId }) => {
 	const params = useParams();
+	const navigate = useNavigate();
 	const { refreshCart } = useCart();
 	const id = ProductId || params.id;
-	// const [message, setMessage] = useState(null);
 
 	const addItemToCart = async () => {
 		const token = localStorage.getItem('token');
 		if (!token) {
-			setMessage('⚠️ Please log in to add items to your cart.');
-			toast.error('⚠️ Please log in to add items to your cart.');
-
-			setTimeout(() => setMessage(null), 3000); // clear after 3s
+			toast.error('Please log in to add items to your cart.');
+			navigate('/login');
 			return;
 		}
 
 		try {
-			console.log('/cart/additem', { ProductId: id });
 			const response = await api.post('/cart/additem', { ProductId: id });
 			refreshCart();
-			toast.success(' Item added to cart successfully!');
-			console.log('Item added:', response.data);
+			toast.success('Item added to cart!');
 		} catch (error) {
-			toast.error(' Failed to add item to cart. Please restart your session by logging in');
-			if (error.response) {
-				console.error('Error status:', error.response.status);
-				console.error('Error data:', error.response.data); // <-- server message
-				console.error('Error headers:', error.response.headers);
-			} else if (error.request) {
-				console.error('No response received:', error.request);
-			} else {
-				console.error('Axios error:', error.message);
-			}
+			toast.error('Failed to add item to cart. Please try again.');
+			console.error('Add to cart error:', error);
 		}
 	};
 
 	return (
-		<div>
-			<button
-				onClick={addItemToCart}
-				className='w-full bg-amber-500 hover:bg-amber-600 btn-accent px-6 py-2 rounded shadow hover:shadow-md transition-all'
-			>
-				Add to Cart
-			</button>
-		</div>
+		<button
+			onClick={addItemToCart}
+			className='w-full bg-secondary-500 hover:bg-secondary-600 text-primary-900 font-medium px-4 py-2.5 rounded-lg shadow hover:shadow-md transition-all flex items-center justify-center'
+		>
+			<ShoppingCart size={16} />
+			<span className='hidden sm:inline' style={{ paddingLeft: '4px', fontSize: '14px' }}>Add to Cart</span>
+		</button>
 	);
 };
 
