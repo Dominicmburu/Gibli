@@ -68,6 +68,14 @@ BEGIN
         INNER JOIN OPENJSON(@CartItemsJson) AS item
             ON p.ProductId = JSON_VALUE(item.value, '$.ProductId');
 
+        -- 🔔 4️⃣ Auto-flag NeedsRestock when stock drops to or below LowStockThreshold
+        UPDATE p
+        SET p.NeedsRestock = 1
+        FROM Products p
+        INNER JOIN OPENJSON(@CartItemsJson) AS item
+            ON p.ProductId = JSON_VALUE(item.value, '$.ProductId')
+        WHERE p.InStock <= p.LowStockThreshold AND p.NeedsRestock = 0;
+
         -- ✅ 4️⃣ Snapshot user shipping info at order time
         INSERT INTO OrderShippingDetails (
             OrderShippingId, OrderId, FullName, PhoneNumber,

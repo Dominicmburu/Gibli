@@ -19,6 +19,7 @@ BEGIN
         p.CategoryId,
         p.SubCategoryId,
         p.NeedsRestock,
+        p.LowStockThreshold,
         p.CreatedAt,
         p.UpdatedAt,
         c.CategoryName,

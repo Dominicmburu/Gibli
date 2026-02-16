@@ -25,6 +25,7 @@ sellerRouter.post('/upload/product/', authenticateToken, upload.array('images'),
 			Price,
 			ShippingPrice,
 			ExpressShippingPrice,
+			LowStockThreshold,
 		} = req.body;
 		// const { CategoryId, UserId, ProductName, Description, InStock, Price } = req.body;
 		const ProductId = uuidv4();
@@ -60,6 +61,7 @@ sellerRouter.post('/upload/product/', authenticateToken, upload.array('images'),
 			Price: parseFloat(Price),
 			ShippingPrice: parseFloat(ShippingPrice),
 			ExpressShippingPrice: parseFloat(ExpressShippingPrice),
+			LowStockThreshold: parseInt(LowStockThreshold) || 5,
 			Images: imageTable, //  Properly structured table input
 		});
 
@@ -83,7 +85,7 @@ sellerRouter.patch('/update/product/:id', authenticateToken, async (req, res) =>
 			return res.status(404).json({ message: 'No product was found with that id' });
 		}
 
-		const { ProductName, CategoryId, SubCategoryId, Price, Description, InStock, ShippingPrice, ExpressShippingPrice } = req.body;
+		const { ProductName, CategoryId, SubCategoryId, Price, Description, InStock, ShippingPrice, ExpressShippingPrice, LowStockThreshold } = req.body;
 		const result = await db.executeProcedure('UpdateProduct', {
 			ProductId: id,
 			ProductName,
@@ -94,6 +96,7 @@ sellerRouter.patch('/update/product/:id', authenticateToken, async (req, res) =>
 			InStock: parseInt(InStock),
 			ShippingPrice: parseFloat(ShippingPrice),
 			ExpressShippingPrice: parseFloat(ExpressShippingPrice),
+			LowStockThreshold: LowStockThreshold != null ? parseInt(LowStockThreshold) : null,
 		});
 
 		const updated = result.recordset?.[0];

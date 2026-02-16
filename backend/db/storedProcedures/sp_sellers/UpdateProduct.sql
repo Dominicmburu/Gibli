@@ -9,7 +9,8 @@ CREATE OR ALTER PROCEDURE UpdateProduct
     @Description NVARCHAR(MAX),
     @InStock INT,
     @ShippingPrice DECIMAL(10, 2),
-    @ExpressShippingPrice DECIMAL(10, 2)
+    @ExpressShippingPrice DECIMAL(10, 2),
+    @LowStockThreshold INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -23,6 +24,11 @@ BEGIN
         InStock = @InStock,
         ShippingPrice = @ShippingPrice,
         ExpressShippingPrice = @ExpressShippingPrice,
+        LowStockThreshold = ISNULL(@LowStockThreshold, LowStockThreshold),
+        NeedsRestock = CASE
+            WHEN @InStock <= ISNULL(@LowStockThreshold, LowStockThreshold) THEN 1
+            ELSE 0
+        END,
         UpdatedAt = GETDATE()
     WHERE ProductId = @ProductId;
 
@@ -40,6 +46,7 @@ BEGIN
         p.CategoryId,
         p.SubCategoryId,
         p.NeedsRestock,
+        p.LowStockThreshold,
         p.CreatedAt,
         p.UpdatedAt,
         pi.ImageUrl

@@ -162,9 +162,10 @@ const SellerProducts = () => {
 			p.ProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			p.Description?.toLowerCase().includes(searchTerm.toLowerCase());
 
+		const threshold = p.LowStockThreshold || 5;
 		let matchesStock = true;
-		if (stockFilter === 'inStock') matchesStock = p.InStock > 5;
-		if (stockFilter === 'lowStock') matchesStock = p.InStock <= 5 && p.InStock > 0;
+		if (stockFilter === 'inStock') matchesStock = p.InStock > threshold;
+		if (stockFilter === 'lowStock') matchesStock = p.InStock <= threshold && p.InStock > 0;
 		if (stockFilter === 'needsRestock') matchesStock = p.NeedsRestock;
 
 		return matchesSearch && matchesStock;
@@ -232,6 +233,7 @@ const SellerProducts = () => {
 				InStock: selectedProduct.InStock,
 				ShippingPrice: selectedProduct.ShippingPrice,
 				ExpressShippingPrice: selectedProduct.ExpressShippingPrice,
+				LowStockThreshold: selectedProduct.LowStockThreshold,
 			});
 			const updated = res.data.data;
 			if (updated) {
@@ -248,6 +250,7 @@ const SellerProducts = () => {
 	};
 
 	const stockBadge = (product) => {
+		const threshold = product.LowStockThreshold || 5;
 		if (product.NeedsRestock) {
 			return (
 				<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200'>
@@ -255,7 +258,7 @@ const SellerProducts = () => {
 				</span>
 			);
 		}
-		if (product.InStock <= 5) {
+		if (product.InStock <= threshold) {
 			return (
 				<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-200'>
 					Low: {product.InStock}
@@ -416,11 +419,17 @@ const SellerProducts = () => {
 										</div>
 
 										{/* Stock info */}
-										<div className='flex items-center justify-between text-xs mb-4 py-2 px-3 rounded-lg bg-gray-50'>
-											<span className='flex items-center gap-1 text-gray-500'>
-												<Box size={12} /> In Stock
-											</span>
-											<span className='font-semibold text-gray-900'>{product.InStock} units</span>
+										<div className='space-y-1 mb-4 py-2 px-3 rounded-lg bg-gray-50'>
+											<div className='flex items-center justify-between text-xs'>
+												<span className='flex items-center gap-1 text-gray-500'>
+													<Box size={12} /> In Stock
+												</span>
+												<span className='font-semibold text-gray-900'>{product.InStock} units</span>
+											</div>
+											<div className='flex items-center justify-between text-xs'>
+												<span className='text-gray-400'>Low stock alert</span>
+												<span className='text-gray-500'>&le; {product.LowStockThreshold || 5}</span>
+											</div>
 										</div>
 
 										{/* Actions */}
@@ -577,19 +586,37 @@ const SellerProducts = () => {
 								</div>
 							</div>
 
-							{/* Stock */}
-							<div>
-								<label className='block text-sm font-medium text-gray-700 mb-1'>Stock Quantity</label>
-								<input
-									name='InStock'
-									type='number'
-									min='1'
-									value={selectedProduct.InStock || ''}
-									onChange={handleInputChange}
-									className='w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400'
-									required
-								/>
+							{/* Stock + Low Stock Threshold */}
+							<div className='grid grid-cols-2 gap-3'>
+								<div>
+									<label className='block text-sm font-medium text-gray-700 mb-1'>Stock Quantity</label>
+									<input
+										name='InStock'
+										type='number'
+										min='0'
+										value={selectedProduct.InStock || ''}
+										onChange={handleInputChange}
+										className='w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400'
+										required
+									/>
+								</div>
+								<div>
+									<label className='block text-sm font-medium text-gray-700 mb-1'>Low Stock Alert</label>
+									<input
+										name='LowStockThreshold'
+										type='number'
+										min='1'
+										value={selectedProduct.LowStockThreshold || 5}
+										onChange={handleInputChange}
+										className='w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400'
+										required
+										title='Product will be flagged for restocking when stock drops to this level'
+									/>
+								</div>
 							</div>
+							<p className='text-xs text-gray-400 -mt-2'>
+								When stock reaches the Low Stock Alert level, the product is automatically flagged for restocking.
+							</p>
 
 							{/* Product Images */}
 							<div>

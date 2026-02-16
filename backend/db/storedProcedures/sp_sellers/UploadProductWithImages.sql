@@ -11,6 +11,7 @@ CREATE OR ALTER PROCEDURE UploadProductWithImages
     @Price DECIMAL(10,2),
     @ShippingPrice DECIMAL(10,2),
     @ExpressShippingPrice DECIMAL(10,2),
+    @LowStockThreshold INT = 5,
     @Images ProductImageTableType READONLY
 AS
 BEGIN
@@ -19,10 +20,11 @@ BEGIN
     BEGIN TRY
         -- Insert product
         INSERT INTO Products (
-            ProductId, CategoryId, SubCategoryId, UserId, ProductName, Description, InStock, Price, ShippingPrice, ExpressShippingPrice
+            ProductId, CategoryId, SubCategoryId, UserId, ProductName, Description, InStock, Price, ShippingPrice, ExpressShippingPrice, LowStockThreshold, NeedsRestock
         )
         VALUES (
-            @ProductId, @CategoryId, @SubCategoryId, @UserId, @ProductName, @Description, @InStock, @Price, @ShippingPrice, @ExpressShippingPrice
+            @ProductId, @CategoryId, @SubCategoryId, @UserId, @ProductName, @Description, @InStock, @Price, @ShippingPrice, @ExpressShippingPrice, @LowStockThreshold,
+            CASE WHEN @InStock <= @LowStockThreshold THEN 1 ELSE 0 END
         );
 
         -- Insert images

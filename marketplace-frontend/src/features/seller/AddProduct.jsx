@@ -16,6 +16,7 @@ const AddProduct = () => {
 		SubCategoryId: '',
 		ShippingPrice: '',
 		ExpressShippingPrice: '',
+		LowStockThreshold: '5',
 	});
 
 	const [categories, setCategories] = useState([]);
@@ -133,6 +134,7 @@ const AddProduct = () => {
 				SubCategoryId: '',
 				ShippingPrice: '',
 				ExpressShippingPrice: '',
+				LowStockThreshold: '5',
 			});
 			// Cleanup preview URLs
 			previewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -180,7 +182,7 @@ const AddProduct = () => {
 						/>
 
 						{/* Price and Stock */}
-						<div className='grid grid-cols-2 gap-4'>
+						<div className='grid grid-cols-3 gap-4'>
 							<input
 								type='number'
 								name='Price'
@@ -199,7 +201,23 @@ const AddProduct = () => {
 								className='border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 								required
 							/>
+							<div className='relative'>
+								<input
+									type='number'
+									name='LowStockThreshold'
+									value={formData.LowStockThreshold}
+									onChange={handleChange}
+									placeholder='Low Stock Alert'
+									min='1'
+									className='w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
+									required
+									title='When stock reaches this number, the product will be automatically flagged for restocking'
+								/>
+							</div>
 						</div>
+						<p className='text-xs text-gray-400 -mt-2'>
+							Low Stock Alert: when stock drops to this level, the product is automatically flagged for restocking.
+						</p>
 
 						{/* Category Dropdown */}
 						<select
