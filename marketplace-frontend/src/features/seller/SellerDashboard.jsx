@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Package, ShoppingBag, Euro, CheckCircle, TrendingUp } from 'lucide-react';
+import { Loader2, Package, ShoppingBag, Euro, CheckCircle, BadgeCheck, Percent } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
 import { useAuth } from '../../utils/useAuth';
@@ -12,7 +12,7 @@ const SellerDashboard = () => {
 
 	const [stats, setStats] = useState({
 		totalProducts: 0,
-		totalSales: 0,
+		totalSold: 0,
 		totalRevenue: 0,
 		isVerified: 0,
 	});
@@ -24,7 +24,6 @@ const SellerDashboard = () => {
 			if (!isLoggedIn || tokenExpired || !userInfo?.id) return;
 
 			try {
-				// Fetch independently so one failure doesn't zero out all stats
 				const [productsRes, storeRes, ordersRes] = await Promise.allSettled([
 					api.get('/products/myproducts'),
 					api.get('/store/store-details'),
@@ -40,17 +39,17 @@ const SellerDashboard = () => {
 					OrderItems: typeof o.OrderItems === 'string' ? JSON.parse(o.OrderItems || '[]') : o.OrderItems || [],
 				}));
 
-				// Calculate real stats from orders (exclude cancelled)
-				const activeOrders = formattedOrders.filter((o) => o.DeliveryStatus !== 'Cancelled');
-				const totalSales = activeOrders.reduce(
+				// Only count confirmed sales (status = 'Sold' — 14-day refund window passed)
+				const soldOrders = formattedOrders.filter((o) => o.DeliveryStatus === 'Sold');
+				const totalSold = soldOrders.reduce(
 					(sum, o) => sum + o.OrderItems.reduce((s, item) => s + (item.Quantity || 0), 0),
 					0
 				);
-				const totalRevenue = activeOrders.reduce((sum, o) => sum + Number(o.TotalAmount || 0), 0);
+				const totalRevenue = soldOrders.reduce((sum, o) => sum + Number(o.TotalAmount || 0), 0);
 
 				setStats({
 					totalProducts: products.length,
-					totalSales,
+					totalSold,
 					totalRevenue,
 					isVerified: storeData?.IsVerified || 0,
 				});
@@ -65,6 +64,50 @@ const SellerDashboard = () => {
 
 		fetchDashboardData();
 	}, [userInfo, isLoggedIn, tokenExpired]);
+
+	const statCards = [
+		{
+			label: 'Products',
+			value: stats.totalProducts,
+			icon: <Package className='text-primary-500 w-5 h-5' />,
+			iconBg: 'bg-primary-50',
+			onClick: () => navigate('/my-products'),
+			clickable: true,
+		},
+		{
+			label: 'Items Sold',
+			value: stats.totalSold,
+			icon: <ShoppingBag className='text-blue-500 w-5 h-5' />,
+			iconBg: 'bg-blue-50',
+			onClick: () => navigate('/my-sales'),
+			clickable: true,
+		},
+		{
+			label: 'Revenue',
+			value: `€${stats.totalRevenue.toFixed(2)}`,
+			icon: <Euro className='text-green-500 w-5 h-5' />,
+			iconBg: 'bg-green-50',
+			onClick: () => navigate('/my-revenue'),
+			clickable: true,
+		},
+		{
+			label: 'Store Status',
+			value: stats.isVerified ? 'Snoozed' : 'Active',
+			valueClass: stats.isVerified ? 'text-amber-500' : 'text-green-600',
+			icon: <CheckCircle className={`w-5 h-5 ${stats.isVerified ? 'text-amber-500' : 'text-green-500'}`} />,
+			iconBg: 'bg-amber-50',
+			clickable: false,
+		},
+		{
+			label: 'Subscription',
+			value: '5% per sale',
+			valueClass: 'text-purple-600',
+			subtext: 'Commission (default)',
+			icon: <Percent className='text-purple-500 w-5 h-5' />,
+			iconBg: 'bg-purple-50',
+			clickable: false,
+		},
+	];
 
 	return (
 		<>
@@ -84,45 +127,38 @@ const SellerDashboard = () => {
 					) : (
 						<>
 							{/* Store Overview */}
-							<div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8'>
-								<div className='bg-white shadow-sm border border-gray-100 rounded-2xl p-5 flex items-center gap-4'>
-									<div className='w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center'>
-										<Package className='text-primary-500 w-5 h-5' />
+							<div className='grid gap-4 grid-cols-2 xl:grid-cols-5 mb-8'>
+								{statCards.map((card) => (
+									<div
+										key={card.label}
+										onClick={card.clickable ? card.onClick : undefined}
+										className={`bg-white shadow-sm border border-gray-100 rounded-2xl p-4 flex flex-col gap-3 transition-all ${
+											card.clickable
+												? 'cursor-pointer hover:shadow-md hover:border-primary-200 group'
+												: ''
+										}`}
+									>
+										<div className='flex items-center justify-between'>
+											<div className={`w-9 h-9 ${card.iconBg} rounded-xl flex items-center justify-center`}>
+												{card.icon}
+											</div>
+											{card.clickable && (
+												<span className='text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity text-sm'>→</span>
+											)}
+										</div>
+										<div>
+											<p className='text-gray-500 text-xs font-medium uppercase tracking-wide mb-1'>
+												{card.label}
+											</p>
+											<p className={`text-xl font-bold leading-tight ${card.valueClass || 'text-gray-900'}`}>
+												{card.value}
+											</p>
+											{card.subtext && (
+												<p className='text-xs text-gray-400 mt-0.5'>{card.subtext}</p>
+											)}
+										</div>
 									</div>
-									<div>
-										<p className='text-gray-500 text-xs font-medium uppercase tracking-wide'>Products</p>
-										<p className='text-2xl font-bold text-gray-900'>{stats.totalProducts}</p>
-									</div>
-								</div>
-								<div className='bg-white shadow-sm border border-gray-100 rounded-2xl p-5 flex items-center gap-4'>
-									<div className='w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center'>
-										<ShoppingBag className='text-blue-500 w-5 h-5' />
-									</div>
-									<div>
-										<p className='text-gray-500 text-xs font-medium uppercase tracking-wide'>Items Sold</p>
-										<p className='text-2xl font-bold text-gray-900'>{stats.totalSales}</p>
-									</div>
-								</div>
-								<div className='bg-white shadow-sm border border-gray-100 rounded-2xl p-5 flex items-center gap-4'>
-									<div className='w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center'>
-										<Euro className='text-green-500 w-5 h-5' />
-									</div>
-									<div>
-										<p className='text-gray-500 text-xs font-medium uppercase tracking-wide'>Revenue</p>
-										<p className='text-2xl font-bold text-gray-900'>&euro;{stats.totalRevenue.toFixed(2)}</p>
-									</div>
-								</div>
-								<div className='bg-white shadow-sm border border-gray-100 rounded-2xl p-5 flex items-center gap-4'>
-									<div className='w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center'>
-										<CheckCircle className={`w-5 h-5 ${stats.isVerified ? 'text-amber-500' : 'text-green-500'}`} />
-									</div>
-									<div>
-										<p className='text-gray-500 text-xs font-medium uppercase tracking-wide'>Store Status</p>
-										<p className={`text-2xl font-bold ${stats.isVerified ? 'text-amber-500' : 'text-green-600'}`}>
-											{stats.isVerified ? 'Snoozed' : 'Active'}
-										</p>
-									</div>
-								</div>
+								))}
 							</div>
 
 							{/* Recent Products */}

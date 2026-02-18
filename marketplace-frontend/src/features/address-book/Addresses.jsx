@@ -4,8 +4,9 @@ import NavBar from '../../components/NavBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../api/axios';
 import Footer from '../../components/Footer';
-import AddressAutocomplete from '../../components/AddressAutocomplete';
-import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Globe, Loader2, CheckCircle } from 'lucide-react';
+import SmartAddressField from '../../components/SmartAddressField';
+import { useAddressAutocomplete } from '../../hooks/useAddressAutocomplete';
+import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Globe, Loader2, CheckCircle, Hash, Mail as PostalIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Addresses = () => {
@@ -26,6 +27,9 @@ const Addresses = () => {
 	});
 	const [editId, setEditId] = useState(null);
 	const [errors, setErrors] = useState({});
+
+	// Smart address autocomplete hook
+	const addressAC = useAddressAutocomplete(formData, setFormData, setErrors);
 
 	// Fetch addresses
 	useEffect(() => {
@@ -119,6 +123,7 @@ const Addresses = () => {
 		});
 		setErrors({});
 		setEditId(null);
+		addressAC.reset();
 	};
 
 	const handleSubmit = async (e) => {
@@ -412,21 +417,19 @@ const Addresses = () => {
 										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
 											Street Name <span className='text-red-500'>*</span>
 										</label>
-										<div className='relative'>
-											<Home size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
-											<input
-												type='text'
-												placeholder='e.g. Nikolaistraße'
-												value={formData.StreetName}
-												onChange={(e) => {
-													setFormData({ ...formData, StreetName: e.target.value });
-													setErrors({ ...errors, StreetName: '' });
-												}}
-												className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
-													errors.StreetName ? 'border-red-500 bg-red-50' : 'border-gray-300'
-												}`}
-											/>
-										</div>
+										<SmartAddressField
+											fieldKey='StreetName'
+											value={formData.StreetName}
+											onChange={addressAC.handleFieldChange}
+											onFocus={addressAC.handleFieldFocus}
+											onBlur={addressAC.handleFieldBlur}
+											onSelect={addressAC.handleSuggestionSelect}
+											suggestions={addressAC.getSuggestionsForField('StreetName')}
+											isLoading={addressAC.isLoading && addressAC.activeField === 'StreetName'}
+											placeholder='e.g. Nikolaistraße'
+											icon={<Home size={16} className='text-gray-400' />}
+											error={errors.StreetName}
+										/>
 										{errors.StreetName && (
 											<p className='text-xs text-red-500 mt-1'>{errors.StreetName}</p>
 										)}
@@ -459,17 +462,18 @@ const Addresses = () => {
 										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
 											Postal Code <span className='text-red-500'>*</span>
 										</label>
-										<input
-											type='text'
-											placeholder='04109'
+										<SmartAddressField
+											fieldKey='PostalCode'
 											value={formData.PostalCode}
-											onChange={(e) => {
-												setFormData({ ...formData, PostalCode: e.target.value });
-												setErrors({ ...errors, PostalCode: '' });
-											}}
-											className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
-												errors.PostalCode ? 'border-red-500 bg-red-50' : 'border-gray-300'
-											}`}
+											onChange={addressAC.handleFieldChange}
+											onFocus={addressAC.handleFieldFocus}
+											onBlur={addressAC.handleFieldBlur}
+											onSelect={addressAC.handleSuggestionSelect}
+											suggestions={addressAC.getSuggestionsForField('PostalCode')}
+											isLoading={addressAC.isLoading && addressAC.activeField === 'PostalCode'}
+											placeholder='04109'
+											icon={<Hash size={16} className='text-gray-400' />}
+											error={errors.PostalCode}
 										/>
 										{errors.PostalCode && (
 											<p className='text-xs text-red-500 mt-1'>{errors.PostalCode}</p>
@@ -479,37 +483,17 @@ const Addresses = () => {
 										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
 											City / State / County <span className='text-red-500'>*</span>
 										</label>
-										<AddressAutocomplete
+										<SmartAddressField
+											fieldKey='City'
 											value={formData.City}
-											onChange={(value) => {
-												setFormData((prev) => ({ ...prev, City: value }));
-												setErrors((prev) => ({ ...prev, City: '' }));
-											}}
-											onAddressSelect={(addressData) => {
-												// Parse street and house number from AddressLine1 if available
-												const line = addressData.AddressLine1 || '';
-												const match = line.match(/^(\d+\S*)\s+(.+)$/);
-												let houseNum = '';
-												let street = line;
-
-												if (match) {
-													houseNum = match[1];
-													street = match[2];
-												}
-
-												setFormData((prev) => ({
-													...prev,
-													City: addressData.City || prev.City,
-													StateOrProvince: addressData.StateOrProvince || '',
-													PostalCode: addressData.PostalCode || prev.PostalCode,
-													Country: addressData.Country || prev.Country,
-													// Only fill street/house if they were included in the result and fields are still empty
-													StreetName: prev.StreetName || street || prev.StreetName,
-													HouseNumber: prev.HouseNumber || houseNum || prev.HouseNumber,
-												}));
-												setErrors({});
-											}}
+											onChange={addressAC.handleFieldChange}
+											onFocus={addressAC.handleFieldFocus}
+											onBlur={addressAC.handleFieldBlur}
+											onSelect={addressAC.handleSuggestionSelect}
+											suggestions={addressAC.getSuggestionsForField('City')}
+											isLoading={addressAC.isLoading && addressAC.activeField === 'City'}
 											placeholder='e.g. Leipzig'
+											icon={<MapPin size={16} className='text-gray-400' />}
 											error={errors.City}
 										/>
 										{errors.City && (
@@ -523,21 +507,19 @@ const Addresses = () => {
 									<label className='block text-sm font-medium text-gray-700 mb-1.5'>
 										Country <span className='text-red-500'>*</span>
 									</label>
-									<div className='relative'>
-										<Globe size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
-										<input
-											type='text'
-											placeholder='Germany'
-											value={formData.Country}
-											onChange={(e) => {
-												setFormData({ ...formData, Country: e.target.value });
-												setErrors({ ...errors, Country: '' });
-											}}
-											className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all ${
-												errors.Country ? 'border-red-500 bg-red-50' : 'border-gray-300'
-											}`}
-										/>
-									</div>
+									<SmartAddressField
+										fieldKey='Country'
+										value={formData.Country}
+										onChange={addressAC.handleFieldChange}
+										onFocus={addressAC.handleFieldFocus}
+										onBlur={addressAC.handleFieldBlur}
+										onSelect={addressAC.handleSuggestionSelect}
+										suggestions={addressAC.getSuggestionsForField('Country')}
+										isLoading={addressAC.isLoading && addressAC.activeField === 'Country'}
+										placeholder='Germany'
+										icon={<Globe size={16} className='text-gray-400' />}
+										error={errors.Country}
+									/>
 									{errors.Country && (
 										<p className='text-xs text-red-500 mt-1'>{errors.Country}</p>
 									)}

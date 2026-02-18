@@ -6,14 +6,20 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
 	Clock, Truck, CheckCircle, XCircle, ShoppingBag,
-	Loader2, ChevronRight, ThumbsUp, ThumbsDown, Send, PackageCheck,
+	Loader2, ChevronRight, ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock,
 } from 'lucide-react';
+
+function daysSince(dateStr) {
+	if (!dateStr) return 0;
+	return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
 
 const statusConfig = {
 	Processing: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Processing' },
 	Confirmed: { icon: ThumbsUp, color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed' },
 	Shipped: { icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Shipped' },
 	Delivered: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Delivered' },
+	Sold: { icon: BadgeCheck, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', label: 'Sold' },
 	Cancelled: { icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', label: 'Cancelled' },
 	Rejected: { icon: ThumbsDown, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Rejected' },
 };
@@ -46,10 +52,14 @@ const SellerOrders = () => {
 		try {
 			await api.patch(`/orders/${orderId}/status`, { status: newStatus });
 			setOrders((prev) =>
-				prev.map((o) => (o.OrderId === orderId ? { ...o, DeliveryStatus: newStatus } : o))
+				prev.map((o) =>
+					o.OrderId === orderId
+						? { ...o, DeliveryStatus: newStatus, UpdatedAt: newStatus === 'Delivered' ? new Date().toISOString() : o.UpdatedAt }
+						: o
+				)
 			);
-			const labels = { Confirmed: 'accepted', Rejected: 'rejected', Shipped: 'marked as shipped', Delivered: 'marked as delivered' };
-			toast.success(`Order ${labels[newStatus]}`);
+			const labels = { Confirmed: 'accepted', Rejected: 'rejected', Shipped: 'marked as shipped', Delivered: 'marked as delivered', Sold: 'marked as sold' };
+			toast.success(`Order ${labels[newStatus] || 'updated'}`);
 		} catch (err) {
 			console.error('Status update failed:', err);
 			toast.error(err.response?.data?.message || 'Failed to update status');
@@ -64,6 +74,7 @@ const SellerOrders = () => {
 
 	const getActions = (order) => {
 		const isUpdating = updatingOrder === order.OrderId;
+
 		switch (order.DeliveryStatus) {
 			case 'Processing':
 				return (
@@ -104,6 +115,33 @@ const SellerOrders = () => {
 						<PackageCheck size={13} /> Mark as Delivered
 					</button>
 				);
+			case 'Delivered': {
+				const days = daysSince(order.UpdatedAt);
+				const canSell = days >= 14;
+				const remaining = Math.max(0, 14 - days);
+				return (
+					<div className='mt-3 space-y-1'>
+						<button
+							onClick={(e) => { e.stopPropagation(); if (canSell) handleUpdateStatus(order.OrderId, 'Sold'); }}
+							disabled={!canSell || isUpdating}
+							className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg transition-colors ${
+								canSell
+									? 'text-purple-600 border border-purple-200 hover:bg-purple-50 disabled:opacity-50'
+									: 'text-gray-400 bg-gray-100 cursor-not-allowed'
+							}`}
+						>
+							{canSell ? (
+								<><BadgeCheck size={13} /> Mark as Sold</>
+							) : (
+								<><Lock size={13} /> Sold in {remaining}d</>
+							)}
+						</button>
+						{!canSell && (
+							<p className='text-center text-xs text-gray-400'>{remaining} day{remaining !== 1 ? 's' : ''} left in refund window</p>
+						)}
+					</div>
+				);
+			}
 			default:
 				return null;
 		}
@@ -134,6 +172,7 @@ const SellerOrders = () => {
 							{ value: 'Confirmed', label: 'Confirmed' },
 							{ value: 'Shipped', label: 'Shipped' },
 							{ value: 'Delivered', label: 'Delivered' },
+							{ value: 'Sold', label: 'Sold' },
 							{ value: 'Rejected', label: 'Rejected' },
 							{ value: 'Cancelled', label: 'Cancelled' },
 						].map((f) => {

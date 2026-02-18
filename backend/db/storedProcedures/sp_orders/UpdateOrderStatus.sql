@@ -59,8 +59,14 @@ BEGIN
         RETURN;
     END
 
+    IF @NewStatus = 'Sold' AND @CurrentStatus != 'Delivered'
+    BEGIN
+        RAISERROR('Can only mark orders as Sold when they are Delivered. Current status: %s', 16, 1, @CurrentStatus);
+        RETURN;
+    END
+
     -- Validate that NewStatus is one of the allowed values
-    IF @NewStatus NOT IN ('Confirmed', 'Rejected', 'Shipped', 'Delivered')
+    IF @NewStatus NOT IN ('Confirmed', 'Rejected', 'Shipped', 'Delivered', 'Sold')
     BEGIN
         RAISERROR('Invalid status: %s', 16, 1, @NewStatus);
         RETURN;

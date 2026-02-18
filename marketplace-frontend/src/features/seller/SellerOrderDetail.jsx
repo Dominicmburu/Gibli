@@ -7,19 +7,31 @@ import toast from 'react-hot-toast';
 import {
 	Package, Clock, Truck, CheckCircle, XCircle, ArrowLeft,
 	MapPin, User, Phone, CreditCard, Calendar, Loader2, Mail,
-	ThumbsUp, ThumbsDown, Send, PackageCheck,
+	ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock,
 } from 'lucide-react';
 
 const statusConfig = {
 	Processing: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Processing', desc: 'This order is waiting for your response' },
 	Confirmed: { icon: ThumbsUp, color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed', desc: 'You have accepted this order' },
 	Shipped: { icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Shipped', desc: 'This order has been shipped' },
-	Delivered: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Delivered', desc: 'This order has been delivered' },
+	Delivered: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Delivered', desc: 'This order has been delivered — 14-day refund window is active' },
+	Sold: { icon: BadgeCheck, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', label: 'Sold', desc: 'Sale confirmed — 14-day refund window has passed' },
 	Cancelled: { icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', label: 'Cancelled', desc: 'This order was cancelled by the buyer' },
 	Rejected: { icon: ThumbsDown, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Rejected', desc: 'You rejected this order. Stock has been restored.' },
 };
 
-const statusSteps = ['Processing', 'Confirmed', 'Shipped', 'Delivered'];
+const statusSteps = [
+	{ key: 'Processing', label: 'Processing', barColor: 'bg-primary-500' },
+	{ key: 'Confirmed', label: 'Confirmed', barColor: 'bg-primary-500' },
+	{ key: 'Shipped', label: 'Shipped', barColor: 'bg-primary-500' },
+	{ key: 'Delivered', label: 'Delivered', barColor: 'bg-primary-500' },
+	{ key: 'Sold', label: 'Sold', barColor: 'bg-purple-500' },
+];
+
+function daysSince(dateStr) {
+	if (!dateStr) return 0;
+	return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
 
 const SellerOrderDetail = () => {
 	const { orderId } = useParams();
@@ -52,9 +64,15 @@ const SellerOrderDetail = () => {
 		setUpdatingStatus(true);
 		try {
 			await api.patch(`/orders/${orderId}/status`, { status: newStatus });
-			setOrder((prev) => ({ ...prev, DeliveryStatus: newStatus }));
-			const labels = { Confirmed: 'accepted', Rejected: 'rejected', Shipped: 'marked as shipped', Delivered: 'marked as delivered' };
-			toast.success(`Order ${labels[newStatus]}`);
+			setOrder((prev) => ({ ...prev, DeliveryStatus: newStatus, UpdatedAt: new Date().toISOString() }));
+			const labels = {
+				Confirmed: 'accepted',
+				Rejected: 'rejected',
+				Shipped: 'marked as shipped',
+				Delivered: 'marked as delivered',
+				Sold: 'marked as sold',
+			};
+			toast.success(`Order ${labels[newStatus] || 'updated'}`);
 		} catch (err) {
 			console.error('Status update failed:', err);
 			toast.error(err.response?.data?.message || 'Failed to update status');
@@ -90,15 +108,21 @@ const SellerOrderDetail = () => {
 
 	const subtotal = order.OrderItems.reduce((sum, item) => sum + item.UnitPrice * item.Quantity, 0);
 	const shippingTotal = order.OrderItems.reduce((sum, item) => sum + (item.ShippingPrice || 0), 0);
-	const currentStepIndex = isTerminal ? -1 : statusSteps.indexOf(order.DeliveryStatus);
 
-	// Determine available actions based on status
+	const currentStepIndex = isTerminal ? -1 : statusSteps.findIndex((s) => s.key === order.DeliveryStatus);
+
+	// 14-day sold gate — only relevant when status is Delivered
+	const daysDelivered = order.DeliveryStatus === 'Delivered' ? daysSince(order.UpdatedAt) : 0;
+	const daysRemaining = Math.max(0, 14 - daysDelivered);
+	const canMarkSold = order.DeliveryStatus === 'Delivered' && daysDelivered >= 14;
+
 	const renderActions = () => {
-		if (isTerminal || order.DeliveryStatus === 'Delivered') return null;
+		if (isTerminal || order.DeliveryStatus === 'Sold') return null;
 
 		return (
 			<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-4'>
 				<h3 className='font-semibold text-gray-900 mb-3'>Update Order Status</h3>
+
 				{order.DeliveryStatus === 'Processing' && (
 					<div className='flex gap-3'>
 						<button
@@ -117,6 +141,7 @@ const SellerOrderDetail = () => {
 						</button>
 					</div>
 				)}
+
 				{order.DeliveryStatus === 'Confirmed' && (
 					<button
 						onClick={() => handleUpdateStatus('Shipped')}
@@ -126,6 +151,7 @@ const SellerOrderDetail = () => {
 						<Send size={16} /> Mark as Shipped
 					</button>
 				)}
+
 				{order.DeliveryStatus === 'Shipped' && (
 					<button
 						onClick={() => handleUpdateStatus('Delivered')}
@@ -134,6 +160,32 @@ const SellerOrderDetail = () => {
 					>
 						<PackageCheck size={16} /> Mark as Delivered
 					</button>
+				)}
+
+				{order.DeliveryStatus === 'Delivered' && (
+					<div className='space-y-2'>
+						<button
+							onClick={() => canMarkSold && handleUpdateStatus('Sold')}
+							disabled={!canMarkSold || updatingStatus}
+							className={`w-full flex items-center justify-center gap-2 text-sm font-medium py-2.5 rounded-lg transition-colors ${
+								canMarkSold
+									? 'text-white bg-purple-500 hover:bg-purple-600 disabled:opacity-50'
+									: 'text-gray-400 bg-gray-100 cursor-not-allowed'
+							}`}
+						>
+							{canMarkSold ? (
+								<><BadgeCheck size={16} /> Mark as Sold</>
+							) : (
+								<><Lock size={16} /> Mark as Sold — available in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</>
+							)}
+						</button>
+						{!canMarkSold && (
+							<p className='text-xs text-gray-400 text-center'>
+								The 14-day refund window ends on{' '}
+								{new Date(new Date(order.UpdatedAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+							</p>
+						)}
+					</div>
 				)}
 			</div>
 		);
@@ -172,9 +224,9 @@ const SellerOrderDetail = () => {
 							</div>
 						</div>
 
-						{/* ROW 1: Order Status with progress bar */}
+						{/* Status progress */}
 						<div className={`rounded-2xl border ${statusInfo.border} ${statusInfo.bg} p-5 sm:p-6 mb-4`}>
-							<div className='flex items-center gap-3'>
+							<div className='flex items-center gap-3 mb-5'>
 								<div className={`w-10 h-10 rounded-full flex items-center justify-center ${statusInfo.bg} border ${statusInfo.border}`}>
 									<StatusIcon size={20} className={statusInfo.color} />
 								</div>
@@ -185,22 +237,46 @@ const SellerOrderDetail = () => {
 							</div>
 
 							{!isTerminal && (
-								<div className='flex items-center gap-1 mt-4'>
+								<div className='flex items-start gap-1'>
 									{statusSteps.map((step, index) => {
 										const isCompleted = index <= currentStepIndex;
 										const isCurrent = index === currentStepIndex;
-										const labels = { Processing: 'Processing', Confirmed: 'Confirmed', Shipped: 'Shipped', Delivered: 'Delivered' };
+										const isSoldStep = step.key === 'Sold';
+										const barColor = isSoldStep && isCompleted ? 'bg-purple-500' : isCompleted ? 'bg-primary-500' : 'bg-gray-200';
+										const labelColor = isCurrent && isSoldStep
+											? 'font-semibold text-purple-600'
+											: isCurrent
+											? 'font-semibold text-primary-600'
+											: isCompleted && isSoldStep
+											? 'text-purple-500'
+											: isCompleted
+											? 'text-gray-600'
+											: 'text-gray-400';
+
 										return (
-											<div key={step} className='flex-1 flex items-center gap-1'>
-												<div className='flex-1'>
-													<div className={`h-2 rounded-full transition-all ${isCompleted ? 'bg-primary-500' : 'bg-gray-200'}`} />
-													<p className={`text-xs mt-1.5 ${isCurrent ? 'font-semibold text-primary-600' : isCompleted ? 'text-gray-600' : 'text-gray-400'}`}>
-														{labels[step]}
-													</p>
-												</div>
+											<div key={step.key} className='flex-1'>
+												<div className={`h-2 rounded-full transition-all ${barColor}`} />
+												<p className={`text-xs mt-1.5 text-center ${labelColor}`}>
+													{step.label}
+												</p>
 											</div>
 										);
 									})}
+								</div>
+							)}
+
+							{/* Delivered: show refund window countdown inside the status card */}
+							{order.DeliveryStatus === 'Delivered' && (
+								<div className='mt-4 pt-4 border-t border-green-200'>
+									{canMarkSold ? (
+										<p className='text-xs text-green-700 font-medium'>
+											✓ Refund window has passed — you can now mark this order as Sold.
+										</p>
+									) : (
+										<p className='text-xs text-green-700'>
+											Refund window: <span className='font-semibold'>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining</span> (ends {new Date(new Date(order.UpdatedAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })})
+										</p>
+									)}
 								</div>
 							)}
 						</div>

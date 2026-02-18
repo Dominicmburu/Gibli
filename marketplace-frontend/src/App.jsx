@@ -21,6 +21,8 @@ import SellerProducts from './features/seller/SellerProducts';
 import SellerOrders from './features/seller/SellerOrders';
 import SellerOrderDetail from './features/seller/SellerOrderDetail';
 import SellerAnalytics from './features/seller/SellerAnalytics';
+import SellerSales from './features/seller/SellerSales';
+import SellerRevenue from './features/seller/SellerRevenue';
 import StoreSettings from './features/seller/StoreSettings';
 import NeedsRestock from './features/seller/NeedsRestock';
 import AddProduct from './features/seller/AddProduct';
@@ -69,6 +71,8 @@ function App() {
 					<Route path='/restock' element={<NeedsRestock />} />
 					<Route path='/new-product' element={<AddProduct />} />
 					<Route path='/store-settings' element={<StoreSettings />} />
+				<Route path='/my-sales' element={<SellerSales />} />
+				<Route path='/my-revenue' element={<SellerRevenue />} />
 					{/* CATEGORY ROUTES */}
 					<Route path='/category/:id' element={<CategoryPage />} />
 				</Routes>

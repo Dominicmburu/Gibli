@@ -14,11 +14,21 @@ BEGIN
         RETURN;
     END;
 
-    SELECT 
+    -- Auto-mark Delivered orders as Sold after the 14-day refund window
+    IF @Role IN ('Seller', 'Admin')
+    BEGIN
+        UPDATE Orders
+        SET DeliveryStatus = 'Sold', UpdatedAt = GETDATE()
+        WHERE DeliveryStatus = 'Delivered'
+          AND DATEDIFF(DAY, UpdatedAt, GETDATE()) >= 14;
+    END
+
+    SELECT
         o.OrderId,
         o.TotalAmount,
         o.DeliveryStatus,
         o.CreatedAt AS OrderDate,
+        o.UpdatedAt,
         o.PaymentIntentId,
 
         -- Buyer info (useful for sellers’ dashboard)

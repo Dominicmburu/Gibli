@@ -145,6 +145,7 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 			Rejected: 'Order rejected. Stock has been restored.',
 			Shipped: 'Order marked as shipped.',
 			Delivered: 'Order marked as delivered.',
+			Sold: 'Order marked as sold.',
 		};
 
 		return res.status(200).json({
