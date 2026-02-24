@@ -6,7 +6,13 @@ import DbHelper from '../db/dbHelper.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendBuyerOrderConfirmationEmail, sendSellerOrderNotificationEmail } from '../services/emailService.js';
+import {
+	sendBuyerOrderConfirmationEmail,
+	sendSellerOrderNotificationEmail,
+	sendSubscriptionConfirmationEmail,
+	sendSubscriptionPaymentFailedEmail,
+	sendSubscriptionExpiredEmail,
+} from '../services/emailService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -322,6 +328,36 @@ export const stripeWebhook = async (req, res) => {
 		return res.sendStatus(400);
 	}
 
+	// ── Subscription: checkout completed ──
+	if (event.type === 'checkout.session.completed' && event.data.object.mode === 'subscription') {
+		await handleSubscriptionCheckoutComplete(event.data.object);
+		return res.status(200).end();
+	}
+
+	// ── Subscription: invoice paid (renewal) ──
+	if (event.type === 'invoice.paid') {
+		await handleInvoicePaid(event.data.object);
+		return res.status(200).end();
+	}
+
+	// ── Subscription: payment failed ──
+	if (event.type === 'invoice.payment_failed') {
+		await handlePaymentFailed(event.data.object);
+		return res.status(200).end();
+	}
+
+	// ── Subscription: deleted / expired ──
+	if (event.type === 'customer.subscription.deleted') {
+		await handleSubscriptionDeleted(event.data.object);
+		return res.status(200).end();
+	}
+
+	// ── Subscription: updated (e.g. cancel_at_period_end toggled) ──
+	if (event.type === 'customer.subscription.updated') {
+		await handleSubscriptionUpdated(event.data.object);
+		return res.status(200).end();
+	}
+
 	if (event.type === 'checkout.session.completed') {
 		const session = event.data.object;
 
@@ -379,8 +415,9 @@ export const stripeWebhook = async (req, res) => {
 					return sum + totalPrice;
 				}, 0);
 
+				const newOrderId = uuidv4();
 				await db.executeProcedure('CreateOrder', {
-					OrderId: uuidv4(),
+					OrderId: newOrderId,
 					BuyerId: userId,
 					SellerId: sellerId,
 					ShippingId: orderShippingId,
@@ -389,6 +426,28 @@ export const stripeWebhook = async (req, res) => {
 					DeliveryStatus: 'Processing',
 					CartItemsJson: JSON.stringify(items),
 				});
+
+				// ── Record commission in ledger ──
+				try {
+					const commResult = await db.executeProcedure('GetSellerCommissionRate', { SellerId: sellerId });
+					const commissionRate = commResult.recordset?.[0]?.CommissionRate ?? 0.05;
+					const subscriptionId = commResult.recordset?.[0]?.SubscriptionId ?? null;
+					const commissionAmount = Number((sellerOrderTotal * commissionRate).toFixed(2));
+					const netAmount = Number((sellerOrderTotal - commissionAmount).toFixed(2));
+
+					await db.executeProcedure('RecordCommission', {
+						OrderId: newOrderId,
+						SellerId: sellerId,
+						SubscriptionId: subscriptionId,
+						GrossAmount: sellerOrderTotal,
+						CommissionRate: commissionRate,
+						CommissionAmount: commissionAmount,
+						NetAmount: netAmount,
+					});
+				} catch (commErr) {
+					// Non-critical: log but don't fail the order
+					console.error('⚠️ Failed to record commission for order', newOrderId, commErr.message);
+				}
 
 				const seller = await db.executeProcedure('GetSellerDetails', { SellerId: sellerId });
 				const sellerDetails = seller.recordset[0];
@@ -427,5 +486,281 @@ export const stripeWebhook = async (req, res) => {
 		res.status(200).end();
 	}
 };
+
+// ─────────────────────────────────────────────────────────────
+// SUBSCRIPTION WEBHOOK HANDLERS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * checkout.session.completed with mode='subscription'
+ * Creates the SellerSubscription record and records the first payment.
+ */
+async function handleSubscriptionCheckoutComplete(session) {
+	try {
+		const { sellerId, planId, planCode } = session.metadata || {};
+		if (!sellerId || !planId) {
+			console.error('⚠️ Subscription checkout missing metadata:', session.metadata);
+			return;
+		}
+
+		// Fetch the full Stripe subscription object to get period dates
+		const stripeSubId = typeof session.subscription === 'string'
+			? session.subscription
+			: session.subscription?.id;
+		const stripeSub = await stripe.subscriptions.retrieve(stripeSubId);
+
+		// Idempotency check — the success page's activate-session endpoint may have already
+		// created this record. Skip if so to avoid duplicates.
+		const existingCheck = await db.executeProcedure('GetSubscriptionByStripeSubId', {
+			StripeSubscriptionId: stripeSub.id,
+		});
+		if (existingCheck.recordset?.length) {
+			console.log(`ℹ️ Webhook: subscription ${stripeSub.id} already activated — skipping.`);
+			return;
+		}
+
+		const currentPeriodStart = new Date(stripeSub.current_period_start * 1000);
+		const currentPeriodEnd   = new Date(stripeSub.current_period_end   * 1000);
+
+		// Determine status — if trial_end is set, it's pending_trial
+		const status = stripeSub.status === 'trialing' ? 'pending_trial' : 'active';
+
+		// Create the subscription record
+		const newSubResult = await db.executeProcedure('CreateSellerSubscription', {
+			SellerId:             sellerId,
+			PlanId:               Number(planId),
+			Status:               status,
+			StartDate:            new Date(),
+			CurrentPeriodStart:   currentPeriodStart,
+			CurrentPeriodEnd:     currentPeriodEnd,
+			StripeSubscriptionId: stripeSub.id,
+			StripeCustomerId:     session.customer,
+		});
+
+		const newSubscriptionId = newSubResult.recordset?.[0]?.SubscriptionId;
+
+		// Deactivate the previous free plan record for this seller
+		// (get all active free plans and expire them)
+		await db.executeProcedure('ExpireStaleSubscriptions', {});
+
+		// Save Stripe customer ID to the Sellers table.
+		// May fail if the user hasn't created their seller account yet (pre-registration flow) — that's fine.
+		if (session.customer) {
+			try {
+				await db.executeProcedure('UpdateSellerStripeCustomerId', {
+					SellerId: sellerId,
+					StripeCustomerId: session.customer,
+				});
+			} catch (custErr) {
+				console.warn('⚠️ Could not save StripeCustomerId to Sellers table (seller account may not exist yet):', custErr.message);
+			}
+		}
+
+		// Record first payment if invoice is paid immediately (not a trial)
+		if (status === 'active' && session.invoice) {
+			try {
+				const invoice = await stripe.invoices.retrieve(session.invoice);
+				if (invoice.status === 'paid') {
+					await db.executeProcedure('CreateSubscriptionPayment', {
+						SubscriptionId:        newSubscriptionId,
+						SellerId:              sellerId,
+						Amount:                invoice.amount_paid / 100,
+						Currency:              (invoice.currency || 'eur').toUpperCase(),
+						StripeInvoiceId:       invoice.id,
+						StripePaymentIntentId: invoice.payment_intent,
+						Status:                'successful',
+						BillingPeriodStart:    currentPeriodStart,
+						BillingPeriodEnd:      currentPeriodEnd,
+						PaidAt:                new Date(invoice.status_transitions.paid_at * 1000),
+					});
+				}
+			} catch (invErr) {
+				console.error('⚠️ Could not record initial subscription payment:', invErr.message);
+			}
+		}
+
+		// Send confirmation email — fall back to basic user profile if no seller account yet
+		try {
+			const [sellerResult, plansResult] = await Promise.all([
+				db.executeProcedure('GetSellerDetails', { SellerId: sellerId }),
+				db.executeProcedure('GetSubscriptionPlans', {}),
+			]);
+			const seller = sellerResult.recordset?.[0];
+			const plan = plansResult.recordset.find((p) => p.PlanId === Number(planId));
+
+			let emailTarget = seller
+				? { email: seller.Email, name: seller.BusinessName }
+				: null;
+
+			if (!emailTarget) {
+				const userResult = await db.executeProcedure('GetUserById', { UserId: sellerId });
+				const user = userResult.recordset?.[0];
+				if (user) emailTarget = { email: user.Email, name: user.Username };
+			}
+
+			if (emailTarget && plan) {
+				await sendSubscriptionConfirmationEmail(
+					emailTarget.email,
+					emailTarget.name,
+					plan.PlanName,
+					plan.Price,
+					plan.BillingCycle,
+					currentPeriodEnd
+				);
+			}
+		} catch (emailErr) {
+			console.error('⚠️ Could not send subscription confirmation email:', emailErr.message);
+		}
+
+		console.log(`✅ Subscription created for seller ${sellerId}, plan ${planCode}`);
+	} catch (err) {
+		console.error('❌ handleSubscriptionCheckoutComplete error:', err);
+	}
+}
+
+/**
+ * invoice.paid — subscription renewed successfully.
+ * Updates period dates and records the payment.
+ */
+async function handleInvoicePaid(invoice) {
+	try {
+		const stripeSubId = invoice.subscription;
+		if (!stripeSubId) return;
+
+		// Use invoice line item periods — always populated and more reliable
+		// than reading current_period_start from the subscription object at webhook time.
+		const line = invoice.lines?.data?.[0];
+		const currentPeriodStart = line?.period?.start
+			? new Date(line.period.start * 1000)
+			: new Date();
+		const currentPeriodEnd = line?.period?.end
+			? new Date(line.period.end * 1000)
+			: null;
+
+		// Update subscription period and reset reminder flags
+		await db.executeProcedure('UpdateSellerSubscriptionByStripeId', {
+			StripeSubscriptionId: stripeSubId,
+			Status:               'active',
+			CurrentPeriodStart:   currentPeriodStart,
+			CurrentPeriodEnd:     currentPeriodEnd,
+			CancelAtPeriodEnd:    0,
+			ReminderSent14:       0,
+			ReminderSent7:        0,
+			ReminderSent1:        0,
+		});
+
+		// Look up our DB row by Stripe subscription ID
+		const lookupResult = await db.executeProcedure('GetSubscriptionByStripeSubId', {
+			StripeSubscriptionId: stripeSubId,
+		});
+		const subRow = lookupResult?.recordset?.[0];
+		if (!subRow) {
+			// The activate-session endpoint hasn't run yet (e.g. user hasn't hit success page).
+			// Payment will be recorded when activate-session runs.
+			console.log(`ℹ️ handleInvoicePaid: no DB row for ${stripeSubId} yet — skipping payment record.`);
+			return;
+		}
+
+		// Record the payment
+		await db.executeProcedure('CreateSubscriptionPayment', {
+			SubscriptionId:        subRow.SubscriptionId,
+			SellerId:              subRow.SellerId,
+			Amount:                invoice.amount_paid / 100,
+			Currency:              (invoice.currency || 'eur').toUpperCase(),
+			StripeInvoiceId:       invoice.id,
+			StripePaymentIntentId: invoice.payment_intent,
+			Status:                'successful',
+			BillingPeriodStart:    currentPeriodStart,
+			BillingPeriodEnd:      currentPeriodEnd,
+			PaidAt:                invoice.status_transitions?.paid_at
+				? new Date(invoice.status_transitions.paid_at * 1000)
+				: new Date(),
+		});
+
+		console.log(`✅ Subscription renewed: ${stripeSubId}`);
+	} catch (err) {
+		console.error('❌ handleInvoicePaid error:', err);
+	}
+}
+
+/**
+ * invoice.payment_failed — marks subscription as payment_failed and emails seller.
+ */
+async function handlePaymentFailed(invoice) {
+	try {
+		const stripeSubId = invoice.subscription;
+		if (!stripeSubId) return;
+
+		const updateResult = await db.executeProcedure('UpdateSellerSubscriptionByStripeId', {
+			StripeSubscriptionId: stripeSubId,
+			Status: 'payment_failed',
+		});
+
+		const subRow = updateResult?.recordset?.[0];
+		if (!subRow) return;
+
+		try {
+			const sellerResult = await db.executeProcedure('GetSellerDetails', { SellerId: subRow.SellerId });
+			const seller = sellerResult.recordset?.[0];
+			if (seller) {
+				await sendSubscriptionPaymentFailedEmail(seller.Email, seller.BusinessName, subRow.PlanName);
+			}
+		} catch (emailErr) {
+			console.error('⚠️ Could not send payment failed email:', emailErr.message);
+		}
+
+		console.log(`⚠️ Payment failed for subscription: ${stripeSubId}`);
+	} catch (err) {
+		console.error('❌ handlePaymentFailed error:', err);
+	}
+}
+
+/**
+ * customer.subscription.deleted — subscription fully ended.
+ * Marks our record as expired and sends email.
+ */
+async function handleSubscriptionDeleted(stripeSub) {
+	try {
+		const updateResult = await db.executeProcedure('UpdateSellerSubscriptionByStripeId', {
+			StripeSubscriptionId: stripeSub.id,
+			Status: 'expired',
+		});
+
+		const subRow = updateResult?.recordset?.[0];
+		if (!subRow) return;
+
+		// Ensure free plan fallback via cron logic
+		await db.executeProcedure('ExpireStaleSubscriptions', {});
+
+		try {
+			const sellerResult = await db.executeProcedure('GetSellerDetails', { SellerId: subRow.SellerId });
+			const seller = sellerResult.recordset?.[0];
+			if (seller) {
+				await sendSubscriptionExpiredEmail(seller.Email, seller.BusinessName, subRow.PlanName);
+			}
+		} catch (emailErr) {
+			console.error('⚠️ Could not send expiry email:', emailErr.message);
+		}
+
+		console.log(`✅ Subscription expired: ${stripeSub.id}`);
+	} catch (err) {
+		console.error('❌ handleSubscriptionDeleted error:', err);
+	}
+}
+
+/**
+ * customer.subscription.updated — syncs cancel_at_period_end flag.
+ */
+async function handleSubscriptionUpdated(stripeSub) {
+	try {
+		await db.executeProcedure('UpdateSellerSubscriptionByStripeId', {
+			StripeSubscriptionId: stripeSub.id,
+			CancelAtPeriodEnd: stripeSub.cancel_at_period_end ? 1 : 0,
+			Status: stripeSub.cancel_at_period_end ? 'cancelling' : 'active',
+		});
+	} catch (err) {
+		console.error('❌ handleSubscriptionUpdated error:', err);
+	}
+}
 
 export default checkoutRouter;

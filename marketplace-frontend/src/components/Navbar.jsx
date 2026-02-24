@@ -1,6 +1,6 @@
 // components/NavBar.jsx
 import { useEffect, useState } from 'react';
-import { Menu, Store, X, Search, Heart } from 'lucide-react';
+import { Menu, Store, X, Search, Heart, ArrowRight } from 'lucide-react';
 import SearchBar from './SearchBar';
 import AuthButton from '../features/auth/components/AuthButton';
 import CartIcon from './CartIcon';
@@ -9,12 +9,14 @@ import { getUserRole } from '../utils/userRole';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../utils/useAuth';
 import toast from 'react-hot-toast';
+import api from '../api/axios';
 
 const NavBar = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [role, setRole] = useState(null);
 	const [scrolled, setScrolled] = useState(false);
+	const [pendingSetup, setPendingSetup] = useState(null); // { planName } or null
 	const { isLoggedIn, tokenExpired } = useAuth();
 	const navigate = useNavigate();
 
@@ -22,8 +24,21 @@ const NavBar = () => {
 	const toggleSearch = () => setIsSearchOpen(!isSearchOpen);
 
 	useEffect(() => {
-		setRole(getUserRole());
-	}, []);
+		const r = getUserRole();
+		setRole(r);
+
+		// Check if user paid for a plan but hasn't registered as a seller yet.
+		// Only relevant for non-sellers who are logged in.
+		if (isLoggedIn && !tokenExpired && r !== 'Seller') {
+			api.get('/subscriptions/pending-seller-setup')
+				.then(res => {
+					if (res.data?.pendingSetup) {
+						setPendingSetup({ planName: res.data.subscription?.PlanName });
+					}
+				})
+				.catch(() => {}); // banner is non-critical, fail silently
+		}
+	}, [isLoggedIn, tokenExpired]);
 
 	// Handle scroll effect
 	useEffect(() => {
@@ -71,6 +86,22 @@ const NavBar = () => {
 		<nav className={`bg-white sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-lg shadow-gray-200/50' : 'shadow-sm'}`}>
 			{/* Top accent bar */}
 			<div className='h-1 bg-gradient-to-r from-primary-500 via-primary-600 to-secondary-400'></div>
+
+			{/* Pending seller setup banner */}
+			{pendingSetup && (
+				<div className='bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between gap-3 flex-wrap'>
+					<p className='text-sm text-amber-800'>
+						<span className='font-semibold'>Almost there!</span> You subscribed to{' '}
+						<span className='font-semibold'>{pendingSetup.planName}</span> but haven't created your seller account yet.
+					</p>
+					<button
+						onClick={() => navigate('/seller/register')}
+						className='flex items-center gap-1.5 text-sm font-semibold text-amber-900 bg-amber-200 hover:bg-amber-300 px-3 py-1.5 rounded-lg transition flex-shrink-0'
+					>
+						Complete Setup <ArrowRight size={14} />
+					</button>
+				</div>
+			)}
 
 			<div className='max-w-7xl mx-auto px-3 sm:px-4 lg:px-8'>
 				<div className='flex justify-between h-16 sm:h-18 items-center gap-2 sm:gap-4'>

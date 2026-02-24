@@ -5,28 +5,40 @@ import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
 import api from '../../api/axios';
 
-const COMMISSION_RATE = 0.05;
-
 const SellerRevenue = () => {
 	const navigate = useNavigate();
-	const [orders, setOrders] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const [orders, setOrders]                 = useState([]);
+	const [loading, setLoading]               = useState(true);
+	const [error, setError]                   = useState(null);
+	const [commissionRate, setCommissionRate] = useState(0.05);
+	const [planName, setPlanName]             = useState('Free Plan');
 
 	// Filters
 	const [dateFrom, setDateFrom] = useState('');
-	const [dateTo, setDateTo] = useState('');
+	const [dateTo, setDateTo]     = useState('');
 
 	useEffect(() => {
-		const fetchOrders = async () => {
+		const fetchData = async () => {
 			try {
-				const res = await api.post('/orders/received');
-				const all = res.data?.data || [];
-				const formatted = all.map((o) => ({
-					...o,
-					OrderItems: typeof o.OrderItems === 'string' ? JSON.parse(o.OrderItems || '[]') : o.OrderItems || [],
-				}));
-				setOrders(formatted.filter((o) => o.DeliveryStatus === 'Sold'));
+				const [ordersRes, subRes] = await Promise.allSettled([
+					api.post('/orders/received'),
+					api.get('/subscriptions/my-subscription'),
+				]);
+
+				if (ordersRes.status === 'fulfilled') {
+					const all = ordersRes.value.data?.data || [];
+					const formatted = all.map((o) => ({
+						...o,
+						OrderItems: typeof o.OrderItems === 'string' ? JSON.parse(o.OrderItems || '[]') : o.OrderItems || [],
+					}));
+					setOrders(formatted.filter((o) => o.DeliveryStatus === 'Sold'));
+				}
+
+				if (subRes.status === 'fulfilled' && subRes.value.data) {
+					const sub = subRes.value.data;
+					setCommissionRate(Number(sub.CommissionRate) || 0.05);
+					setPlanName(sub.PlanName || 'Free Plan');
+				}
 			} catch (err) {
 				console.error('Error fetching revenue:', err);
 				setError('Failed to load revenue data. Please try again.');
@@ -34,7 +46,7 @@ const SellerRevenue = () => {
 				setLoading(false);
 			}
 		};
-		fetchOrders();
+		fetchData();
 	}, []);
 
 	const filtered = useMemo(() => {
@@ -47,7 +59,7 @@ const SellerRevenue = () => {
 	}, [orders, dateFrom, dateTo]);
 
 	const totalGross = filtered.reduce((sum, o) => sum + Number(o.TotalAmount || 0), 0);
-	const totalCommission = totalGross * COMMISSION_RATE;
+	const totalCommission = totalGross * commissionRate;
 	const totalNet = totalGross - totalCommission;
 
 	const clearFilters = () => {
@@ -86,7 +98,7 @@ const SellerRevenue = () => {
 						<div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-5'>
 							<div className='flex items-center gap-2 mb-2'>
 								<Percent size={16} className='text-purple-500' />
-								<p className='text-xs font-medium text-gray-500 uppercase tracking-wide'>Commission (5%)</p>
+								<p className='text-xs font-medium text-gray-500 uppercase tracking-wide'>Commission ({(commissionRate * 100).toFixed(0)}%)</p>
 							</div>
 							<p className='text-3xl font-bold text-purple-600'>-&euro;{totalCommission.toFixed(2)}</p>
 						</div>
@@ -163,7 +175,7 @@ const SellerRevenue = () => {
 										<th className='text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Sold On</th>
 										<th className='text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Items</th>
 										<th className='text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Gross</th>
-										<th className='text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Commission (5%)</th>
+										<th className='text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Commission ({(commissionRate * 100).toFixed(0)}%)</th>
 										<th className='text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Net</th>
 										<th className='px-4 py-3'></th>
 									</tr>
@@ -171,7 +183,7 @@ const SellerRevenue = () => {
 								<tbody className='divide-y divide-gray-50'>
 									{filtered.map((order) => {
 										const gross = Number(order.TotalAmount || 0);
-										const commission = gross * COMMISSION_RATE;
+										const commission = gross * commissionRate;
 										const net = gross - commission;
 										const itemsCount = order.OrderItems.reduce((s, i) => s + (i.Quantity || 0), 0);
 										const soldAt = order.UpdatedAt || order.OrderDate;

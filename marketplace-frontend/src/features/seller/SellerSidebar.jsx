@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, BarChart2, Settings, Store, Menu, X, Plus } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, BarChart2, Settings, Store, Menu, X, Plus, CreditCard } from 'lucide-react';
 import { useAuth } from '../../utils/useAuth';
 import api from '../../api/axios';
 import { jwtDecode } from 'jwt-decode';
@@ -20,6 +20,7 @@ const SellerSidebar = () => {
 		{ name: 'Needs Restock', icon: <BarChart2 className='w-5 h-5' />, path: '/restock' },
 		{ name: 'Orders', icon: <ShoppingCart className='w-5 h-5' />, path: '/my-orders' },
 		// { name: 'Analytics', icon: <BarChart2 className='w-5 h-5' />, path: '/my-analytics' },
+		{ name: 'Subscription', icon: <CreditCard className='w-5 h-5' />, path: '/seller-subscription' },
 		{ name: 'Store Settings', icon: <Settings className='w-5 h-5' />, path: '/store-settings' },
 	];
 	// ✅ Decode token once on mount

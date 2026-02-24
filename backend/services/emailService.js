@@ -237,6 +237,222 @@ export async function sendBuyerOrderConfirmationEmail(buyerEmail, buyerName, ite
 	}
 }
 
+// ═══════════════════════════════════════════════════════════
+// SUBSCRIPTION EMAILS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Sent when a seller successfully completes a subscription checkout.
+ */
+export async function sendSubscriptionConfirmationEmail(email, businessName, planName, price, billingCycle, endDate) {
+	const billingText = billingCycle === 'yearly' ? 'per year' : billingCycle === 'monthly' ? 'per month' : '';
+	const renewalText = endDate
+		? `Your subscription renews on <strong>${new Date(endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.`
+		: '';
+
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#6d28d9;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Subscription Activated!</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${businessName || 'Seller'},</h2>
+	    <p>Your subscription has been successfully activated. Here are your plan details:</p>
+	    <div style="background:#f3f4f6;padding:20px;border-radius:8px;margin:20px 0;">
+	      <p style="margin:5px 0;"><strong>Plan:</strong> ${planName}</p>
+	      <p style="margin:5px 0;"><strong>Price:</strong> &euro;${Number(price).toFixed(2)} ${billingText}</p>
+	      <p style="margin:5px 0;">${renewalText}</p>
+	    </div>
+	    <p>Your reduced commission rate is now active on all your sales. Thank you for being a valued seller!</p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+	      <strong>Marketplace Support Team</strong><br/>
+	      Need help? Reply to this email.
+	    </p>
+	  </div>
+	</div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: email,
+			subject: `Subscription Confirmed: ${planName}`,
+			html,
+		});
+		if (error) console.error('Error sending subscription confirmation email:', error);
+		else console.log(`✅ Subscription confirmation sent to ${email}`);
+	} catch (err) {
+		console.error('Error sending subscription confirmation email:', err);
+	}
+}
+
+/**
+ * Renewal reminder — sent 14, 7, and 1 day(s) before the subscription renews.
+ */
+export async function sendSubscriptionRenewalReminder(email, businessName, subscription, daysLeft) {
+	const endDate = new Date(subscription.CurrentPeriodEnd).toLocaleDateString('en-GB', {
+		day: 'numeric', month: 'long', year: 'numeric',
+	});
+	const urgency = daysLeft === 1 ? 'Last Day' : daysLeft === 7 ? '1 Week Left' : '2 Weeks Left';
+	const autoRenewMsg = subscription.CancelAtPeriodEnd
+		? `<p style="background:#fef3c7;padding:12px;border-radius:6px;border-left:4px solid #f59e0b;">
+		     <strong>Note:</strong> Your subscription is set to cancel on ${endDate}. After that, you will be moved to the Free Plan (5% commission).
+		     If you'd like to continue, please log in and reactivate your subscription.
+		   </p>`
+		: `<p style="background:#d1fae5;padding:12px;border-radius:6px;border-left:4px solid #10b981;">
+		     Your subscription will <strong>automatically renew</strong> on ${endDate} and &euro;${Number(subscription.Price).toFixed(2)} will be charged.
+		     If you do not wish to continue, you can cancel before that date in your dashboard.
+		   </p>`;
+
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#6d28d9;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">${urgency} — Subscription Renewal</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${businessName || 'Seller'},</h2>
+	    <p>Your <strong>${subscription.PlanName}</strong> subscription ${daysLeft === 1 ? 'expires tomorrow' : `expires in ${daysLeft} days`} on <strong>${endDate}</strong>.</p>
+	    ${autoRenewMsg}
+	    <p>Visit your <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">subscription dashboard</a> to manage your plan.</p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+	      <strong>Marketplace Support Team</strong>
+	    </p>
+	  </div>
+	</div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: email,
+			subject: subscription.CancelAtPeriodEnd
+			? `[${urgency}] Your ${subscription.PlanName} expires on ${endDate}`
+			: `[${urgency}] Your ${subscription.PlanName} renews on ${endDate}`,
+			html,
+		});
+		if (error) console.error('Error sending renewal reminder:', error);
+		else console.log(`✅ Renewal reminder (${daysLeft}d) sent to ${email}`);
+	} catch (err) {
+		console.error('Error sending renewal reminder:', err);
+	}
+}
+
+/**
+ * Sent when a subscription payment fails.
+ */
+export async function sendSubscriptionPaymentFailedEmail(email, businessName, planName) {
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#dc2626;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Payment Failed</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${businessName || 'Seller'},</h2>
+	    <p>We were unable to process the payment for your <strong>${planName}</strong> subscription.</p>
+	    <p style="background:#fee2e2;padding:12px;border-radius:6px;border-left:4px solid #dc2626;">
+	      Please update your payment details to avoid losing access to your reduced commission rate.
+	    </p>
+	    <p>Visit your <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">subscription dashboard</a> to update your payment method.</p>
+	    <p>If payment continues to fail, your subscription will be cancelled and you will be moved to the Free Plan (5% commission).</p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+	      <strong>Marketplace Support Team</strong>
+	    </p>
+	  </div>
+	</div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: email,
+			subject: `Payment Failed — ${planName} Subscription`,
+			html,
+		});
+		if (error) console.error('Error sending payment failed email:', error);
+		else console.log(`✅ Payment failed email sent to ${email}`);
+	} catch (err) {
+		console.error('Error sending payment failed email:', err);
+	}
+}
+
+/**
+ * Sent when a seller cancels their subscription.
+ */
+export async function sendSubscriptionCancelledEmail(email, businessName, planName, endDate) {
+	const formattedDate = new Date(endDate).toLocaleDateString('en-GB', {
+		day: 'numeric', month: 'long', year: 'numeric',
+	});
+
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#6b7280;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Subscription Cancelled</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${businessName || 'Seller'},</h2>
+	    <p>Your <strong>${planName}</strong> subscription has been set to cancel.</p>
+	    <div style="background:#f3f4f6;padding:20px;border-radius:8px;margin:20px 0;">
+	      <p style="margin:5px 0;">Your subscription will remain <strong>active until ${formattedDate}</strong>.</p>
+	      <p style="margin:5px 0;">After that date, you will be automatically moved to the <strong>Free Plan</strong> (5% commission).</p>
+	    </div>
+	    <p>Changed your mind? You can reactivate your subscription anytime before <strong>${formattedDate}</strong> in your <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">subscription dashboard</a>.</p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+	      <strong>Marketplace Support Team</strong>
+	    </p>
+	  </div>
+	</div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: email,
+			subject: `Subscription Cancelled — Active Until ${formattedDate}`,
+			html,
+		});
+		if (error) console.error('Error sending cancellation email:', error);
+		else console.log(`✅ Cancellation email sent to ${email}`);
+	} catch (err) {
+		console.error('Error sending cancellation email:', err);
+	}
+}
+
+/**
+ * Sent when a subscription expires (period ends and was not renewed).
+ */
+export async function sendSubscriptionExpiredEmail(email, businessName, planName) {
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#6b7280;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Subscription Expired</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${businessName || 'Seller'},</h2>
+	    <p>Your <strong>${planName}</strong> subscription has expired.</p>
+	    <p style="background:#f3f4f6;padding:12px;border-radius:6px;">
+	      You have been moved to the <strong>Free Plan</strong>. A 5% commission will now be applied to all your sales.
+	    </p>
+	    <p>Want to continue with a reduced commission rate? <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">Resubscribe here</a>.</p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+	      <strong>Marketplace Support Team</strong>
+	    </p>
+	  </div>
+	</div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: email,
+			subject: `Your ${planName} Subscription Has Expired`,
+			html,
+		});
+		if (error) console.error('Error sending expiry email:', error);
+		else console.log(`✅ Expiry email sent to ${email}`);
+	} catch (err) {
+		console.error('Error sending expiry email:', err);
+	}
+}
+
+// ═══════════════════════════════════════════════════════════
+// ORDER EMAILS
+// ═══════════════════════════════════════════════════════════
+
 /**
  * 2️⃣ Seller New Order Notification Email
  */

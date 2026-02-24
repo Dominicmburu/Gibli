@@ -6,7 +6,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT 
+    SELECT
         S.UserId AS SellerId,
         S.BusinessNumber,
         S.BusinessName,
@@ -14,6 +14,7 @@ BEGIN
         S.PaymentAccount,
         S.IsVerified,
         S.IsStoreActive,
+        S.StripeCustomerId,
         U.Username,
         U.Email,
         U.Role,

@@ -1,6 +1,9 @@
 import { Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import './App.css';
+import SubscriptionDetail from './features/subscription/SubscriptionDetail';
+import SubscriptionSuccess from './features/subscription/SubscriptionSuccess';
+import SellerSubscription from './features/seller/SellerSubscription';
 import SignupForm from './features/auth/components/SignupForm';
 import LoginForm from './features/auth/components/LoginForm';
 import Home from './features/products/components/Home';
@@ -55,12 +58,14 @@ function App() {
 					<Route path='/profile' element={<Profile />} />
 					<Route path='/wishlist' element={<WishList />} />
 					<Route path='/address-book' element={<Addresses />} />
+
 					{/* CHECKOUT ROUTES */}
 					<Route path='/finalize-checkout' element={<FinalizeCheckout />} />
 					<Route path='/payment/success' element={<CheckoutSuccess />} />
 					<Route path='/payment/fail' element={<CheckoutFail />} />
 					<Route path='/orders' element={<OrdersPage />} />
 					<Route path='/orders/:orderId' element={<OrderDetail />} />
+
 					{/* SELLER ROUTES */}
 					<Route path='/become-seller' element={<BecomeSeller />} />
 					<Route path='/seller/register' element={<SellerRegistration />} />
@@ -71,8 +76,14 @@ function App() {
 					<Route path='/restock' element={<NeedsRestock />} />
 					<Route path='/new-product' element={<AddProduct />} />
 					<Route path='/store-settings' element={<StoreSettings />} />
-				<Route path='/my-sales' element={<SellerSales />} />
-				<Route path='/my-revenue' element={<SellerRevenue />} />
+					<Route path='/my-sales' element={<SellerSales />} />
+					<Route path='/my-revenue' element={<SellerRevenue />} />
+					<Route path='/seller-subscription' element={<SellerSubscription />} />
+
+					{/* SUBSCRIPTION ROUTES */}
+					<Route path='/subscription/success' element={<SubscriptionSuccess />} />
+					<Route path='/subscription/:planId' element={<SubscriptionDetail />} />
+
 					{/* CATEGORY ROUTES */}
 					<Route path='/category/:id' element={<CategoryPage />} />
 				</Routes>

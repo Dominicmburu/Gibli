@@ -1,10 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Package, ShoppingBag, Euro, CheckCircle, BadgeCheck, Percent } from 'lucide-react';
+import { Loader2, Package, ShoppingBag, Euro, CheckCircle, BadgeCheck, Percent, CreditCard } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
 import { useAuth } from '../../utils/useAuth';
 import api from '../../api/axios';
+
+function getTimeRemaining(endDateStr) {
+	if (!endDateStr) return null;
+	const diffMs = new Date(endDateStr) - new Date();
+	if (diffMs <= 0) return 'Expired';
+	const days  = Math.floor(diffMs / 86400000);
+	const hours = Math.floor((diffMs % 86400000) / 3600000);
+	if (days >= 30) {
+		const months = Math.floor(days / 30);
+		const remDays = days % 30;
+		return `${months}mo ${remDays > 0 ? `${remDays}d` : ''} remaining`;
+	}
+	if (days >= 1) return `${days}d ${hours}h remaining`;
+	return `${hours}h remaining`;
+}
 
 const SellerDashboard = () => {
 	const { userInfo, isLoggedIn, tokenExpired } = useAuth();
@@ -17,22 +32,26 @@ const SellerDashboard = () => {
 		isVerified: 0,
 	});
 	const [recentProducts, setRecentProducts] = useState([]);
-	const [loading, setLoading] = useState(true);
+	const [subscription, setSubscription]     = useState(null);
+	const [loading, setLoading]               = useState(true);
 
 	useEffect(() => {
 		const fetchDashboardData = async () => {
 			if (!isLoggedIn || tokenExpired || !userInfo?.id) return;
 
 			try {
-				const [productsRes, storeRes, ordersRes] = await Promise.allSettled([
+				const [productsRes, storeRes, ordersRes, subRes] = await Promise.allSettled([
 					api.get('/products/myproducts'),
 					api.get('/store/store-details'),
 					api.post('/orders/received'),
+					api.get('/subscriptions/my-subscription'),
 				]);
 
 				const products = productsRes.status === 'fulfilled' ? productsRes.value.data || [] : [];
 				const storeData = storeRes.status === 'fulfilled' ? storeRes.value.data?.[0] : null;
 				const orders = ordersRes.status === 'fulfilled' ? ordersRes.value.data?.data || [] : [];
+				const subData = subRes.status === 'fulfilled' ? subRes.value.data : null;
+				setSubscription(subData);
 
 				const formattedOrders = orders.map((o) => ({
 					...o,
@@ -96,16 +115,19 @@ const SellerDashboard = () => {
 			valueClass: stats.isVerified ? 'text-amber-500' : 'text-green-600',
 			icon: <CheckCircle className={`w-5 h-5 ${stats.isVerified ? 'text-amber-500' : 'text-green-500'}`} />,
 			iconBg: 'bg-amber-50',
-			clickable: false,
+			clickable: true,
+			onClick: () => navigate('/store-settings'),
 		},
 		{
 			label: 'Subscription',
-			value: '5% per sale',
+			value: subscription && subscription.PlanCode !== 'free'
+				? (getTimeRemaining(subscription.CurrentPeriodEnd) || subscription.PlanName)
+				: 'Default · 5% commission',
 			valueClass: 'text-purple-600',
-			subtext: 'Commission (default)',
-			icon: <Percent className='text-purple-500 w-5 h-5' />,
+			icon: <CreditCard className='text-purple-500 w-5 h-5' />,
 			iconBg: 'bg-purple-50',
-			clickable: false,
+			clickable: true,
+			onClick: () => navigate('/seller-subscription'),
 		},
 	];
 

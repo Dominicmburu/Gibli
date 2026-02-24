@@ -327,6 +327,13 @@ userRouter.post('/register-seller', authenticateToken, validateSchema(registerSe
 			Country,
 		});
 
+		// Give the new seller a free plan subscription record
+		try {
+			await db.executeProcedure('UpsertSellerFreeSubscription', { SellerId: UserId });
+		} catch (subErr) {
+			console.error('⚠️ Could not seed free subscription for seller:', subErr.message);
+		}
+
 		res.status(201).json({
 			message: ` Your store: ${BusinessName} is now a registered seller`,
 		});

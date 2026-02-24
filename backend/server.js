@@ -12,6 +12,8 @@ import wishlistRouter from './routes/wishListRoutes.js';
 import storeRouter from './routes/storeRoutes.js';
 import shippingRouter from './routes/shippingRoutes.js';
 import orderRouter from './routes/orderRoutes.js';
+import subscriptionRouter from './routes/subscriptionRoutes.js';
+import { initCronJobs } from './services/cronService.js';
 // 1. Load environment variables
 dotenv.config();
 
@@ -39,6 +41,10 @@ app.use('/wishlist', wishlistRouter);
 app.use('/store', storeRouter);
 app.use('/shipping', shippingRouter);
 app.use('/orders', orderRouter);
+app.use('/subscriptions', subscriptionRouter);
+
+// Initialise daily cron jobs (subscription reminders + expiry)
+initCronJobs();
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
