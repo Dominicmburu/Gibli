@@ -2,31 +2,25 @@ import axios from 'axios';
 
 const api = axios.create({
 	baseURL: import.meta.env.VITE_API_BASE_URL,
+	withCredentials: true, // send HttpOnly cookie on every request
 	headers: {
 		'Content-Type': 'application/json',
 	},
 });
 
-// Request Interceptor - Add token to every request
-api.interceptors.request.use(
-	(config) => {
-		const token = localStorage.getItem('token');
-		if (token) {
-			config.headers.Authorization = `Bearer ${token}`;
-		}
-		return config;
-	},
-	(error) => Promise.reject(error)
-);
-
 // Response Interceptor - Handle 401 Unauthorized
 api.interceptors.response.use(
 	(response) => response,
 	(error) => {
-		if (error.response && error.response.status === 401) {
-			console.warn('Unauthorized! Redirecting to login...');
-			localStorage.removeItem('token'); // Remove invalid token
-			window.location.href = '/login'; // Redirect to login page
+		if (error.response?.status === 401) {
+			const url = error.config?.url || '';
+			// /users/me returning 401 is EXPECTED when logged out — do NOT dispatch
+			// or redirect, or we get an infinite loop (useAuth calls /users/me → 401
+			// → auth-changed → useAuth calls /users/me → 401 → ...).
+			// For all other endpoints, dispatch so useAuth updates its state immediately.
+			if (!url.includes('/users/me')) {
+				window.dispatchEvent(new Event('auth-changed'));
+			}
 		}
 		return Promise.reject(error);
 	}

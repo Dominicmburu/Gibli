@@ -7,6 +7,7 @@ import Footer from '../../components/Footer';
 import SmartAddressField from '../../components/SmartAddressField';
 import { useAddressAutocomplete } from '../../hooks/useAddressAutocomplete';
 import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Globe, Loader2, CheckCircle, Hash, Mail as PostalIcon } from 'lucide-react';
+import { EU_UK_COUNTRIES } from '../../utils/euCountries';
 import toast from 'react-hot-toast';
 
 const Addresses = () => {
@@ -504,24 +505,24 @@ const Addresses = () => {
 
 								{/* Line 5: Country */}
 								<div>
-									<label className='block text-sm font-medium text-gray-700 mb-1.5'>
-										Country <span className='text-red-500'>*</span>
+									<label className="block text-sm font-medium text-gray-700 mb-1.5">
+										Country <span className="text-red-500">*</span>
 									</label>
-									<SmartAddressField
-										fieldKey='Country'
-										value={formData.Country}
-										onChange={addressAC.handleFieldChange}
-										onFocus={addressAC.handleFieldFocus}
-										onBlur={addressAC.handleFieldBlur}
-										onSelect={addressAC.handleSuggestionSelect}
-										suggestions={addressAC.getSuggestionsForField('Country')}
-										isLoading={addressAC.isLoading && addressAC.activeField === 'Country'}
-										placeholder='Germany'
-										icon={<Globe size={16} className='text-gray-400' />}
-										error={errors.Country}
-									/>
+									<div className="relative">
+										<Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+										<select
+											value={formData.Country}
+											onChange={(e) => { setFormData({ ...formData, Country: e.target.value }); setErrors({ ...errors, Country: '' }); }}
+											className={errors.Country ? "w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white border-red-500" : "w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white border-gray-300"}
+										>
+											<option value="">Select country...</option>
+											{EU_UK_COUNTRIES.map((co) => (
+												<option key={co} value={co}>{co}</option>
+											))}
+										</select>
+									</div>
 									{errors.Country && (
-										<p className='text-xs text-red-500 mt-1'>{errors.Country}</p>
+										<p className="text-xs text-red-500 mt-1">{errors.Country}</p>
 									)}
 								</div>
 

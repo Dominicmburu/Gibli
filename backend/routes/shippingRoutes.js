@@ -53,9 +53,6 @@ shippingRouter.get('/addresses/me', authenticateToken, async (req, res) => {
 	try {
 		const UserId = req.user.id;
 		const result = await db.executeProcedure('GetShippingDetailsByUser', { UserId });
-		if (result.recordset.length != 0) {
-			res.status(200).json(result.recordset);
-		}
 		res.status(200).json(result.recordset);
 	} catch (error) {
 		console.error('Something happened', error);

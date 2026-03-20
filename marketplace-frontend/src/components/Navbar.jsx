@@ -5,7 +5,6 @@ import SearchBar from './SearchBar';
 import AuthButton from '../features/auth/components/AuthButton';
 import CartIcon from './CartIcon';
 import DropdownNav from './DropdownNav';
-import { getUserRole } from '../utils/userRole';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../utils/useAuth';
 import toast from 'react-hot-toast';
@@ -14,31 +13,25 @@ import api from '../api/axios';
 const NavBar = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
-	const [role, setRole] = useState(null);
 	const [scrolled, setScrolled] = useState(false);
-	const [pendingSetup, setPendingSetup] = useState(null); // { planName } or null
-	const { isLoggedIn, tokenExpired } = useAuth();
+	const [pendingSetup, setPendingSetup] = useState(null); // null = loading, true = pending, false = complete
+	const { isLoggedIn, tokenExpired, userInfo } = useAuth();
+	const role = userInfo?.role || null;
 	const navigate = useNavigate();
 
 	const toggleMenu = () => setIsOpen(!isOpen);
 	const toggleSearch = () => setIsSearchOpen(!isSearchOpen);
 
 	useEffect(() => {
-		const r = getUserRole();
-		setRole(r);
-
-		// Check if user paid for a plan but hasn't registered as a seller yet.
-		// Only relevant for non-sellers who are logged in.
-		if (isLoggedIn && !tokenExpired && r !== 'Seller') {
+		// Only relevant for registered sellers (role === 'Seller').
+		if (isLoggedIn && !tokenExpired && role === 'Seller') {
 			api.get('/subscriptions/pending-seller-setup')
 				.then(res => {
-					if (res.data?.pendingSetup) {
-						setPendingSetup({ planName: res.data.subscription?.PlanName });
-					}
+					setPendingSetup(res.data?.pendingSetup === true);
 				})
-				.catch(() => {}); // banner is non-critical, fail silently
+				.catch(() => { setPendingSetup(false); }); // fail silently — default to no banner
 		}
-	}, [isLoggedIn, tokenExpired]);
+	}, [isLoggedIn, tokenExpired, role]);
 
 	// Handle scroll effect
 	useEffect(() => {
@@ -70,7 +63,7 @@ const NavBar = () => {
 			return;
 		}
 		navigate('/seller-dashboard');
-		setIsOpen(false); // Close mobile menu after navigation
+		setIsOpen(false);
 	};
 
 	const handleWishlistClick = () => {
@@ -82,23 +75,28 @@ const NavBar = () => {
 		navigate('/wishlist');
 	};
 
+	// true = completed seller → show "My Store", hide "Become a Seller" in dropdown
+	// false = buyer / incomplete seller → hide "My Store", show "Become a Seller" in dropdown
+	// null = seller API loading → show nothing (avoid flash)
+	const showMyStore = role === 'Seller' && pendingSetup === false;
+	const showBecomeSeller = role !== 'Seller' || pendingSetup === true;
+
 	return (
 		<nav className={`bg-white sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-lg shadow-gray-200/50' : 'shadow-sm'}`}>
 			{/* Top accent bar */}
 			<div className='h-1 bg-gradient-to-r from-primary-500 via-primary-600 to-secondary-400'></div>
 
-			{/* Pending seller setup banner */}
+			{/* Pending seller payment banner */}
 			{pendingSetup && (
 				<div className='bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between gap-3 flex-wrap'>
 					<p className='text-sm text-amber-800'>
-						<span className='font-semibold'>Almost there!</span> You subscribed to{' '}
-						<span className='font-semibold'>{pendingSetup.planName}</span> but haven't created your seller account yet.
+						<span className='font-semibold'>Almost there!</span> Your seller account is set up — choose a plan and complete payment to unlock your best commission rate.
 					</p>
 					<button
-						onClick={() => navigate('/seller/register')}
+						onClick={() => navigate('/onboarding/seller-plans')}
 						className='flex items-center gap-1.5 text-sm font-semibold text-amber-900 bg-amber-200 hover:bg-amber-300 px-3 py-1.5 rounded-lg transition flex-shrink-0'
 					>
-						Complete Setup <ArrowRight size={14} />
+						Complete Payment <ArrowRight size={14} />
 					</button>
 				</div>
 			)}
@@ -113,9 +111,9 @@ const NavBar = () => {
 						</div>
 					</Link>
 
-					{/* Desktop: My Store Link (hidden on mobile/tablet) */}
+					{/* Desktop: My Store (completed sellers only) */}
 					<div className='hidden lg:flex items-center'>
-						{role === 'Seller' && (
+						{showMyStore && (
 							<button
 								onClick={handleClick}
 								className='flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 hover:text-primary-700 transition-all'
@@ -145,8 +143,8 @@ const NavBar = () => {
 						{/* Cart Icon */}
 						<CartIcon />
 
-						{/* Profile Dropdown */}
-						<DropdownNav />
+						{/* Profile Dropdown — passes showBecomeSeller so the item appears when needed */}
+						<DropdownNav showBecomeSeller={showBecomeSeller} />
 					</div>
 
 					{/* Desktop: Auth Button (hidden on mobile) */}
@@ -223,8 +221,8 @@ const NavBar = () => {
 							My Wishlist
 						</button>
 
-						{/* My Store Link for Sellers (Mobile only) */}
-						{role === 'Seller' && (
+						{/* My Store (completed sellers) */}
+						{showMyStore && (
 							<button
 								onClick={handleClick}
 								className='flex items-center gap-3 py-3 px-4 w-full text-left bg-primary-50 text-primary-600 hover:bg-primary-100 rounded-xl transition-colors font-medium'
@@ -237,9 +235,9 @@ const NavBar = () => {
 						{/* Divider */}
 						<div className='h-px bg-gray-100 my-2'></div>
 
-						{/* Dropdown Nav (Mobile) */}
+						{/* Dropdown Nav (Mobile) — passes showBecomeSeller */}
 						<div className='py-2'>
-							<DropdownNav />
+							<DropdownNav showBecomeSeller={showBecomeSeller} />
 						</div>
 
 						{/* Divider */}

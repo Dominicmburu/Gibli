@@ -1,25 +1,15 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../utils/useAuth';
 
 const AuthButton = () => {
 	const navigate = useNavigate();
-	const [isLoggedIn, setIsLoggedIn] = useState(false);
-	const { tokenExpired } = useAuth();
-	// Check token presence on mount
-	useEffect(() => {
-		const token = localStorage.getItem('token');
-		setIsLoggedIn(!!token);
-	}, []);
-	// console.log('isLoggedIn', isLoggedIn);
-	const handleClick = () => {
+	const { isLoggedIn, logout } = useAuth();
+
+	const handleClick = async () => {
 		if (isLoggedIn) {
-			// Logout: remove token and redirect
-			localStorage.removeItem('token');
-			setIsLoggedIn(false);
+			await logout();
 			navigate('/login');
 		} else {
-			// Login: redirect to login page
 			navigate('/login');
 		}
 	};
@@ -29,7 +19,7 @@ const AuthButton = () => {
 			onClick={handleClick}
 			className='bg-secondary-500 text-primary-800 px-4 py-2 rounded-lg hover:bg-secondary-600 transition'
 		>
-			{isLoggedIn && !tokenExpired ? 'Logout' : 'Login'}
+			{isLoggedIn ? 'Logout' : 'Login'}
 		</button>
 	);
 };

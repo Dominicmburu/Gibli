@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, Truck, Zap, X, MapPin, ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { useAuth } from '../../utils/useAuth';
 
 const BuyNow = ({ product }) => {
+	const { isLoggedIn, userInfo } = useAuth();
+	const isOwnProduct = product?.SellerId && userInfo?.role === 'Seller' && userInfo?.id === product.SellerId;
 	const [loading, setLoading] = useState(false);
 	const [showModal, setShowModal] = useState(false);
 	const [shippingType, setShippingType] = useState('standard');
@@ -48,8 +51,7 @@ const BuyNow = ({ product }) => {
 	const selectedAddress = addresses.find((a) => a.ShippingId === selectedAddressId) || null;
 
 	const handleBuyNowClick = () => {
-		const token = localStorage.getItem('token');
-		if (!token) {
+		if (!isLoggedIn) {
 			toast.error('Please log in to continue with your purchase.');
 			navigate('/login');
 			return;
@@ -121,10 +123,11 @@ const BuyNow = ({ product }) => {
 		<>
 			<button
 				onClick={handleBuyNowClick}
-				disabled={product.InStock < 1}
+				disabled={product.InStock < 1 || isOwnProduct}
+				title={isOwnProduct ? 'You cannot purchase your own products' : ''}
 				className='w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-md text-sm sm:text-base'
 			>
-				{product.InStock < 1 ? 'Out of Stock' : 'Buy Now'}
+				{isOwnProduct ? 'Your Product' : product.InStock < 1 ? 'Out of Stock' : 'Buy Now'}
 			</button>
 
 			{/* Modal Overlay */}

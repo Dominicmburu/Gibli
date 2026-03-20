@@ -3,60 +3,35 @@ import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingCart, BarChart2, Settings, Store, Menu, X, Plus, CreditCard } from 'lucide-react';
 import { useAuth } from '../../utils/useAuth';
 import api from '../../api/axios';
-import { jwtDecode } from 'jwt-decode';
 import SnoozeStore from './SnoozeStore';
 
 const SellerSidebar = () => {
 	const [isOpen, setIsOpen] = useState(true); // For collapse/expand
 	const [mobileOpen, setMobileOpen] = useState(false); // For mobile drawer
 	const [businessName, setBusinessName] = useState();
+	const [newOrdersCount, setNewOrdersCount] = useState(0);
 	const location = useLocation();
-	const [userId, setUserId] = useState();
+	const { userInfo } = useAuth();
+	const userId = userInfo?.id;
 
 	const menuItems = [
-		{ name: 'Dashboard', icon: <LayoutDashboard className='w-5 h-5' />, path: '/seller-dashboard' },
-		{ name: 'Add Product', icon: <Plus className='w-5 h-5' />, path: '/new-product' },
-		{ name: 'My Products', icon: <Package className='w-5 h-5' />, path: '/my-products' },
-		{ name: 'Needs Restock', icon: <BarChart2 className='w-5 h-5' />, path: '/restock' },
-		{ name: 'Orders', icon: <ShoppingCart className='w-5 h-5' />, path: '/my-orders' },
+		{ name: 'Dashboard',     icon: <LayoutDashboard className='w-5 h-5' />, path: '/seller-dashboard',   tour: 'sidebar-dashboard'   },
+		{ name: 'Add Product',   icon: <Plus className='w-5 h-5' />,            path: '/new-product',         tour: 'sidebar-add-product' },
+		{ name: 'My Products',   icon: <Package className='w-5 h-5' />,         path: '/my-products',         tour: 'sidebar-my-products' },
+		{ name: 'Needs Restock', icon: <BarChart2 className='w-5 h-5' />,       path: '/restock',             tour: 'sidebar-needs-restock'   },
+		{ name: 'Orders',        icon: <ShoppingCart className='w-5 h-5' />,    path: '/my-orders',           tour: 'sidebar-orders'          },
 		// { name: 'Analytics', icon: <BarChart2 className='w-5 h-5' />, path: '/my-analytics' },
-		{ name: 'Subscription', icon: <CreditCard className='w-5 h-5' />, path: '/seller-subscription' },
-		{ name: 'Store Settings', icon: <Settings className='w-5 h-5' />, path: '/store-settings' },
+		{ name: 'Subscription',  icon: <CreditCard className='w-5 h-5' />,      path: '/seller-subscription', tour: 'sidebar-subscription'    },
+		{ name: 'Store Settings',icon: <Settings className='w-5 h-5' />,        path: '/store-settings',      tour: 'sidebar-store-settings'  },
 	];
-	// ✅ Decode token once on mount
-	const token = localStorage.getItem('token');
-	useEffect(() => {
-		if (!token) return;
 
-		try {
-			const decoded = jwtDecode(token);
-			const expired = decoded.exp * 1000 < Date.now();
-
-			if (!expired) {
-				setUserId(decoded.id);
-				console.log('✅ Decoded user ID:', decoded.id);
-			} else {
-				console.warn('Token expired');
-				localStorage.removeItem('token');
-			}
-		} catch (err) {
-			console.error('Invalid token:', err);
-			localStorage.removeItem('token');
-		}
-	}, []); // ✅ empty dependency — run once
-
-	// ✅ Fetch store details only when userId is available
+	// Fetch store details when userId is available
 	useEffect(() => {
 		if (!userId) return;
 
 		const fetchStoreDetails = async () => {
 			try {
 				const response = await api.get(`store/store-details`);
-				// const response = await api.get(`/store-details?UserId=${userId}`);
-				console.log('The entire response', response);
-				console.log('✅ Store details:', response.data);
-				console.log('setBusinessName', response.data[0].BusinessName);
-				console.log('setBusinessNumber', response.data[0].BusinessNumber);
 				setBusinessName(response.data[0].BusinessName);
 			} catch (error) {
 				console.error('Error fetching store details:', error);
@@ -64,6 +39,24 @@ const SellerSidebar = () => {
 		};
 
 		fetchStoreDetails();
+	}, [userId]);
+
+	// Fetch new (Processing) order count and refresh every 60 seconds
+	useEffect(() => {
+		if (!userId) return;
+
+		const fetchNewOrdersCount = async () => {
+			try {
+				const res = await api.get('/orders/new-count');
+				setNewOrdersCount(res.data?.count || 0);
+			} catch {
+				// Non-critical — silently ignore
+			}
+		};
+
+		fetchNewOrdersCount();
+		const interval = setInterval(fetchNewOrdersCount, 60000);
+		return () => clearInterval(interval);
 	}, [userId]);
 
 	const isActive = (path) => location.pathname === path;
@@ -90,19 +83,25 @@ const SellerSidebar = () => {
 			</div>
 
 			{/* Menu */}
-			<nav className='flex-1 mt-4 space-y-1'>
+			<nav className='flex-1 mt-4 space-y-0.5 px-2'>
 				{menuItems.map((item) => (
 					<Link
 						key={item.name}
 						to={item.path}
-						className={`flex items-center px-4 py-2 rounded-lg mx-2 transition-colors ${
+						data-tour={item.tour || undefined}
+						className={`flex items-center w-full px-3 py-2.5 rounded-lg transition-colors ${
 							isActive(item.path)
 								? 'bg-primary-100 text-primary-600 font-medium'
 								: 'text-gray-700 hover:bg-gray-100 hover:text-primary-600'
 						}`}
 					>
-						{item.icon}
-						{isOpen && <span className='ml-3'>{item.name}</span>}
+						<span className='flex-shrink-0'>{item.icon}</span>
+						{isOpen && <span className='ml-3 flex-1 text-sm text-left'>{item.name}</span>}
+						{isOpen && item.name === 'Orders' && newOrdersCount > 0 && (
+							<span className='flex-shrink-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-tight'>
+								{newOrdersCount > 99 ? '99+' : newOrdersCount}
+							</span>
+						)}
 					</Link>
 				))}
 			</nav>

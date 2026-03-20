@@ -184,7 +184,7 @@ const ProductDetails = () => {
 							{/* Action Buttons - Responsive sizing and stacking */}
 							<div className='space-y-3 sm:space-y-4 pt-2 sm:pt-4 border-t'>
 								<BuyNow product={productDetails} />
-								<AddToCart ProductId={productDetails.ProductId} />
+								<AddToCart ProductId={productDetails.ProductId} SellerId={productDetails.SellerId} />
 							</div>
 						</div>
 					</div>

@@ -72,12 +72,18 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 
 			const totalPrice = shippingType === 'express' ? item.ExpressTotalPrice : item.TotalPrice;
 
+			const descriptionParts = [];
+			if (item.SellerName) descriptionParts.push(`Sold by: ${item.SellerName}`);
+			descriptionParts.push(`${shippingType === 'express' ? 'Express' : 'Standard'} shipping: €${Number(shippingFee).toFixed(2)}`);
+			descriptionParts.push(`Unit price: €${Number(item.Price).toFixed(2)}`);
+
 			return {
 				price_data: {
 					currency: 'eur',
 					product_data: {
 						name: item.ProductName,
-						images: [item.ProductImageUrl],
+						description: descriptionParts.join(' · '),
+						images: item.ProductImageUrl ? [item.ProductImageUrl] : [],
 					},
 					unit_amount: Math.round(totalPrice * 100), // Stripe uses cents
 				},
@@ -218,13 +224,20 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 		// 6. Create Stripe session
 		const lineItems = cartItems.map((item) => {
 			const shipType = shippingOptions[item.ProductId];
+			const shippingFee = shipType === 'express' ? item.ExpressShippingPrice : item.ShippingPrice;
 			const totalPrice = shipType === 'express' ? item.ExpressTotalPrice : item.TotalPrice;
+
+			const descriptionParts = [];
+			if (item.SellerName) descriptionParts.push(`Sold by: ${item.SellerName}`);
+			descriptionParts.push(`${shipType === 'express' ? 'Express' : 'Standard'} shipping: €${Number(shippingFee).toFixed(2)}`);
+			descriptionParts.push(`Unit price: €${Number(item.Price).toFixed(2)}`);
 
 			return {
 				price_data: {
 					currency: 'eur',
 					product_data: {
 						name: item.ProductName,
+						description: descriptionParts.join(' · '),
 						images: item.ProductImageUrl ? [item.ProductImageUrl] : [],
 					},
 					unit_amount: Math.round(totalPrice * 100),
@@ -271,6 +284,30 @@ checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 	}
 
 	try {
+		// ── Stock validation: verify every item has sufficient stock before creating a Stripe session ──
+		for (const item of cartItems) {
+			const productResult = await db.executeProcedure('GetProductForCheckout', {
+				ProductId: item.ProductId,
+				UserId: BuyerId,
+				Quantity: item.Quantity,
+			});
+			const product = productResult.recordset?.[0];
+			if (!product) {
+				return res.status(400).json({
+					message: `"${item.ProductName || 'A product'}" is no longer available.`,
+					code: 'PRODUCT_UNAVAILABLE',
+				});
+			}
+			if (product.InStock < item.Quantity) {
+				return res.status(400).json({
+					message: `Only ${product.InStock} unit${product.InStock !== 1 ? 's' : ''} of "${item.ProductName}" are available. Please update your cart and try again.`,
+					code: 'INSUFFICIENT_STOCK',
+					productId: item.ProductId,
+					available: product.InStock,
+				});
+			}
+		}
+
 		// Basic server-side validation and total calculation
 		const computeTotal = (items, shippingOpts) => {
 			let total = 0;

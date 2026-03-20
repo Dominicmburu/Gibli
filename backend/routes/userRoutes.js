@@ -30,6 +30,18 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const userRouter = express.Router();
 const db = new DbHelper();
 
+const isProd = process.env.NODE_ENV === 'production';
+
+// Helper: write the JWT into an HttpOnly cookie
+function setAuthCookie(res, token) {
+	res.cookie('token', token, {
+		httpOnly: true,
+		secure: isProd,
+		sameSite: isProd ? 'strict' : 'lax',
+		maxAge: 2 * 60 * 60 * 1000, // 2 hours
+	});
+}
+
 userRouter.post('/register', validateSchema(registerUserSchema), async (req, res) => {
 	try {
 		const { Email, Username, Password } = req.body;
@@ -75,10 +87,17 @@ userRouter.post('/login', validateSchema(loginUserSchema), async (req, res) => {
 		if (!user.IsEmailVerified)
 			return res.status(403).json({ message: 'Please verify your email before logging in.' });
 
-		const payload = { id: user.UserId, email: user.Email, username: user.Username, role: user.Role };
+		const payload = {
+			id: user.UserId,
+			email: user.Email,
+			username: user.Username,
+			role: user.Role,
+			hasSelectedRole: user.HasSelectedRole === true || user.HasSelectedRole === 1,
+		};
 		const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
+		setAuthCookie(res, token);
 
-		res.status(200).json({ message: 'Login successful', token, user: payload });
+		res.status(200).json({ message: 'Login successful', user: payload });
 	} catch (error) {
 		console.error('Login failed:', error);
 		res.status(500).json({ message: 'Login failed', error: error.message });
@@ -334,11 +353,26 @@ userRouter.post('/register-seller', authenticateToken, validateSchema(registerSe
 			console.error('⚠️ Could not seed free subscription for seller:', subErr.message);
 		}
 
+		// Fetch updated user (RegisterSeller SP has promoted Role to 'Seller')
+		const updatedUser = await db.executeProcedure('GetUserById', { UserId });
+		const u = updatedUser.recordset[0];
+		const sellerPayload = {
+			id: u.UserId,
+			email: u.Email,
+			username: u.Username,
+			role: u.Role,
+			hasSelectedRole: true,
+		};
+		const sellerToken = jwt.sign(sellerPayload, process.env.JWT_SECRET, { expiresIn: '2h' });
+		setAuthCookie(res, sellerToken);
+
 		res.status(201).json({
-			message: ` Your store: ${BusinessName} is now a registered seller`,
+			message: `Your store: ${BusinessName} is now a registered seller`,
+			user: sellerPayload,
 		});
 
-		await sellerRegistrationEmail(UserEmail);
+		// Fire-and-forget email (response already sent above)
+		sellerRegistrationEmail(UserEmail).catch((err) => console.error('⚠️ Seller email failed:', err));
 	} catch (error) {
 		console.error('Error happened ', error);
 		res.status(500).json({ message: `${error.message}` });
@@ -369,4 +403,46 @@ userRouter.delete('/delete/user/:id', async (req, res) => {
 		res.status(500).json({ message: 'Internal server Error' });
 	}
 });
+userRouter.post('/complete-onboarding', authenticateToken, async (req, res) => {
+	try {
+		// Mark HasSelectedRole = 1 via inline query (no new SP needed)
+		const pool = await db.pool;
+		await pool.request().input('UserId', req.user.id).query('UPDATE Users SET HasSelectedRole = 1 WHERE UserId = @UserId');
+
+		// Re-fetch user to build a fresh JWT
+		const result = await db.executeProcedure('GetUserById', { UserId: req.user.id });
+		if (!result.recordset.length) return res.status(404).json({ message: 'User not found' });
+
+		const user = result.recordset[0];
+		const payload = {
+			id: user.UserId,
+			email: user.Email,
+			username: user.Username,
+			role: user.Role,
+			hasSelectedRole: true,
+		};
+		const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
+		setAuthCookie(res, token);
+		res.status(200).json({ message: 'Onboarding complete', user: payload });
+	} catch (error) {
+		console.error('complete-onboarding error:', error);
+		res.status(500).json({ message: error.message });
+	}
+});
+
+// GET /users/me — return decoded user info from cookie (frontend can't read HttpOnly cookies)
+userRouter.get('/me', authenticateToken, (req, res) => {
+	res.status(200).json({ user: req.user });
+});
+
+// POST /users/logout — clear the auth cookie
+userRouter.post('/logout', (req, res) => {
+	res.clearCookie('token', {
+		httpOnly: true,
+		secure: isProd,
+		sameSite: isProd ? 'strict' : 'lax',
+	});
+	res.status(200).json({ message: 'Logged out' });
+});
+
 export default userRouter;

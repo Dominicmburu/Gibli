@@ -3,21 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import NavBar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
-import { MapPin, Store, Minus, Plus, Trash2, ShoppingCart, Loader2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { MapPin, Store, Minus, Plus, Trash2, ShoppingCart, Loader2, ShoppingBag, ArrowRight, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCart } from '../../../context/CartContext';
+import { useAuth } from '../../../utils/useAuth';
 
 const Cart = () => {
 	const navigate = useNavigate();
+	const { isLoggedIn, loading: authLoading } = useAuth();
 	const [cartItems, setCartItems] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const { refreshCart } = useCart();
 
-	// Check for token presence on mount
 	useEffect(() => {
-		const token = localStorage.getItem('token');
-		if (!token) {
+		if (authLoading) return;
+		if (!isLoggedIn) {
 			navigate('/login');
 			return;
 		}
@@ -36,25 +37,38 @@ const Cart = () => {
 		};
 
 		fetchCartItems();
-	}, [navigate]);
+	}, [isLoggedIn, authLoading, navigate]);
 
-	// Update item quantity
+	// Update item quantity — validates against available stock
 	const updateQuantity = async (cartItemId, change) => {
+		const item = cartItems.find((i) => i.CartItemId === cartItemId);
+		if (!item) return;
+
+		const newQty = Math.max(1, item.Quantity + change);
+
+		// Block incrementing beyond available stock
+		if (newQty > item.InStock) {
+			toast.error(
+				`Only ${item.InStock} unit${item.InStock !== 1 ? 's' : ''} available for "${item.ProductName}".`
+			);
+			return;
+		}
+
+		// Optimistic update
 		setCartItems((prev) =>
-			prev.map((item) =>
-				item.CartItemId === cartItemId ? { ...item, Quantity: Math.max(1, item.Quantity + change) } : item
-			)
+			prev.map((i) => (i.CartItemId === cartItemId ? { ...i, Quantity: newQty } : i))
 		);
 
 		try {
-			const item = cartItems.find((i) => i.CartItemId === cartItemId);
-			if (!item) return;
-
-			const newQty = Math.max(1, item.Quantity + change);
 			await api.put(`/cart/update/${cartItemId}`, { Quantity: newQty });
 		} catch (err) {
 			console.error('Failed to update quantity:', err);
-			toast.error('Failed to update quantity');
+			// Revert optimistic update
+			setCartItems((prev) =>
+				prev.map((i) => (i.CartItemId === cartItemId ? { ...i, Quantity: item.Quantity } : i))
+			);
+			const msg = err.response?.data?.message || 'Failed to update quantity';
+			toast.error(msg);
 		}
 	};
 
@@ -87,6 +101,12 @@ const Cart = () => {
 	};
 
 	const finalizeCheckout = async () => {
+		// Block checkout if any item exceeds available stock
+		const overStockItems = cartItems.filter((item) => item.Quantity > item.InStock);
+		if (overStockItems.length > 0) {
+			toast.error('Some items in your cart exceed available stock. Please reduce the quantity before checking out.');
+			return;
+		}
 		navigate('/finalize-checkout');
 	};
 
@@ -186,12 +206,27 @@ const Cart = () => {
 						<div className='space-y-3 sm:space-y-4'>
 							{cartItems.map((item) => {
 								const itemTotal = item.Quantity * Number(item.Price);
+								const isOutOfStock = item.InStock <= 0;
+								const exceedsStock = item.Quantity > item.InStock;
+								const atMaxStock = item.Quantity >= item.InStock;
 
 								return (
 									<div
 										key={item.CartItemId}
-										className='bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow'
+										className={`bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow ${exceedsStock ? 'ring-2 ring-red-200' : ''}`}
 									>
+										{/* Stock warning banner */}
+										{exceedsStock && (
+											<div className='bg-red-50 border-b border-red-100 px-4 py-2 flex items-center gap-2'>
+												<AlertTriangle size={15} className='text-red-500 flex-shrink-0' />
+												<p className='text-xs text-red-700 font-medium'>
+													{isOutOfStock
+														? 'This item is out of stock. Please remove it from your cart.'
+														: `Only ${item.InStock} unit${item.InStock !== 1 ? 's' : ''} available — please reduce the quantity.`}
+												</p>
+											</div>
+										)}
+
 										{/* Mobile Layout (< 640px) */}
 										<div className='sm:hidden p-4 space-y-3'>
 											{/* Product Image & Name */}
@@ -233,25 +268,31 @@ const Cart = () => {
 
 											{/* Quantity Controls & Remove */}
 											<div className='flex items-center justify-between'>
-												<div className='flex items-center gap-2'>
-													<button
-														onClick={() => updateQuantity(item.CartItemId, -1)}
-														disabled={item.Quantity <= 1}
-														className='bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-lg transition-colors'
-														aria-label='Decrease quantity'
-													>
-														<Minus size={16} />
-													</button>
-													<span className='min-w-[32px] text-center font-semibold text-sm'>
-														{item.Quantity}
-													</span>
-													<button
-														onClick={() => updateQuantity(item.CartItemId, 1)}
-														className='bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition-colors'
-														aria-label='Increase quantity'
-													>
-														<Plus size={16} />
-													</button>
+												<div className='flex flex-col gap-1'>
+													<div className='flex items-center gap-2'>
+														<button
+															onClick={() => updateQuantity(item.CartItemId, -1)}
+															disabled={item.Quantity <= 1}
+															className='bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-lg transition-colors'
+															aria-label='Decrease quantity'
+														>
+															<Minus size={16} />
+														</button>
+														<span className={`min-w-[32px] text-center font-semibold text-sm ${exceedsStock ? 'text-red-600' : ''}`}>
+															{item.Quantity}
+														</span>
+														<button
+															onClick={() => updateQuantity(item.CartItemId, 1)}
+															disabled={atMaxStock}
+															className='bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-lg transition-colors'
+															aria-label='Increase quantity'
+														>
+															<Plus size={16} />
+														</button>
+													</div>
+													<p className={`text-xs ${isOutOfStock ? 'text-red-500' : atMaxStock ? 'text-amber-600' : 'text-gray-400'}`}>
+														{isOutOfStock ? 'Out of stock' : `${item.InStock} in stock`}
+													</p>
 												</div>
 
 												<button
@@ -314,7 +355,7 @@ const Cart = () => {
 											</div>
 
 											{/* Quantity Controls */}
-											<div className='flex flex-col items-center gap-3'>
+											<div className='flex flex-col items-center gap-2'>
 												<div className='flex items-center gap-2'>
 													<button
 														onClick={() => updateQuantity(item.CartItemId, -1)}
@@ -324,17 +365,23 @@ const Cart = () => {
 													>
 														<Minus size={18} />
 													</button>
-													<span className='min-w-[40px] text-center font-semibold'>
+													<span className={`min-w-[40px] text-center font-semibold ${exceedsStock ? 'text-red-600' : ''}`}>
 														{item.Quantity}
 													</span>
 													<button
 														onClick={() => updateQuantity(item.CartItemId, 1)}
-														className='bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition-colors'
+														disabled={atMaxStock}
+														className='bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-lg transition-colors'
 														aria-label='Increase quantity'
 													>
 														<Plus size={18} />
 													</button>
 												</div>
+
+												{/* Stock indicator */}
+												<p className={`text-xs ${isOutOfStock ? 'text-red-500 font-medium' : atMaxStock ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
+													{isOutOfStock ? 'Out of stock' : atMaxStock ? `Max (${item.InStock})` : `${item.InStock} in stock`}
+												</p>
 
 												<button
 													onClick={() => removeItem(item.CartItemId)}
@@ -358,27 +405,6 @@ const Cart = () => {
 								);
 							})}
 						</div>
-
-						{/* Order Summary Card */}
-						{/* <div className='mt-6 bg-white rounded-lg shadow-sm p-4 sm:p-6'>
-							<h3 className='text-lg font-semibold text-gray-900 mb-4'>Order Summary</h3>
-							<div className='space-y-2 text-sm'>
-								<div className='flex justify-between text-gray-600'>
-									<span>Subtotal ({cartItems.length} items)</span>
-									<span>€{total.toFixed(2)}</span>
-								</div>
-								<div className='flex justify-between text-gray-600'>
-									<span>Shipping</span>
-									<span className='text-primary-600'>Calculated at checkout</span>
-								</div>
-								<div className='border-t border-gray-100 pt-2 mt-2'>
-									<div className='flex justify-between font-semibold text-gray-900'>
-										<span>Total</span>
-										<span className='text-xl text-primary-600'>€{total.toFixed(2)}</span>
-									</div>
-								</div>
-							</div>
-						</div> */}
 					</>
 				)}
 			</main>

@@ -6,7 +6,7 @@ import AddToWishList from '../../wishlist/components/AddToWishlist';
 import { MapPin } from 'lucide-react';
 
 const ProductCard = (props) => {
-	const { ProductId, ProductName, Description, Price, InStock, ImageUrl, BusinessName, Country } = props;
+	const { ProductId, ProductName, Description, Price, InStock, ImageUrl, BusinessName, Country, SellerId } = props;
 
 	const handleClick = (id) => {
 		// Save the scroll position here so we go back to it
@@ -114,7 +114,7 @@ const ProductCard = (props) => {
 			{/* Add to Cart Button - Enhanced styling */}
 			<div className='p-4 sm:p-5 pt-0 mt-auto'>
 				<div className='transform group-hover/card:scale-[1.02] transition-transform duration-200'>
-					<AddToCart ProductId={ProductId} />
+					<AddToCart ProductId={ProductId} SellerId={SellerId} />
 				</div>
 			</div>
 		</article>

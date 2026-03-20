@@ -1,3 +1,6 @@
+-- Migration 009: Add TrackingNumber, TrackingUrl, RejectionReason to GetOrderById SP
+-- Required so order detail pages (buyer + seller) can display tracking info and rejection reasons
+
 USE Marketplace;
 GO
 

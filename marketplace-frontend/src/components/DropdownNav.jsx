@@ -1,55 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, User } from 'lucide-react';
-import { jwtDecode } from 'jwt-decode';
 import toast from 'react-hot-toast';
+import { useAuth } from '../utils/useAuth';
 
-const DropdownNav = () => {
+const DropdownNav = ({ showBecomeSeller = false }) => {
 	const [isOpen, setIsOpen] = useState(false);
-	const [isLoggedIn, setIsLoggedIn] = useState(false);
-	const [tokenExpired, setTokenExpired] = useState(false);
-	const [userInfo, setUserInfo] = useState(null);
+	const { isLoggedIn, tokenExpired, userInfo } = useAuth();
 	const navigate = useNavigate();
 
 	const menuItems = [
 		{ label: 'Wishlist', path: '/wishlist' },
 		{ label: 'Address Book', path: '/address-book' },
 		{ label: 'Orders', path: '/orders' },
-		{ label: 'Become Seller', path: '/become-seller' },
+		{ label: 'Become a Seller', path: '/become-seller' },
 	];
-
-	useEffect(() => {
-		const token = localStorage.getItem('token');
-		if (!token) {
-			setIsLoggedIn(false);
-			setTokenExpired(false);
-			setUserInfo(null);
-			return;
-		}
-
-		try {
-			const decoded = jwtDecode(token);
-			const expired = decoded.exp * 1000 < Date.now();
-
-			setTokenExpired(expired);
-			setIsLoggedIn(!expired);
-
-			if (!expired) {
-				// pull from token:
-				setUserInfo({
-					name: decoded.name || decoded.username || 'User',
-					email: decoded.email || null,
-					role: decoded.role || null,
-				});
-			}
-		} catch (err) {
-			console.error('Invalid token', err);
-			setIsLoggedIn(false);
-			setTokenExpired(true);
-			setUserInfo(null);
-			localStorage.removeItem('token'); // optional cleanup
-		}
-	}, []);
 
 	const handleClick = (path) => {
 		if (!isLoggedIn || tokenExpired) {
@@ -58,6 +23,7 @@ const DropdownNav = () => {
 			return;
 		}
 		navigate(path);
+		setIsOpen(false);
 	};
 
 	return (
@@ -89,10 +55,7 @@ const DropdownNav = () => {
 				<ul className='py-2'>
 					{menuItems
 						.filter((item) => {
-							// Only show "Become Seller" if the user's role is "Buyer"
-							if (item.label === 'Become Seller' && userInfo?.role !== 'Buyer') {
-								return false;
-							}
+							if (item.label === 'Become a Seller') return showBecomeSeller;
 							return true;
 						})
 						.map((item) => (

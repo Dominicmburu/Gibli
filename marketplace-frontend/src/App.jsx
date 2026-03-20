@@ -36,11 +36,18 @@ import SearchResultsPage from './features/products/components/SearchResultsPage'
 import VerifyPage from './features/auth/components/VerifyPage';
 import ResendVerification from './features/auth/components/ResendVerification';
 import { CartProvider } from './context/CartContext';
+import { useAuth } from './utils/useAuth';
+import RoleSelectionModal from './features/onboarding/RoleSelectionModal';
+import SellerOnboardingPlans from './features/onboarding/SellerOnboardingPlans';
 
 function App() {
+	const { isLoggedIn, hasSelectedRole, loading } = useAuth();
+
 	return (
 		<>
 			<CartProvider>
+				{/* Non-dismissable role selection — shown once for new users on first login */}
+				{!loading && isLoggedIn && !hasSelectedRole && <RoleSelectionModal />}
 				<Routes>
 					{/* AUTH ROUTES */}
 					<Route path='/' element={<Home />} />
@@ -86,6 +93,9 @@ function App() {
 
 					{/* CATEGORY ROUTES */}
 					<Route path='/category/:id' element={<CategoryPage />} />
+
+					{/* ONBOARDING ROUTES */}
+					<Route path='/onboarding/seller-plans' element={<SellerOnboardingPlans />} />
 				</Routes>
 				<Toaster position='top-center' reverseOrder={false} />
 			</CartProvider>

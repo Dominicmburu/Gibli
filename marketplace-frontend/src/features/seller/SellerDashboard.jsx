@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Package, ShoppingBag, Euro, CheckCircle, BadgeCheck, Percent, CreditCard } from 'lucide-react';
+import { Loader2, Package, ShoppingBag, Euro, CheckCircle, CreditCard } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
+import SellerTour from './SellerTour';
 import { useAuth } from '../../utils/useAuth';
 import api from '../../api/axios';
 
@@ -34,6 +35,7 @@ const SellerDashboard = () => {
 	const [recentProducts, setRecentProducts] = useState([]);
 	const [subscription, setSubscription]     = useState(null);
 	const [loading, setLoading]               = useState(true);
+	const [showTour, setShowTour]             = useState(false);
 
 	useEffect(() => {
 		const fetchDashboardData = async () => {
@@ -47,10 +49,10 @@ const SellerDashboard = () => {
 					api.get('/subscriptions/my-subscription'),
 				]);
 
-				const products = productsRes.status === 'fulfilled' ? productsRes.value.data || [] : [];
+				const products  = productsRes.status === 'fulfilled' ? productsRes.value.data || [] : [];
 				const storeData = storeRes.status === 'fulfilled' ? storeRes.value.data?.[0] : null;
-				const orders = ordersRes.status === 'fulfilled' ? ordersRes.value.data?.data || [] : [];
-				const subData = subRes.status === 'fulfilled' ? subRes.value.data : null;
+				const orders    = ordersRes.status === 'fulfilled' ? ordersRes.value.data?.data || [] : [];
+				const subData   = subRes.status === 'fulfilled' ? subRes.value.data : null;
 				setSubscription(subData);
 
 				const formattedOrders = orders.map((o) => ({
@@ -58,12 +60,8 @@ const SellerDashboard = () => {
 					OrderItems: typeof o.OrderItems === 'string' ? JSON.parse(o.OrderItems || '[]') : o.OrderItems || [],
 				}));
 
-				// Only count confirmed sales (status = 'Sold' — 14-day refund window passed)
-				const soldOrders = formattedOrders.filter((o) => o.DeliveryStatus === 'Sold');
-				const totalSold = soldOrders.reduce(
-					(sum, o) => sum + o.OrderItems.reduce((s, item) => s + (item.Quantity || 0), 0),
-					0
-				);
+				const soldOrders   = formattedOrders.filter((o) => o.DeliveryStatus === 'Sold');
+				const totalSold    = soldOrders.reduce((sum, o) => sum + o.OrderItems.reduce((s, item) => s + (item.Quantity || 0), 0), 0);
 				const totalRevenue = soldOrders.reduce((sum, o) => sum + Number(o.TotalAmount || 0), 0);
 
 				setStats({
@@ -84,9 +82,18 @@ const SellerDashboard = () => {
 		fetchDashboardData();
 	}, [userInfo, isLoggedIn, tokenExpired]);
 
+	// Auto-start tour after data loads if not yet seen
+	useEffect(() => {
+		if (!loading && !localStorage.getItem('sellerTourComplete')) {
+			const t = setTimeout(() => setShowTour(true), 400);
+			return () => clearTimeout(t);
+		}
+	}, [loading]);
+
 	const statCards = [
 		{
 			label: 'Products',
+			tourId: 'stat-products',
 			value: stats.totalProducts,
 			icon: <Package className='text-primary-500 w-5 h-5' />,
 			iconBg: 'bg-primary-50',
@@ -95,6 +102,7 @@ const SellerDashboard = () => {
 		},
 		{
 			label: 'Items Sold',
+			tourId: 'stat-items-sold',
 			value: stats.totalSold,
 			icon: <ShoppingBag className='text-blue-500 w-5 h-5' />,
 			iconBg: 'bg-blue-50',
@@ -103,6 +111,7 @@ const SellerDashboard = () => {
 		},
 		{
 			label: 'Revenue',
+			tourId: 'stat-revenue',
 			value: `€${stats.totalRevenue.toFixed(2)}`,
 			icon: <Euro className='text-green-500 w-5 h-5' />,
 			iconBg: 'bg-green-50',
@@ -111,6 +120,7 @@ const SellerDashboard = () => {
 		},
 		{
 			label: 'Store Status',
+			tourId: 'stat-store-status',
 			value: stats.isVerified ? 'Snoozed' : 'Active',
 			valueClass: stats.isVerified ? 'text-amber-500' : 'text-green-600',
 			icon: <CheckCircle className={`w-5 h-5 ${stats.isVerified ? 'text-amber-500' : 'text-green-500'}`} />,
@@ -120,6 +130,7 @@ const SellerDashboard = () => {
 		},
 		{
 			label: 'Subscription',
+			tourId: 'stat-subscription',
 			value: subscription && subscription.PlanCode !== 'free'
 				? (getTimeRemaining(subscription.CurrentPeriodEnd) || subscription.PlanName)
 				: 'Default · 5% commission',
@@ -153,6 +164,7 @@ const SellerDashboard = () => {
 								{statCards.map((card) => (
 									<div
 										key={card.label}
+										data-tour={card.tourId}
 										onClick={card.clickable ? card.onClick : undefined}
 										className={`bg-white shadow-sm border border-gray-100 rounded-2xl p-4 flex flex-col gap-3 transition-all ${
 											card.clickable
@@ -184,7 +196,7 @@ const SellerDashboard = () => {
 							</div>
 
 							{/* Recent Products */}
-							<div>
+							<div data-tour='recent-products'>
 								<div className='flex items-center justify-between mb-4'>
 									<h3 className='text-lg font-bold text-gray-900'>Recent Products</h3>
 									{recentProducts.length > 0 && (
@@ -247,6 +259,24 @@ const SellerDashboard = () => {
 					)}
 				</div>
 			</div>
+
+			{/* Guided tour */}
+			{showTour && <SellerTour onFinish={() => setShowTour(false)} />}
+
+			{/* Help button — restarts tour */}
+			{!showTour && (
+				<button
+					onClick={() => {
+						localStorage.removeItem('sellerTourComplete');
+						setShowTour(true);
+					}}
+					title='Take the guided tour'
+					aria-label='Replay guided tour'
+					className='fixed bottom-6 right-6 z-50 w-11 h-11 bg-primary-500 hover:bg-primary-600 text-white rounded-full shadow-lg flex items-center justify-center font-bold text-lg transition-all'
+				>
+					?
+				</button>
+			)}
 		</>
 	);
 };

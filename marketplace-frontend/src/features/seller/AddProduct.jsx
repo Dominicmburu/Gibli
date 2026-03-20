@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
-import { jwtDecode } from 'jwt-decode';
+import { useAuth } from '../../utils/useAuth';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { Plus, X, ImagePlus } from 'lucide-react';
 
 const AddProduct = () => {
+	const { userInfo } = useAuth();
 	const [formData, setFormData] = useState({
 		ProductName: '',
 		Description: '',
@@ -108,11 +109,8 @@ const AddProduct = () => {
 		setLoading(true);
 
 		try {
-			const token = localStorage.getItem('token');
-			if (!token) throw new Error('No token found. Please login again.');
-
-			const decoded = jwtDecode(token);
-			const UserId = decoded.id;
+			const UserId = userInfo?.id;
+			if (!UserId) throw new Error('Not logged in. Please login again.');
 
 			const form = new FormData();
 			Object.entries(formData).forEach(([key, value]) => form.append(key, value));

@@ -6,12 +6,28 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
 	Clock, Truck, CheckCircle, XCircle, ShoppingBag,
-	Loader2, ChevronRight, ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock,
+	Loader2, ChevronRight, ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock, Info,
 } from 'lucide-react';
 
 function daysSince(dateStr) {
 	if (!dateStr) return 0;
 	return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function hoursUntilExpiry(dateStr) {
+	if (!dateStr) return 24;
+	// Clamp elapsed to >= 0 to guard against timezone offset between DB server and browser
+	const elapsed = Math.max(0, (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60));
+	return Math.max(0, 24 - elapsed);
+}
+
+function formatCountdown(hours) {
+	if (hours <= 0) return 'Expiring now';
+	const h = Math.floor(hours);
+	const m = Math.floor((hours - h) * 60);
+	if (h === 0) return `${m}m left`;
+	if (m === 0) return `${h}h left`;
+	return `${h}h ${m}m left`;
 }
 
 const statusConfig = {
@@ -30,6 +46,8 @@ const SellerOrders = () => {
 	const [error, setError] = useState(null);
 	const [updatingOrder, setUpdatingOrder] = useState(null);
 	const [filterStatus, setFilterStatus] = useState('all');
+	const [rejectionModal, setRejectionModal] = useState({ open: false, orderId: null, reason: '' });
+	const [trackingModal, setTrackingModal] = useState({ open: false, orderId: null, trackingNumber: '', trackingUrl: '' });
 	const navigate = useNavigate();
 
 	useEffect(() => {
@@ -47,10 +65,15 @@ const SellerOrders = () => {
 		fetchOrders();
 	}, []);
 
-	const handleUpdateStatus = async (orderId, newStatus) => {
+	const handleUpdateStatus = async (orderId, newStatus, reason = null, trackingNumber = null, trackingUrl = null) => {
 		setUpdatingOrder(orderId);
 		try {
-			await api.patch(`/orders/${orderId}/status`, { status: newStatus });
+			await api.patch(`/orders/${orderId}/status`, {
+				status: newStatus,
+				...(reason && { reason }),
+				...(trackingNumber && { trackingNumber }),
+				...(trackingUrl && { trackingUrl }),
+			});
 			setOrders((prev) =>
 				prev.map((o) =>
 					o.OrderId === orderId
@@ -76,29 +99,43 @@ const SellerOrders = () => {
 		const isUpdating = updatingOrder === order.OrderId;
 
 		switch (order.DeliveryStatus) {
-			case 'Processing':
+			case 'Processing': {
+				const hoursLeft = hoursUntilExpiry(order.OrderDate);
+				const isUrgent = hoursLeft < 6;
 				return (
-					<div className='flex gap-2 mt-3'>
-						<button
-							onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.OrderId, 'Confirmed'); }}
-							disabled={isUpdating}
-							className='flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-green-600 border border-green-200 hover:bg-green-50 py-2 rounded-lg transition-colors disabled:opacity-50'
-						>
-							<ThumbsUp size={13} /> Accept
-						</button>
-						<button
-							onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.OrderId, 'Rejected'); }}
-							disabled={isUpdating}
-							className='flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-500 border border-red-200 hover:bg-red-50 py-2 rounded-lg transition-colors disabled:opacity-50'
-						>
-							<ThumbsDown size={13} /> Reject
-						</button>
+					<div className='mt-3 space-y-2'>
+						{/* 48hr expiry indicator */}
+						<div className={`text-xs px-2.5 py-1.5 rounded-lg space-y-0.5 ${
+							isUrgent ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'
+						}`}>
+							<div className='flex items-center gap-1.5 font-semibold'>
+								<Clock size={12} className='flex-shrink-0' />
+								{formatCountdown(hoursLeft)} to respond
+							</div>
+						</div>
+						<div className='flex gap-2'>
+							<button
+								onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.OrderId, 'Confirmed'); }}
+								disabled={isUpdating}
+								className='flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-green-600 border border-green-200 hover:bg-green-50 py-2 rounded-lg transition-colors disabled:opacity-50'
+							>
+								<ThumbsUp size={13} /> Accept
+							</button>
+							<button
+								onClick={(e) => { e.stopPropagation(); setRejectionModal({ open: true, orderId: order.OrderId, reason: '' }); }}
+								disabled={isUpdating}
+								className='flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-500 border border-red-200 hover:bg-red-50 py-2 rounded-lg transition-colors disabled:opacity-50'
+							>
+								<ThumbsDown size={13} /> Reject
+							</button>
+						</div>
 					</div>
 				);
+			}
 			case 'Confirmed':
 				return (
 					<button
-						onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.OrderId, 'Shipped'); }}
+						onClick={(e) => { e.stopPropagation(); setTrackingModal({ open: true, orderId: order.OrderId, trackingNumber: '', trackingUrl: '' }); }}
 						disabled={isUpdating}
 						className='w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 py-2 rounded-lg transition-colors disabled:opacity-50'
 					>
@@ -147,9 +184,120 @@ const SellerOrders = () => {
 		}
 	};
 
+	const closeRejectionModal = () => setRejectionModal({ open: false, orderId: null, reason: '' });
+
+	const confirmRejection = () => {
+		if (!rejectionModal.reason.trim()) return;
+		handleUpdateStatus(rejectionModal.orderId, 'Rejected', rejectionModal.reason.trim());
+		closeRejectionModal();
+	};
+
+	const closeTrackingModal = () => setTrackingModal({ open: false, orderId: null, trackingNumber: '', trackingUrl: '' });
+
+	const confirmShipping = () => {
+		if (!trackingModal.trackingNumber.trim() || !trackingModal.trackingUrl.trim()) return;
+		handleUpdateStatus(trackingModal.orderId, 'Shipped', null, trackingModal.trackingNumber.trim(), trackingModal.trackingUrl.trim());
+		closeTrackingModal();
+	};
+
 	return (
 		<>
 			<NavBar />
+			{/* Rejection Reason Modal */}
+			{rejectionModal.open && (
+				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
+					<div className='bg-white rounded-2xl p-6 w-full max-w-md shadow-xl'>
+						<div className='flex items-center gap-3 mb-4'>
+							<div className='w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0'>
+								<ThumbsDown size={18} className='text-red-600' />
+							</div>
+							<div>
+								<h2 className='text-lg font-bold text-gray-900'>Reject Order</h2>
+								<p className='text-sm text-gray-500'>The buyer will be notified with your reason.</p>
+							</div>
+						</div>
+						<textarea
+							value={rejectionModal.reason}
+							onChange={(e) => setRejectionModal((prev) => ({ ...prev, reason: e.target.value }))}
+							placeholder='e.g. Item is out of stock, unable to fulfil at this time...'
+							rows={4}
+							className='w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 resize-none'
+						/>
+						<div className='flex gap-3 mt-4'>
+							<button
+								onClick={closeRejectionModal}
+								className='flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors'
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmRejection}
+								disabled={!rejectionModal.reason.trim()}
+								className='flex-1 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+							>
+								Confirm Rejection
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{/* Tracking Info Modal */}
+			{trackingModal.open && (
+				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
+					<div className='bg-white rounded-2xl p-6 w-full max-w-md shadow-xl'>
+						<div className='flex items-center gap-3 mb-4'>
+							<div className='w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0'>
+								<Truck size={18} className='text-blue-600' />
+							</div>
+							<div>
+								<h2 className='text-lg font-bold text-gray-900'>Shipping Details</h2>
+								<p className='text-sm text-gray-500'>Add tracking info before marking as shipped.</p>
+							</div>
+						</div>
+						<div className='space-y-3'>
+							<div>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>
+									Tracking Number <span className='text-red-500'>*</span>
+								</label>
+								<input
+									type='text'
+									value={trackingModal.trackingNumber}
+									onChange={(e) => setTrackingModal((prev) => ({ ...prev, trackingNumber: e.target.value }))}
+									placeholder='e.g. 1Z999AA10123456784'
+									className='w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400'
+								/>
+							</div>
+							<div>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>
+									Tracking Link <span className='text-red-500'>*</span>
+								</label>
+								<input
+									type='url'
+									value={trackingModal.trackingUrl}
+									onChange={(e) => setTrackingModal((prev) => ({ ...prev, trackingUrl: e.target.value }))}
+									placeholder='https://track.carrier.com/...'
+									className='w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400'
+								/>
+							</div>
+						</div>
+						<div className='flex gap-3 mt-4'>
+							<button
+								onClick={closeTrackingModal}
+								className='flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors'
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmShipping}
+								disabled={!trackingModal.trackingNumber.trim() || !trackingModal.trackingUrl.trim()}
+								className='flex-1 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+							>
+								Confirm &amp; Ship
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
 				<div className='flex-1 p-6 overflow-y-auto'>
@@ -225,9 +373,19 @@ const SellerOrders = () => {
 										{/* Order ID + Status badge */}
 										<div className='flex items-center justify-between mb-3'>
 											<h3 className='font-semibold text-gray-900'>Order #{order.OrderId.slice(0, 8)}</h3>
-											<div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusInfo.bg} ${statusInfo.color} ${statusInfo.border} border`}>
-												<StatusIcon size={12} />
-												{statusInfo.label}
+											<div className='flex items-center gap-1.5'>
+												<div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusInfo.bg} ${statusInfo.color} ${statusInfo.border} border`}>
+													<StatusIcon size={12} />
+													{statusInfo.label}
+												</div>
+												{order.DeliveryStatus === 'Processing' && (
+													<div className='relative group'>
+														<Info size={14} className='text-amber-500 cursor-help' />
+														<div className='absolute right-0 top-5 w-56 bg-gray-800 text-white text-xs rounded-lg p-2.5 hidden group-hover:block z-10 shadow-lg leading-relaxed'>
+															Orders not confirmed or rejected within <strong>24 hours</strong> are automatically cancelled and the buyer is notified.
+														</div>
+													</div>
+												)}
 											</div>
 										</div>
 

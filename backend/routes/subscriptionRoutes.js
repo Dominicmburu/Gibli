@@ -56,30 +56,60 @@ subscriptionRouter.get('/plans', async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // GET /subscriptions/pending-seller-setup — auth
-// Returns { pendingSetup: true, subscription } when a user has
-// paid for a plan but has not yet created their seller account.
-// Used by the NavBar to show a persistent "complete setup" banner.
+// Returns { pendingSetup: true } when a user has registered their
+// seller account but has NOT yet explicitly completed plan selection
+// (HasCompletedOnboarding = 0 in the Sellers table).
+// Returns { pendingSetup: false } if: not a seller, or onboarding done.
+// Used by the NavBar to show the setup banner AND gate "My Store" visibility.
 // ─────────────────────────────────────────────────────────────
 subscriptionRouter.get('/pending-seller-setup', authenticateToken, async (req, res) => {
 	try {
 		const userId = req.user.id;
 
-		// 1. Does the user have a paid (non-free) active subscription?
-		const subResult = await db.executeProcedure('GetSellerActiveSubscription', { SellerId: userId });
-		const sub = subResult.recordset?.[0] || null;
+		const pool = await db.pool;
+		const result = await pool.request()
+			.input('UserId', userId)
+			.query('SELECT HasCompletedOnboarding FROM Sellers WHERE UserId = @UserId');
 
-		if (!sub || sub.PlanCode === 'free') {
-			return res.json({ pendingSetup: false });
-		}
+		const seller = result.recordset?.[0];
 
-		// 2. Are they already a registered seller?
-		const sellerResult = await db.executeProcedure('GetSellerDetails', { SellerId: userId });
-		const isSeller = (sellerResult.recordset?.length ?? 0) > 0;
+		// Not a seller at all
+		if (!seller) return res.json({ pendingSetup: false });
 
-		res.json({ pendingSetup: !isSeller, subscription: isSeller ? null : sub });
+		// Seller has explicitly completed plan selection (free or paid)
+		if (seller.HasCompletedOnboarding) return res.json({ pendingSetup: false });
+
+		// Registered as seller but hasn't completed plan selection yet
+		res.json({ pendingSetup: true });
 	} catch (err) {
 		console.error('Error checking pending seller setup:', err);
 		res.json({ pendingSetup: false }); // fail silently — banner is non-critical
+	}
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /subscriptions/complete-free-plan — auth
+// Called when a seller explicitly chooses the free plan on the
+// onboarding plan selection page. Marks HasCompletedOnboarding = 1
+// so the banner is dismissed and "My Store" becomes visible.
+// ─────────────────────────────────────────────────────────────
+subscriptionRouter.post('/complete-free-plan', authenticateToken, async (req, res) => {
+	try {
+		const sellerId = req.user.id;
+
+		const pool = await db.pool;
+		const result = await pool.request()
+			.input('UserId', sellerId)
+			.query('UPDATE Sellers SET HasCompletedOnboarding = 1 WHERE UserId = @UserId');
+
+		if (result.rowsAffected?.[0] === 0) {
+			return res.status(404).json({ message: 'Seller account not found.' });
+		}
+
+		res.json({ success: true });
+	} catch (err) {
+		console.error('Error completing free plan setup:', err);
+		res.status(500).json({ message: 'Failed to complete setup.' });
 	}
 });
 
@@ -418,12 +448,18 @@ subscriptionRouter.post('/activate-session', authenticateToken, async (req, res)
 			// Expire any stale free-plan rows for this seller
 			await db.executeProcedure('ExpireStaleSubscriptions', {});
 
-			// Save Stripe customer ID to the Sellers table if seller account exists
+			// Save Stripe customer ID and mark onboarding complete
 			try {
-				await db.executeProcedure('UpdateSellerStripeCustomerId', {
-					SellerId:         sellerId,
-					StripeCustomerId: session.customer,
-				});
+				const pool = await db.pool;
+				await Promise.all([
+					db.executeProcedure('UpdateSellerStripeCustomerId', {
+						SellerId:         sellerId,
+						StripeCustomerId: session.customer,
+					}),
+					pool.request()
+						.input('SellerId', sellerId)
+						.query('UPDATE Sellers SET HasCompletedOnboarding = 1 WHERE UserId = @SellerId'),
+				]);
 			} catch (_) {
 				// Seller account may not exist yet (pre-registration flow) — that's fine
 			}

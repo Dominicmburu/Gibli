@@ -253,15 +253,15 @@ const SellerProducts = () => {
 		const threshold = product.LowStockThreshold || 5;
 		if (product.NeedsRestock) {
 			return (
-				<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200'>
+				<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-600 border border-yellow-200'>
 					<AlertTriangle size={10} /> Restock
 				</span>
 			);
 		}
 		if (product.InStock <= threshold) {
 			return (
-				<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-200'>
-					Low: {product.InStock}
+				<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-600 border border-yellow-200'>
+					<AlertTriangle size={10} /> Low: {product.InStock}
 				</span>
 			);
 		}
@@ -444,8 +444,8 @@ const SellerProducts = () => {
 												onClick={() => handleToggleRestock(product.ProductId)}
 												className={`flex items-center justify-center gap-1.5 text-sm font-medium py-2 px-3 rounded-lg transition-colors border ${
 													product.NeedsRestock
-														? 'text-green-600 border-green-200 hover:border-green-300'
-														: 'text-orange-500 border-orange-200 hover:border-orange-300'
+														? 'text-amber-500 border-amber-200 hover:border-amber-300'
+														: 'text-green-600 border-green-200 hover:border-green-300'
 												}`}
 												title={product.NeedsRestock ? 'Remove restock flag' : 'Mark as needs restock'}
 											>

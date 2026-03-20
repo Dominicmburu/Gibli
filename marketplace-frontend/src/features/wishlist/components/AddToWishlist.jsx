@@ -2,21 +2,19 @@ import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import api from '../../../api/axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../utils/useAuth';
 
 const AddToWishList = ({ ProductId }) => {
 	const [isInWishlist, setIsInWishlist] = useState(false);
-	const token = localStorage.getItem('token');
+	const { isLoggedIn } = useAuth();
 
-	// ✅ Check wishlist status when mounted
+	// Check wishlist status when mounted
 	useEffect(() => {
-		if (!token) return;
+		if (!isLoggedIn) return;
 
 		const checkWishlistStatus = async () => {
 			try {
-				const res = await api.get('/wishlist/items', {
-					headers: { Authorization: `Bearer ${token}` },
-				});
-
+				const res = await api.get('/wishlist/items');
 				const found = res.data.some((item) => item.ProductId === ProductId);
 				setIsInWishlist(found);
 			} catch (err) {
@@ -25,28 +23,22 @@ const AddToWishList = ({ ProductId }) => {
 		};
 
 		checkWishlistStatus();
-	}, [ProductId, token]);
+	}, [ProductId, isLoggedIn]);
 
-	// ✅ Toggle wishlist status
+	// Toggle wishlist status
 	const handleToggle = async () => {
-		if (!token) {
+		if (!isLoggedIn) {
 			toast.error('Please log in to use wishlist');
 			return;
 		}
 
 		try {
 			if (isInWishlist) {
-				await api.delete(`/wishlist/quick-remove/${ProductId}`, {
-					headers: { Authorization: `Bearer ${token}` },
-				});
+				await api.delete(`/wishlist/quick-remove/${ProductId}`);
 				setIsInWishlist(false);
 				toast.success('Removed from wishlist');
 			} else {
-				await api.post(
-					'/wishlist/add-to-wishlist',
-					{ ProductId },
-					{ headers: { Authorization: `Bearer ${token}` } }
-				);
+				await api.post('/wishlist/add-to-wishlist', { ProductId });
 				setIsInWishlist(true);
 				toast.success('Added to wishlist');
 			}

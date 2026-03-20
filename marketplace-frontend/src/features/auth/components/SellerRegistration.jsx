@@ -1,35 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../../../api/axios';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../../../components/NavBar';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../utils/useAuth';
+import { Globe } from 'lucide-react';
+import { EU_UK_COUNTRIES } from '../../../utils/euCountries';
 
 const SellerRegistration = () => {
 	const [businessNumber, setBusinessNumber] = useState('');
 	const [businessName, setBusinessName] = useState('');
 	const [country, setCountry] = useState('');
 	const [error, setError] = useState('');
-	const [success, setSuccess] = useState('');
 	const [loading, setLoading] = useState(false);
 
 	const navigate = useNavigate();
+	const { userInfo, loading: authLoading } = useAuth();
 
-	const getStoredToken = () =>
-		localStorage.getItem('token') ||
-		localStorage.getItem('accessToken') ||
-		localStorage.getItem('authToken') ||
-		null;
-
-	const clearStoredToken = () => {
-		localStorage.removeItem('token');
-		localStorage.removeItem('accessToken');
-		localStorage.removeItem('authToken');
-	};
+	// If user is already a registered seller, redirect them to plan selection
+	useEffect(() => {
+		if (!authLoading && userInfo?.role === 'Seller') {
+			navigate('/onboarding/seller-plans', { replace: true });
+		}
+	}, [authLoading, userInfo, navigate]);
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError('');
-		setSuccess('');
 
 		if (!businessNumber || !businessName || !country) {
 			setError('All fields are required.');
@@ -37,67 +34,54 @@ const SellerRegistration = () => {
 			return;
 		}
 
-		const token = getStoredToken();
-		if (!token) {
-			setError('You must be logged in to register as a seller. Redirecting to login...');
-			toast.error('You must be logged in to register as a seller. Redirecting to login...');
-			navigate('/login');
-			return;
-		}
-
 		try {
 			setLoading(true);
 
-			const response = await api.post(
-				'/users/register-seller',
-				{
-					BusinessNumber: businessNumber,
-					BusinessName: businessName,
-					Country: country,
-				},
-				{
-					headers: { Authorization: `Bearer ${token}` },
-				}
-			);
+			const response = await api.post('/users/register-seller', {
+				BusinessNumber: businessNumber,
+				BusinessName: businessName,
+				Country: country,
+			});
 
-			// Step 1: Show success message
-			setSuccess(response.data?.message || 'Seller registration successful!');
 			toast.success(response.data?.message || 'Seller registration successful!');
 
-			// Step 2: Clear stale token
-			clearStoredToken();
+			// Cookie is updated server-side with Seller role — notify useAuth
+			window.dispatchEvent(new Event('auth-changed'));
 
-			// Step 3: Communicate re-login
-			setTimeout(() => {
-				toast.success('Registration successful! Please log in again to access your seller account.');
-
-				// Step 4: Redirect to login page
-				navigate('/login');
-			}, 1500);
-			toast.success('Registration successful! Please log in again to access your seller account.');
-
-			// Reset form
-			setBusinessNumber('');
-			setBusinessName('');
-			setCountry('');
+			// Details saved — now proceed to plan selection (payment is the last step)
+			navigate('/onboarding/seller-plans');
 		} catch (err) {
 			console.error('Seller registration error:', err);
-			setError(err.response?.data?.message || 'Seller registration failed. Please try again.');
-			toast.error(err.response?.data?.message || 'Seller registration failed. Please try again.');
+			const msg = err.response?.data?.message || 'Seller registration failed. Please try again.';
+			setError(msg);
+			toast.error(msg);
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	// Don't render the form while checking auth (avoids flash before redirect)
+	if (authLoading || userInfo?.role === 'Seller') return null;
 
 	return (
 		<>
 			<NavBar />
 			<div className='bg-gray-50 flex items-center justify-center min-h-screen px-4'>
 				<div className='bg-white p-8 rounded-2xl shadow-xl w-full max-w-md'>
-					<h4 className='text-2xl font-bold mb-6 text-center text-gray-800'>Become a Seller</h4>
+					<h4 className='text-2xl font-bold mb-4 text-center text-gray-800'>Become a Seller</h4>
 
-					{error && <p className='text-red-600 mb-3'>{error}</p>}
-					{success && <p className='text-primary-500 mb-3'>{success}</p>}
+					{/* European businesses only notice */}
+					<div className='bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3'>
+						<Globe size={18} className='text-blue-600 flex-shrink-0 mt-0.5' />
+						<div>
+							<p className='text-sm font-semibold text-blue-900'>European Businesses Only</p>
+							<p className='text-sm text-blue-700 mt-0.5'>
+								GibLi is currently available exclusively for businesses registered in Europe. A valid VAT number is required to sell on our platform.
+							</p>
+						</div>
+					</div>
+
+					{error && <p className='text-red-600 mb-3 text-sm'>{error}</p>}
 
 					<form className='space-y-4' onSubmit={handleSubmit} noValidate>
 						<div>
@@ -134,23 +118,26 @@ const SellerRegistration = () => {
 							<label className='block text-sm font-medium text-gray-700' htmlFor='country'>
 								Country
 							</label>
-							<input
+							<select
 								id='country'
-								type='text'
-								placeholder='Country Business/Store is Located In'
 								value={country}
 								onChange={(e) => setCountry(e.target.value)}
 								required
-								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
-							/>
+								className='mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white'
+							>
+								<option value=''>Select country...</option>
+								{EU_UK_COUNTRIES.map((c) => (
+									<option key={c} value={c}>{c}</option>
+								))}
+							</select>
 						</div>
 
 						<button
 							type='submit'
 							disabled={loading}
-							className='w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl shadow-md'
+							className='w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl shadow-md disabled:opacity-60'
 						>
-							{loading ? 'Registering Seller...' : 'Register Seller Account'}
+							{loading ? 'Saving Details...' : 'Continue to Plan Selection'}
 						</button>
 					</form>
 				</div>

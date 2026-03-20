@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import {
 	Package, Clock, Truck, CheckCircle, XCircle, ArrowLeft,
 	MapPin, User, Phone, CreditCard, Calendar, Loader2, Mail,
-	ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock,
+	ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock, AlertTriangle,
 } from 'lucide-react';
 
 const statusConfig = {
@@ -39,6 +39,8 @@ const SellerOrderDetail = () => {
 	const [order, setOrder] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [updatingStatus, setUpdatingStatus] = useState(false);
+	const [rejectionModal, setRejectionModal] = useState({ open: false, reason: '' });
+	const [trackingModal, setTrackingModal] = useState({ open: false, trackingNumber: '', trackingUrl: '' });
 
 	useEffect(() => {
 		const fetchOrder = async () => {
@@ -60,11 +62,20 @@ const SellerOrderDetail = () => {
 		fetchOrder();
 	}, [orderId, navigate]);
 
-	const handleUpdateStatus = async (newStatus) => {
+	const handleUpdateStatus = async (newStatus, reason = null, trackingNumber = null, trackingUrl = null) => {
 		setUpdatingStatus(true);
 		try {
-			await api.patch(`/orders/${orderId}/status`, { status: newStatus });
-			setOrder((prev) => ({ ...prev, DeliveryStatus: newStatus, UpdatedAt: new Date().toISOString() }));
+			await api.patch(`/orders/${orderId}/status`, {
+				status: newStatus,
+				...(reason && { reason }),
+				...(trackingNumber && { trackingNumber, trackingUrl: trackingUrl || null }),
+			});
+			setOrder((prev) => ({
+				...prev,
+				DeliveryStatus: newStatus,
+				UpdatedAt: new Date().toISOString(),
+				...(trackingNumber && { TrackingNumber: trackingNumber, TrackingUrl: trackingUrl || null }),
+			}));
 			const labels = {
 				Confirmed: 'accepted',
 				Rejected: 'rejected',
@@ -79,6 +90,22 @@ const SellerOrderDetail = () => {
 		} finally {
 			setUpdatingStatus(false);
 		}
+	};
+
+	const openRejectionModal = () => setRejectionModal({ open: true, reason: '' });
+	const closeRejectionModal = () => { if (!updatingStatus) setRejectionModal({ open: false, reason: '' }); };
+	const confirmRejection = async () => {
+		if (!rejectionModal.reason.trim()) { toast.error('Please provide a reason for rejection.'); return; }
+		await handleUpdateStatus('Rejected', rejectionModal.reason.trim());
+		setRejectionModal({ open: false, reason: '' });
+	};
+
+	const openTrackingModal = () => setTrackingModal({ open: true, trackingNumber: '', trackingUrl: '' });
+	const closeTrackingModal = () => { if (!updatingStatus) setTrackingModal({ open: false, trackingNumber: '', trackingUrl: '' }); };
+	const confirmShipping = async () => {
+		if (!trackingModal.trackingNumber.trim()) { toast.error('Please enter a tracking number.'); return; }
+		await handleUpdateStatus('Shipped', null, trackingModal.trackingNumber.trim(), trackingModal.trackingUrl.trim() || null);
+		setTrackingModal({ open: false, trackingNumber: '', trackingUrl: '' });
 	};
 
 	if (loading) {
@@ -133,7 +160,7 @@ const SellerOrderDetail = () => {
 							<ThumbsUp size={16} /> Accept Order
 						</button>
 						<button
-							onClick={() => handleUpdateStatus('Rejected')}
+							onClick={openRejectionModal}
 							disabled={updatingStatus}
 							className='flex-1 flex items-center justify-center gap-2 text-sm font-medium text-red-600 border border-red-200 hover:bg-red-50 py-2.5 rounded-lg transition-colors disabled:opacity-50'
 						>
@@ -144,7 +171,7 @@ const SellerOrderDetail = () => {
 
 				{order.DeliveryStatus === 'Confirmed' && (
 					<button
-						onClick={() => handleUpdateStatus('Shipped')}
+						onClick={openTrackingModal}
 						disabled={updatingStatus}
 						className='w-full flex items-center justify-center gap-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 py-2.5 rounded-lg transition-colors disabled:opacity-50'
 					>
@@ -284,7 +311,44 @@ const SellerOrderDetail = () => {
 						{/* Status Actions */}
 						{renderActions()}
 
-						{/* ROW 2: Buyer Info */}
+						{/* Tracking Info — shown when tracking number is available */}
+					{order.TrackingNumber && (
+						<div className='bg-blue-50 rounded-2xl border border-blue-200 p-5 sm:p-6 mb-4'>
+							<div className='flex items-center gap-2 mb-3'>
+								<Truck size={18} className='text-blue-600' />
+								<h3 className='font-semibold text-gray-900'>Tracking Information</h3>
+							</div>
+							<div className='space-y-1.5'>
+								<p className='text-sm text-gray-600'>
+									Tracking Number:{' '}
+									<span className='font-semibold text-gray-900 font-mono'>{order.TrackingNumber}</span>
+								</p>
+								{order.TrackingUrl && (
+									<a
+										href={order.TrackingUrl}
+										target='_blank'
+										rel='noopener noreferrer'
+										className='text-sm text-blue-600 hover:text-blue-700 font-medium underline'
+									>
+										Track package &rarr;
+									</a>
+								)}
+							</div>
+						</div>
+					)}
+
+					{/* Rejection Reason — shown when order was rejected */}
+					{order.DeliveryStatus === 'Rejected' && order.RejectionReason && (
+						<div className='bg-red-50 rounded-2xl border border-red-200 p-5 sm:p-6 mb-4'>
+							<div className='flex items-center gap-2 mb-2'>
+								<XCircle size={18} className='text-red-500' />
+								<h3 className='font-semibold text-red-800'>Rejection Reason</h3>
+							</div>
+							<p className='text-sm text-red-700'>{order.RejectionReason}</p>
+						</div>
+					)}
+
+					{/* ROW 2: Buyer Info */}
 						<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-4'>
 							<div className='flex items-center gap-2 mb-3'>
 								<User size={18} className='text-primary-500' />
@@ -401,6 +465,109 @@ const SellerOrderDetail = () => {
 					</div>
 				</div>
 			</div>
+			{/* Rejection Modal */}
+			{rejectionModal.open && (
+				<div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+					<div className='absolute inset-0 bg-black/50 backdrop-blur-sm' onClick={closeRejectionModal} />
+					<div className='relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4'>
+						<div className='flex items-center gap-3'>
+							<div className='w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0'>
+								<AlertTriangle size={20} className='text-red-600' />
+							</div>
+							<div>
+								<h3 className='font-bold text-gray-900'>Reject Order</h3>
+								<p className='text-sm text-gray-500'>Please provide a reason for the buyer</p>
+							</div>
+						</div>
+						<textarea
+							value={rejectionModal.reason}
+							onChange={(e) => setRejectionModal((prev) => ({ ...prev, reason: e.target.value }))}
+							placeholder='e.g. Item is out of stock, unable to fulfil this order...'
+							rows={3}
+							disabled={updatingStatus}
+							className='w-full border border-gray-300 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50'
+						/>
+						<div className='flex gap-3'>
+							<button
+								onClick={closeRejectionModal}
+								disabled={updatingStatus}
+								className='flex-1 border border-gray-300 text-gray-700 font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50'
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmRejection}
+								disabled={updatingStatus || !rejectionModal.reason.trim()}
+								className='flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
+							>
+								{updatingStatus ? <><Loader2 size={16} className='animate-spin' /> Rejecting...</> : 'Confirm Rejection'}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Tracking Modal */}
+			{trackingModal.open && (
+				<div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+					<div className='absolute inset-0 bg-black/50 backdrop-blur-sm' onClick={closeTrackingModal} />
+					<div className='relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4'>
+						<div className='flex items-center gap-3'>
+							<div className='w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0'>
+								<Truck size={20} className='text-blue-600' />
+							</div>
+							<div>
+								<h3 className='font-bold text-gray-900'>Add Tracking Information</h3>
+								<p className='text-sm text-gray-500'>Required before marking as shipped</p>
+							</div>
+						</div>
+						<div className='space-y-3'>
+							<div>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>
+									Tracking Number <span className='text-red-500'>*</span>
+								</label>
+								<input
+									type='text'
+									value={trackingModal.trackingNumber}
+									onChange={(e) => setTrackingModal((prev) => ({ ...prev, trackingNumber: e.target.value }))}
+									placeholder='e.g. 1Z999AA10123456784'
+									disabled={updatingStatus}
+									className='w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50'
+								/>
+							</div>
+							<div>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>
+									Tracking URL <span className='text-gray-400 font-normal'>(optional)</span>
+								</label>
+								<input
+									type='url'
+									value={trackingModal.trackingUrl}
+									onChange={(e) => setTrackingModal((prev) => ({ ...prev, trackingUrl: e.target.value }))}
+									placeholder='https://www.ups.com/track?tracknum=...'
+									disabled={updatingStatus}
+									className='w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50'
+								/>
+							</div>
+						</div>
+						<div className='flex gap-3'>
+							<button
+								onClick={closeTrackingModal}
+								disabled={updatingStatus}
+								className='flex-1 border border-gray-300 text-gray-700 font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50'
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmShipping}
+								disabled={updatingStatus || !trackingModal.trackingNumber.trim()}
+								className='flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
+							>
+								{updatingStatus ? <><Loader2 size={16} className='animate-spin' /> Shipping...</> : <><Send size={16} /> Confirm & Ship</>}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</>
 	);
 };

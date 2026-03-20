@@ -118,18 +118,17 @@ const SubscriptionSuccess = () => {
 											One more step!
 										</p>
 										<p className='text-sm text-blue-700'>
-											Your plan is ready. Now create your seller account to start
-											listing products. Your subscription will be applied automatically.
+											Your plan is active. Please register your business details to complete your seller account setup.
 										</p>
 									</div>
 									<button
 										onClick={() => navigate('/seller/register')}
 										className='w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 rounded-xl transition'
 									>
-										Create Your Seller Account
+										Register Your Seller Account
 									</button>
 									<p className='text-xs text-gray-400 mt-3'>
-										You can also complete this later — a reminder will appear in the top bar when you log in.
+										A reminder will appear in the top bar when you log in.
 									</p>
 								</>
 							) : (

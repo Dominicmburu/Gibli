@@ -13,8 +13,34 @@ cartRouter.post('/additem', authenticateToken, async (req, res) => {
 		const UserId = req.user.id;
 		const { ProductId } = req.body;
 		const CartItemId = uuidv4();
-		//============NEED TO CROSSS CHECK WITH THE STOCK AMOUNT AND IF PRODUCT IS SOLDOUT, DISABLE THE ADD TO CART BTN=======
-		//======ALSO IN CHECKOUT I NEED TO CHECK RIGHT BEFORE THEY CHECKOUT IF WHAT THEY HAD IN THEIR CART IS STILL IN STOCK=====
+
+		// Check current product stock and how many the user already has in their cart
+		const pool = await db.pool;
+		const stockCheck = await pool.request()
+			.input('ProductId', ProductId)
+			.input('UserId', UserId)
+			.query(`
+				SELECT p.InStock, p.ProductName, ISNULL(ci.Quantity, 0) AS CartQty
+				FROM Products p
+				LEFT JOIN CartItems ci ON p.ProductId = ci.ProductId AND ci.UserId = @UserId
+				WHERE p.ProductId = @ProductId
+			`);
+
+		const productInfo = stockCheck.recordset?.[0];
+		if (!productInfo) {
+			return res.status(404).json({ message: 'Product not found.' });
+		}
+		if (productInfo.InStock <= 0) {
+			return res.status(400).json({ message: `"${productInfo.ProductName}" is out of stock.`, code: 'OUT_OF_STOCK' });
+		}
+		if (productInfo.CartQty >= productInfo.InStock) {
+			return res.status(400).json({
+				message: `You already have the maximum available quantity (${productInfo.InStock}) of "${productInfo.ProductName}" in your cart.`,
+				code: 'INSUFFICIENT_STOCK',
+				available: productInfo.InStock,
+			});
+		}
+
 		await db.executeProcedure('AddToCart', {
 			CartItemId,
 			UserId,
@@ -77,6 +103,26 @@ cartRouter.put('/update/:id', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.params;
 		const { Quantity } = req.body;
+
+		// Validate the new quantity does not exceed available stock
+		const pool = await db.pool;
+		const stockCheck = await pool.request()
+			.input('CartItemId', id)
+			.query(`
+				SELECT p.InStock, p.ProductName
+				FROM CartItems ci
+				INNER JOIN Products p ON ci.ProductId = p.ProductId
+				WHERE ci.CartItemId = @CartItemId
+			`);
+
+		const productInfo = stockCheck.recordset?.[0];
+		if (productInfo && Quantity > productInfo.InStock) {
+			return res.status(400).json({
+				message: `Only ${productInfo.InStock} unit${productInfo.InStock !== 1 ? 's' : ''} of "${productInfo.ProductName}" are available.`,
+				code: 'INSUFFICIENT_STOCK',
+				available: productInfo.InStock,
+			});
+		}
 
 		await db.executeProcedure('UpdateCartItem', {
 			CartItemId: id,

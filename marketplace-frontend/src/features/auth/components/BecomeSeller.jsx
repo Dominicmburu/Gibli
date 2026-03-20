@@ -60,29 +60,34 @@ const BecomeSeller = () => {
 	const navigate = useNavigate();
 	const { isLoggedIn, tokenExpired } = useAuth();
 
-	const [pendingSetup, setPendingSetup] = useState(null); // { planName } when paid but not registered
-	const [checking, setChecking] = useState(true); // loading state for the check
+	const [pendingSetup, setPendingSetup] = useState(null); // true when registered but not yet paid
+	const [checking, setChecking] = useState(true);
 
 	useEffect(() => {
 		if (isLoggedIn && !tokenExpired) {
 			api.get('/subscriptions/pending-seller-setup')
 				.then(res => {
-					if (res.data?.pendingSetup) {
-						setPendingSetup({ planName: res.data.subscription?.PlanName });
-					}
+					setPendingSetup(res.data?.pendingSetup === true ? true : false);
 				})
-				.catch(() => {})
+				.catch(() => setPendingSetup(false))
 				.finally(() => setChecking(false));
 		} else {
 			setChecking(false);
+			setPendingSetup(false);
 		}
 	}, [isLoggedIn, tokenExpired]);
 
 	const handleChoose = (plan) => {
-		if (!plan.isPaid) {
+		if (isLoggedIn && !tokenExpired) {
+			// Logged in but not yet registered as a seller — go to details form first
 			navigate('/seller/register');
 		} else {
-			navigate(`/subscription/${plan.id}`);
+			// Not logged in: show plan info pages so user can browse
+			if (!plan.isPaid) {
+				navigate('/signup');
+			} else {
+				navigate(`/subscription/${plan.id}`);
+			}
 		}
 	};
 
@@ -96,7 +101,7 @@ const BecomeSeller = () => {
 			);
 		}
 
-		// User has paid but not yet registered as a seller
+		// Registered seller but hasn't completed plan payment yet
 		if (pendingSetup) {
 			return (
 				<div className='lg:w-1/2'>
@@ -108,19 +113,18 @@ const BecomeSeller = () => {
 
 						{/* Heading */}
 						<h2 className='text-2xl font-extrabold text-gray-900 mb-2'>
-							Payment confirmed!
+							Details saved!
 						</h2>
 						<p className='text-gray-500 mb-5'>
-							Your <span className='font-semibold text-primary-600'>{pendingSetup.planName}</span> subscription
-							is active. The last step is to create your seller account so you can start listing products.
+							Your seller account has been created. The final step is to choose your subscription plan and complete payment.
 						</p>
 
 						{/* What's ready */}
 						<ul className='space-y-2 mb-7'>
 							{[
-								'Your subscription plan is applied and ready',
-								'Reduced commission rate is already locked in',
-								'You can start listing products immediately after registration',
+								'Your business details are registered',
+								'Your account is ready — just select a plan',
+								'Start listing products as soon as payment is done',
 							].map((item) => (
 								<li key={item} className='flex items-start gap-2 text-sm text-gray-600'>
 									<Check size={15} className='text-green-500 flex-shrink-0 mt-0.5' />
@@ -131,27 +135,27 @@ const BecomeSeller = () => {
 
 						{/* CTA */}
 						<button
-							onClick={() => navigate('/seller/register')}
+							onClick={() => navigate('/onboarding/seller-plans')}
 							className='w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white font-bold py-3.5 rounded-xl transition text-base'
 						>
-							Complete Seller Registration
+							Complete Payment
 							<ArrowRight size={18} />
 						</button>
 
 						<p className='text-xs text-gray-400 text-center mt-4'>
-							Your subscription remains active regardless of when you register.
+							You can also continue on the free plan — no payment required for the default 5% commission rate.
 						</p>
 					</div>
 				</div>
 			);
 		}
 
-		// Default: show plan cards
+		// Default: show plan cards (for browsing / not-yet-registered users)
 		return (
 			<div className='lg:w-1/2 space-y-4'>
 				<h2 className='text-xl font-bold text-gray-900'>Choose Your Plan</h2>
 				<p className='text-sm text-gray-500 mb-4'>
-					You can always change your plan later from your seller dashboard.
+					You will select your plan after entering your business details. Preview the options below.
 				</p>
 
 				{PLANS.map((plan) => (
@@ -195,7 +199,7 @@ const BecomeSeller = () => {
 								onClick={() => handleChoose(plan)}
 								className='flex-shrink-0 mt-1 bg-primary-50 hover:bg-primary-100 text-primary-600 font-semibold text-sm px-4 py-2 rounded-xl transition'
 							>
-								Learn More
+								Get Started
 							</button>
 						</div>
 					</div>
@@ -213,7 +217,7 @@ const BecomeSeller = () => {
 					{/* Left Text Content */}
 					<div className='lg:w-1/2 space-y-6 lg:sticky lg:top-20'>
 						<h1 className='text-4xl lg:text-5xl font-bold text-gray-900'>
-							How to start selling on <span className='text-primary-500'>OurPlatform</span>:
+							How to start selling on <span className='text-primary-500'>GibLi</span>:
 							<br />
 							Become a Seller
 						</h1>
@@ -222,22 +226,22 @@ const BecomeSeller = () => {
 							over Europe today. Take the first step and register your seller account with us.
 						</p>
 
-						{/* Step guide */}
+						{/* Step guide — Step 1: details, Step 2: plan, Step 3: payment */}
 						<div className='space-y-3'>
 							<div className='flex items-start gap-3'>
 								<span className={`w-7 h-7 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0 mt-0.5 ${pendingSetup ? 'bg-green-500' : 'bg-primary-500'}`}>
 									{pendingSetup ? <Check size={14} /> : '1'}
 								</span>
 								<p className='text-gray-700'>
-									<span className='font-semibold'>Choose your plan</span> — pick the subscription that fits your business from the options on the right.
+									<span className='font-semibold'>Enter your business details</span> — register your VAT number, business name, and country.
 								</p>
 							</div>
 							<div className='flex items-start gap-3'>
-								<span className={`w-7 h-7 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0 mt-0.5 ${pendingSetup ? 'bg-green-500' : 'bg-primary-500'}`}>
-									{pendingSetup ? <Check size={14} /> : '2'}
+								<span className={`w-7 h-7 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0 mt-0.5 ${pendingSetup ? 'bg-primary-500 ring-2 ring-primary-300' : 'bg-primary-500'}`}>
+									{pendingSetup ? '2' : '2'}
 								</span>
-								<p className='text-gray-700'>
-									<span className='font-semibold'>Complete payment</span> — paid plans redirect you to Stripe to complete checkout securely.
+								<p className={`text-gray-700 ${pendingSetup ? 'font-semibold text-primary-700' : ''}`}>
+									<span className='font-semibold'>Choose your subscription plan</span> — pick the commission structure that fits your business.
 								</p>
 							</div>
 							<div className='flex items-start gap-3'>
@@ -245,7 +249,7 @@ const BecomeSeller = () => {
 									3
 								</span>
 								<p className={`text-gray-700 ${pendingSetup ? 'font-semibold text-primary-700' : ''}`}>
-									<span className='font-semibold'>Create your seller account</span> — register your business details and you are ready to start selling.
+									<span className='font-semibold'>Complete payment</span> — paid plans redirect you to Stripe to complete checkout securely. This is the final step.
 								</p>
 							</div>
 						</div>
@@ -259,11 +263,11 @@ const BecomeSeller = () => {
 				<section className='bg-white py-12 px-6 lg:px-12'>
 					<div className='grid md:grid-cols-2 gap-6 max-w-5xl mx-auto'>
 						<div className='p-6 border rounded-xl hover:shadow-lg transition cursor-pointer'>
-							<h3 className='font-semibold text-gray-800'>📘 Read the beginner's guide to selling</h3>
+							<h3 className='font-semibold text-gray-800'>Read the beginner's guide to selling</h3>
 						</div>
 						<div className='p-6 border rounded-xl hover:shadow-lg transition cursor-pointer'>
 							<h3 className='font-semibold text-gray-800'>
-								📢 Things to know before you create a seller account
+								Things to know before you create a seller account
 							</h3>
 						</div>
 					</div>

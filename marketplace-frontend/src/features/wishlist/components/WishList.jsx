@@ -7,17 +7,19 @@ import NavBar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 import AddToCart from '../../cart/components/AddToCart';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../utils/useAuth';
 
 const WishList = () => {
 	const navigate = useNavigate();
+	const { isLoggedIn, loading: authLoading } = useAuth();
 	const [wishItems, setWishItems] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 
 	// Fetch wishlist items on mount
 	useEffect(() => {
-		const token = localStorage.getItem('token');
-		if (!token) {
+		if (authLoading) return;
+		if (!isLoggedIn) {
 			navigate('/login');
 			return;
 		}
@@ -34,7 +36,7 @@ const WishList = () => {
 			}
 		};
 		fetchWishItems();
-	}, [navigate]);
+	}, [isLoggedIn, authLoading, navigate]);
 
 	// Remove single item
 	const removeItem = async (itemId) => {

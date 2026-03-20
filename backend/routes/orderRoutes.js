@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uid } from 'uuid';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
 import DbHelper from '../db/dbHelper.js';
+import { sendOrderStatusUpdateEmail } from '../services/emailService.js';
 
 const orderRouter = express.Router();
 const db = new DbHelper();
@@ -56,6 +57,19 @@ orderRouter.post('/received', authenticateToken, async (req, res) => {
 			success: false,
 			message: 'Internal server error while fetching received orders',
 		});
+	}
+});
+
+// GET count of new (Processing) orders for the logged-in seller
+orderRouter.get('/new-count', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const result = await db.executeProcedure('GetUserOrders', { UserId, Role: 'Seller' });
+		const count = (result.recordset || []).filter((o) => o.DeliveryStatus === 'Processing').length;
+		return res.status(200).json({ count });
+	} catch (error) {
+		console.error('Error fetching new order count:', error);
+		return res.status(500).json({ count: 0 });
 	}
 });
 
@@ -123,10 +137,14 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 	try {
 		const SellerId = req.user.id;
 		const { orderId } = req.params;
-		const { status } = req.body;
+		const { status, reason, trackingNumber, trackingUrl } = req.body;
 
 		if (!status) {
 			return res.status(400).json({ success: false, message: 'Status is required.' });
+		}
+
+		if (status === 'Shipped' && !trackingUrl?.trim()) {
+			return res.status(400).json({ success: false, message: 'Tracking link is required when marking an order as shipped.' });
 		}
 
 		const result = await db.executeProcedure('UpdateOrderStatus', {
@@ -140,6 +158,33 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 			return res.status(400).json({ success: false, message: 'Failed to update order status.' });
 		}
 
+		// Save rejection reason if provided
+		if (status === 'Rejected' && reason) {
+			try {
+				const pool = await db.pool;
+				await pool.request()
+					.input('RejectionReason', reason)
+					.input('OrderId', orderId)
+					.query('UPDATE Orders SET RejectionReason = @RejectionReason WHERE OrderId = @OrderId');
+			} catch (dbErr) {
+				console.error('⚠️ Failed to save rejection reason:', dbErr.message);
+			}
+		}
+
+		// Save tracking info if provided
+		if (status === 'Shipped' && trackingNumber) {
+			try {
+				const pool = await db.pool;
+				await pool.request()
+					.input('TrackingNumber', trackingNumber)
+					.input('TrackingUrl', trackingUrl)
+					.input('OrderId', orderId)
+					.query('UPDATE Orders SET TrackingNumber = @TrackingNumber, TrackingUrl = @TrackingUrl WHERE OrderId = @OrderId');
+			} catch (dbErr) {
+				console.error('⚠️ Failed to save tracking info:', dbErr.message);
+			}
+		}
+
 		const messages = {
 			Confirmed: 'Order accepted successfully.',
 			Rejected: 'Order rejected. Stock has been restored.',
@@ -148,11 +193,46 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 			Sold: 'Order marked as sold.',
 		};
 
-		return res.status(200).json({
+		res.status(200).json({
 			success: true,
 			message: messages[status] || 'Order status updated.',
 			data: updated,
 		});
+
+		// Fire-and-forget buyer notification — Sold and Cancelled need no email
+		if (['Confirmed', 'Rejected', 'Shipped', 'Delivered'].includes(status)) {
+			(async () => {
+				try {
+					// GetOrderById joins Users — BuyerEmail and BuyerName are already in the result
+					const orderResult = await db.executeProcedure('GetOrderById', { OrderId: orderId, UserId: SellerId });
+					const orderRow = orderResult.recordset?.[0];
+					if (!orderRow) {
+						console.error(`⚠️ Email skipped: GetOrderById returned nothing for order ${orderId}`);
+						return;
+					}
+
+					const orderItems = JSON.parse(orderRow.OrderItems || '[]');
+					const trackingInfo = (status === 'Shipped' && trackingNumber)
+						? { trackingNumber, trackingUrl: trackingUrl || null }
+						: null;
+
+					await sendOrderStatusUpdateEmail(
+						orderRow.BuyerEmail,
+						orderRow.BuyerName,
+						orderId,
+						status,
+						orderItems,
+						orderRow.TotalAmount,
+						reason || null,
+						trackingInfo
+					);
+				} catch (emailErr) {
+					console.error('⚠️ Failed to send order status email:', emailErr.message);
+				}
+			})();
+		}
+
+		return;
 	} catch (error) {
 		console.error('Error updating order status:', error);
 		const message = error.message || 'Failed to update order status.';

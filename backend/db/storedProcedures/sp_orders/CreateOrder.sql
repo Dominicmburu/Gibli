@@ -47,12 +47,7 @@ BEGIN
                     JSON_VALUE(item.value, '$.Price')
                 ) AS DECIMAL(10,2)
             ) AS UnitPrice,
-            CAST(
-                COALESCE(
-                    JSON_VALUE(item.value, '$.ShippingPrice'),
-                    0
-                ) AS DECIMAL(10,2)
-            ) AS ShippingPrice,
+            ISNULL(CAST(JSON_VALUE(item.value, '$.ShippingPrice') AS DECIMAL(10,2)), 0) AS ShippingPrice,
             JSON_VALUE(item.value, '$.ProductName') AS ProductName,
             JSON_VALUE(item.value, '$.Description') AS Description,
             JSON_VALUE(item.value, '$.ProductImageUrl') AS ProductImageUrl,

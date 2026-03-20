@@ -7,21 +7,14 @@ export const CartProvider = ({ children }) => {
 	const [cartCount, setCartCount] = useState(0);
 
 	const fetchCartCount = async () => {
-		
-		// Only fetch if user has a token
-		const token = localStorage.getItem('token');
-		if (!token) {
-			setCartCount(0);
-			return;
-		}
-
 		try {
 			const res = await api.get('/cart/items');
 			if (Array.isArray(res.data)) {
 				setCartCount(res.data.length);
 			}
-		} catch (err) {
-			console.error('Error fetching cart count:', err);
+		} catch {
+			// Not logged in or error — cart stays at 0
+			setCartCount(0);
 		}
 	};
 

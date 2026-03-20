@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Loader2, Lock, Zap } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../utils/useAuth';
 
 // Static plan detail data — mirrors SubscriptionPlans DB rows
 const PLAN_DETAILS = {
@@ -131,6 +132,7 @@ const colorMap = {
 const SubscriptionDetail = () => {
 	const { planId } = useParams();
 	const navigate = useNavigate();
+	const { isLoggedIn, userInfo } = useAuth();
 
 	const [currentSub, setCurrentSub] = useState(undefined); // undefined = loading, null = no sub
 	const [loading, setLoading] = useState(false);
@@ -141,8 +143,7 @@ const SubscriptionDetail = () => {
 	useEffect(() => {
 		const fetchCurrentSub = async () => {
 			try {
-				const token = localStorage.getItem('token');
-				if (!token) { setCurrentSub(null); return; }
+				if (!isLoggedIn) { setCurrentSub(null); return; }
 				const res = await api.get('/subscriptions/my-subscription');
 				setCurrentSub(res.data);
 			} catch {
@@ -150,7 +151,7 @@ const SubscriptionDetail = () => {
 			}
 		};
 		fetchCurrentSub();
-	}, []);
+	}, [isLoggedIn]);
 
 	if (!plan) {
 		return (
@@ -159,7 +160,7 @@ const SubscriptionDetail = () => {
 				<div className='min-h-screen flex items-center justify-center bg-gray-50'>
 					<div className='text-center'>
 						<p className='text-gray-500 mb-4'>Plan not found.</p>
-						<button onClick={() => navigate('/become-seller')} className='text-primary-500 hover:underline'>
+						<button onClick={() => navigate(-1)} className='text-primary-500 hover:underline'>
 							← Back to plans
 						</button>
 					</div>
@@ -174,8 +175,7 @@ const SubscriptionDetail = () => {
 	const isSwitching = hasActivePaidPlan && !isCurrentPlan;
 
 	const handleSubscribe = async () => {
-		const token = localStorage.getItem('token');
-		if (!token) {
+		if (!isLoggedIn) {
 			toast.error('Please log in to subscribe.');
 			navigate('/login');
 			return;
@@ -200,7 +200,7 @@ const SubscriptionDetail = () => {
 				<div className='max-w-3xl mx-auto'>
 					{/* Back button */}
 					<button
-						onClick={() => navigate('/become-seller')}
+						onClick={() => navigate(-1)}
 						className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-8 transition'
 					>
 						<ArrowLeft size={16} /> Back to all plans
@@ -308,20 +308,34 @@ const SubscriptionDetail = () => {
 							</div>
 						) : plan.planCode === 'free' ? (
 							<div className='text-center'>
-								<p className='text-gray-600 text-sm'>
-									The Free plan is your default. No action required — simply{' '}
-									<button
-										onClick={() => navigate('/seller/register')}
-										className='text-primary-500 hover:underline font-medium'
-									>
-										create your seller account
-									</button>{' '}
-									to get started.
-								</p>
+								{userInfo?.role === 'Seller' ? (
+									<>
+										<p className='text-gray-600 text-sm mb-4'>
+											The Free Plan is your current default — no monthly fee, just 5% commission per sale.
+										</p>
+										<button
+											onClick={() => navigate('/seller-dashboard')}
+											className='bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2.5 px-6 rounded-xl transition'
+										>
+											Go to Dashboard
+										</button>
+									</>
+								) : (
+									<p className='text-gray-600 text-sm'>
+										The Free plan is your default. No action required — simply{' '}
+										<button
+											onClick={() => navigate('/seller/register')}
+											className='text-primary-500 hover:underline font-medium'
+										>
+											register your seller account
+										</button>{' '}
+										to get started.
+									</p>
+								)}
 							</div>
 						) : (
 							<div>
-								{!localStorage.getItem('token') && (
+								{!isLoggedIn && (
 									<p className='text-sm text-gray-500 mb-4 text-center'>
 										You need to{' '}
 										<button onClick={() => navigate('/login')} className='text-primary-500 hover:underline'>

@@ -50,7 +50,7 @@ const ALL_PLANS = [
 		planId: 2, planCode: 'standard_yearly',
 		name: 'Standard Annual', price: 100, billing: '€100 / year',
 		commission: '3%', commissionRate: 0.03,
-		description: 'Reduced 3% commission. Auto-renews annually.',
+		description: 'Reduced 3% commission. Renews annually.',
 		color: 'blue',
 	},
 	{

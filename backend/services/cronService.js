@@ -3,6 +3,7 @@ import DbHelper from '../db/dbHelper.js';
 import {
 	sendSubscriptionRenewalReminder,
 	sendSubscriptionExpiredEmail,
+	sendOrderAutoCancelledEmail,
 } from './emailService.js';
 
 const db = new DbHelper();
@@ -68,4 +69,44 @@ export function initCronJobs() {
 	});
 
 	console.log('[CRON] Subscription cron jobs initialised (daily at 08:00).');
+
+	// ──────────────────────────────────────────────────────────────
+	// HOURLY — 24-hour order auto-cancellation
+	// Finds Processing orders older than 24 hours, cancels them,
+	// restores stock, and emails the buyer.
+	// ──────────────────────────────────────────────────────────────
+	cron.schedule('0 * * * *', async () => {
+		console.log('[CRON] Running 24-hour order auto-cancel check...');
+		try {
+			const result = await db.executeProcedure('AutoCancelExpiredOrders', {});
+			const cancelledOrders = result.recordset || [];
+
+			if (cancelledOrders.length === 0) {
+				console.log('[CRON] No expired orders to cancel.');
+				return;
+			}
+
+			console.log(`[CRON] Auto-cancelled ${cancelledOrders.length} expired order(s).`);
+
+			for (const order of cancelledOrders) {
+				try {
+					const orderItems = JSON.parse(order.OrderItems || '[]');
+					await sendOrderAutoCancelledEmail(
+						order.BuyerEmail,
+						order.BuyerName,
+						order.OrderId,
+						orderItems,
+						order.TotalAmount
+					);
+					console.log(`[CRON] Auto-cancel email sent to ${order.BuyerEmail} for order ${order.OrderId}`);
+				} catch (emailErr) {
+					console.error(`[CRON] Failed to send auto-cancel email for order ${order.OrderId}:`, emailErr.message);
+				}
+			}
+		} catch (err) {
+			console.error('[CRON] Error in 24-hour auto-cancel job:', err);
+		}
+	});
+
+	console.log('[CRON] Order auto-cancel cron initialised (hourly).');
 }

@@ -156,6 +156,43 @@ const OrderDetail = () => {
 						)}
 					</div>
 
+					{/* Tracking Info — shown when tracking number is available */}
+					{order.TrackingNumber && (
+						<div className='bg-blue-50 rounded-2xl border border-blue-200 p-5 sm:p-6 mb-4'>
+							<div className='flex items-center gap-2 mb-3'>
+								<Truck size={18} className='text-blue-600' />
+								<h3 className='font-semibold text-gray-900'>Tracking Information</h3>
+							</div>
+							<div className='space-y-1.5'>
+								<p className='text-sm text-gray-600'>
+									Tracking Number:{' '}
+									<span className='font-semibold text-gray-900 font-mono'>{order.TrackingNumber}</span>
+								</p>
+								{order.TrackingUrl && (
+									<a
+										href={order.TrackingUrl}
+										target='_blank'
+										rel='noopener noreferrer'
+										className='text-sm text-blue-600 hover:text-blue-700 font-medium underline'
+									>
+										Track your package &rarr;
+									</a>
+								)}
+							</div>
+						</div>
+					)}
+
+					{/* Rejection Reason — shown when order was rejected */}
+					{order.DeliveryStatus === 'Rejected' && order.RejectionReason && (
+						<div className='bg-red-50 rounded-2xl border border-red-200 p-5 sm:p-6 mb-4'>
+							<div className='flex items-center gap-2 mb-2'>
+								<XCircle size={18} className='text-red-500' />
+								<h3 className='font-semibold text-red-800'>Rejection Reason</h3>
+							</div>
+							<p className='text-sm text-red-700'>{order.RejectionReason}</p>
+						</div>
+					)}
+
 					{/* ROW 2: Shipping Address */}
 					<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-4'>
 						<div className='flex items-center gap-2 mb-4'>

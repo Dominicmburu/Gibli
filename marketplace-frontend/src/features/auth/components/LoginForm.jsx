@@ -2,8 +2,6 @@ import { useState } from 'react';
 import api from '../../../api/axios';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
-import { storageService } from '../../../services/localStorageService';
-//
 
 const LoginForm = () => {
 	const [email, setEmail] = useState('');
@@ -30,7 +28,8 @@ const LoginForm = () => {
 				Email: email,
 				Password: password,
 			});
-			storageService.set('token', response.data.token);
+				// Cookie is set by the server — notify useAuth to re-fetch /users/me
+			window.dispatchEvent(new Event('auth-changed'));
 			setSuccess(response.data.message || 'Login successful!');
 			setEmail('');
 			setPassword('');

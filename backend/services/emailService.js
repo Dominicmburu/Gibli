@@ -454,6 +454,195 @@ export async function sendSubscriptionExpiredEmail(email, businessName, planName
 // ═══════════════════════════════════════════════════════════
 
 /**
+ * Order status update email sent to buyer when seller changes order status.
+ * Not sent for: Sold (internal accounting), Cancelled (buyer-initiated).
+ */
+export async function sendOrderStatusUpdateEmail(buyerEmail, buyerName, orderId, status, orderItems, totalAmount, reason = null, trackingInfo = null) {
+	const statusConfigs = {
+		Confirmed: {
+			subject: '✅ Your Order Has Been Confirmed',
+			headerColor: '#006B1A',
+			headerText: 'Order Confirmed!',
+			message: 'Great news! The seller has confirmed your order and is preparing your items for dispatch.',
+			subMessage: "You'll receive another update once your order has been shipped.",
+		},
+		Rejected: {
+			subject: '❌ Your Order Was Not Accepted',
+			headerColor: '#dc2626',
+			headerText: 'Order Rejected',
+			message: "We're sorry — the seller was unable to fulfil your order. If a payment was taken it will be refunded to your original payment method within a few business days.",
+			subMessage: reason
+				? `Reason from seller: <em>${reason}</em><br/><br/>Feel free to browse our marketplace for alternative products.`
+				: 'Feel free to browse our marketplace for alternative products.',
+		},
+		Shipped: {
+			subject: '📦 Your Order Is On Its Way!',
+			headerColor: '#2563eb',
+			headerText: 'Order Shipped!',
+			message: 'Your order has been dispatched by the seller and is on its way to you.',
+			subMessage: 'Delivery times depend on the shipping method selected at checkout. Keep an eye on your door!',
+		},
+		Delivered: {
+			subject: '🏠 Your Order Has Been Delivered',
+			headerColor: '#059669',
+			headerText: 'Order Delivered',
+			message: 'Your order has been marked as delivered. We hope you love your purchase!',
+			subMessage: 'If anything is not right, please get in touch within the 14-day return window.',
+		},
+	};
+
+	const config = statusConfigs[status];
+	if (!config) return; // Sold, Cancelled — no email
+
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+
+	const itemRows = (orderItems || [])
+		.map(
+			(item) => `
+      <tr>
+        <td style="padding:8px;border:1px solid #ddd;">${item.ProductName}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:center;">x${item.Quantity}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:center;">€${Number(item.UnitPrice ?? item.Price).toFixed(2)}</td>
+      </tr>`
+		)
+		.join('');
+
+	const itemTable =
+		itemRows.length > 0
+			? `<table style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <thead>
+          <tr style="background:#f4f4f4;">
+            <th style="padding:10px;border:1px solid #ddd;text-align:left;">Product</th>
+            <th style="padding:10px;border:1px solid #ddd;text-align:center;">Qty</th>
+            <th style="padding:10px;border:1px solid #ddd;text-align:center;">Price</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>`
+			: '';
+
+	const html = `
+  <div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+    <div style="background:${config.headerColor};padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+      <h1 style="color:white;margin:0;font-size:24px;">${config.headerText}</h1>
+    </div>
+    <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+      <h2 style="color:#1f2937;">Hi ${buyerName || 'Customer'},</h2>
+      <p>${config.message}</p>
+
+      <div style="background:#f3f4f6;padding:15px;border-radius:8px;margin:15px 0;">
+        <p style="margin:0 0 4px 0;font-size:13px;color:#6b7280;">Order Reference: <strong>#${shortId}</strong></p>
+        <p style="margin:0;font-size:13px;color:#6b7280;">Order Total: <strong>€${Number(totalAmount).toFixed(2)}</strong></p>
+      </div>
+
+      ${itemTable}
+
+      ${status === 'Shipped' && trackingInfo ? `
+      <div style="background:#eff6ff;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #2563eb;">
+        <p style="margin:0 0 8px 0;font-weight:bold;color:#1d4ed8;font-size:14px;">Tracking Information</p>
+        <p style="margin:0 0 6px 0;font-size:13px;color:#374151;">
+          Tracking Number: <strong>${trackingInfo.trackingNumber}</strong>
+        </p>
+        ${trackingInfo.trackingUrl ? `<p style="margin:0;font-size:13px;">
+          <a href="${trackingInfo.trackingUrl}" style="color:#2563eb;text-decoration:underline;">Track your package &rarr;</a>
+        </p>` : ''}
+      </div>` : ''}
+
+      <p style="margin-top:20px;color:#555;">${config.subMessage}</p>
+
+      <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+        <strong>Marketplace Support Team</strong><br/>
+        E-commerce made simple for you by us.
+      </p>
+    </div>
+  </div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: config.subject,
+			html,
+		});
+		if (error) console.error(`❌ Error sending order ${status} email:`, error);
+		else console.log(`✅ Order ${status} email sent to ${buyerEmail}`);
+	} catch (err) {
+		console.error(`❌ Error sending order ${status} email:`, err);
+	}
+}
+
+/**
+ * Auto-cancellation email — sent to buyer when a seller fails to respond within 24 hours.
+ */
+export async function sendOrderAutoCancelledEmail(buyerEmail, buyerName, orderId, orderItems, totalAmount) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+
+	const itemRows = (orderItems || [])
+		.map(
+			(item) => `
+      <tr>
+        <td style="padding:8px;border:1px solid #ddd;">${item.ProductName}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:center;">x${item.Quantity}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:center;">€${Number(item.Price).toFixed(2)}</td>
+      </tr>`
+		)
+		.join('');
+
+	const itemTable =
+		itemRows.length > 0
+			? `<table style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <thead>
+          <tr style="background:#f4f4f4;">
+            <th style="padding:10px;border:1px solid #ddd;text-align:left;">Product</th>
+            <th style="padding:10px;border:1px solid #ddd;text-align:center;">Qty</th>
+            <th style="padding:10px;border:1px solid #ddd;text-align:center;">Price</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>`
+			: '';
+
+	const html = `
+  <div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+    <div style="background:#b45309;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+      <h1 style="color:white;margin:0;font-size:24px;">Order Automatically Cancelled</h1>
+    </div>
+    <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+      <h2 style="color:#1f2937;">Hi ${buyerName || 'Customer'},</h2>
+      <p>We're sorry — your order was automatically cancelled because the seller did not confirm or reject it within <strong>24 hours</strong>.</p>
+
+      <div style="background:#fef3c7;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #f59e0b;">
+        <p style="margin:0 0 4px 0;font-size:13px;color:#6b7280;">Order Reference: <strong>#${shortId}</strong></p>
+        <p style="margin:0;font-size:13px;color:#6b7280;">Order Total: <strong>€${Number(totalAmount).toFixed(2)}</strong></p>
+      </div>
+
+      ${itemTable}
+
+      <p style="margin-top:20px;color:#555;">If a payment was taken, it will be refunded to your original payment method within a few business days.</p>
+      <p style="color:#555;">We apologise for any inconvenience. Feel free to browse our marketplace for alternative products.</p>
+
+      <p style="color:#6b7280;font-size:14px;margin-top:30px;">
+        <strong>Marketplace Support Team</strong><br/>
+        E-commerce made simple for you by us.
+      </p>
+    </div>
+  </div>`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: '⚠️ Your Order Has Been Automatically Cancelled',
+			html,
+		});
+		if (error) console.error('❌ Error sending auto-cancel email:', error);
+		else console.log(`✅ Auto-cancel email sent to ${buyerEmail}`);
+	} catch (err) {
+		console.error('❌ Error sending auto-cancel email:', err);
+	}
+}
+
+/**
  * 2️⃣ Seller New Order Notification Email
  */
 export async function sendSellerOrderNotificationEmail(
