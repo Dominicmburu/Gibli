@@ -24,7 +24,7 @@ async function testEmail() {
 				html: `
 				
 					<p style="font-size: 18px; line-height: 1.6; color: #333;">
-						1KE3ADFBMGC
+						ZKEAGD8PMHN
 					</p>
 					
 					<p style="font-size: 16px; line-height: 1.6; color: #555;">

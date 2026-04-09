@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import {
 	Clock, Truck, CheckCircle, XCircle, ShoppingBag,
 	Loader2, ChevronRight, ThumbsUp, ThumbsDown, Send, PackageCheck, BadgeCheck, Lock, Info,
+	RotateCcw, Search, SplitSquareHorizontal,
 } from 'lucide-react';
 
 function daysSince(dateStr) {
@@ -16,7 +17,6 @@ function daysSince(dateStr) {
 
 function hoursUntilExpiry(dateStr) {
 	if (!dateStr) return 24;
-	// Clamp elapsed to >= 0 to guard against timezone offset between DB server and browser
 	const elapsed = Math.max(0, (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60));
 	return Math.max(0, 24 - elapsed);
 }
@@ -31,23 +31,47 @@ function formatCountdown(hours) {
 }
 
 const statusConfig = {
-	Processing: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Processing' },
-	Confirmed: { icon: ThumbsUp, color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed' },
-	Shipped: { icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Shipped' },
-	Delivered: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Delivered' },
-	Sold: { icon: BadgeCheck, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', label: 'Sold' },
-	Cancelled: { icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', label: 'Cancelled' },
-	Rejected: { icon: ThumbsDown, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Rejected' },
+	Processing:      { icon: Clock,        color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'Processing'       },
+	Confirmed:       { icon: ThumbsUp,     color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed'        },
+	Shipped:         { icon: Truck,        color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'Shipped'          },
+	Delivered:       { icon: CheckCircle,  color: 'text-green-600',   bg: 'bg-green-50',   border: 'border-green-200',   label: 'Delivered'        },
+	Sold:            { icon: BadgeCheck,   color: 'text-purple-600',  bg: 'bg-purple-50',  border: 'border-purple-200',  label: 'Sold'             },
+	ReturnRequested: { icon: RotateCcw,    color: 'text-amber-800',   bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'Return requested' },
+	ReturnApproved:  { icon: CheckCircle,  color: 'text-green-800',   bg: 'bg-green-50',   border: 'border-green-200',   label: 'Return approved'  },
+	Cancelled:       { icon: XCircle,      color: 'text-gray-500',    bg: 'bg-gray-50',    border: 'border-gray-200',    label: 'Cancelled'        },
+	Rejected:        { icon: ThumbsDown,   color: 'text-red-600',     bg: 'bg-red-50',     border: 'border-red-200',     label: 'Rejected'         },
+	Refunded:        { icon: RotateCcw,         color: 'text-blue-600',  bg: 'bg-blue-50',   border: 'border-blue-200',   label: 'Refunded'          },
+	PartialRefunded: { icon: SplitSquareHorizontal, color: 'text-sky-700',   bg: 'bg-sky-50',    border: 'border-sky-200',    label: 'Partial refund'    },
 };
 
+// Tab definitions — grouped for clarity
+const TABS = [
+	{ value: 'all',       label: 'All'       },
+	{ value: 'Processing',label: 'Processing' },
+	{ value: 'active',    label: 'Active'    },   // Confirmed + Shipped
+	{ value: 'Delivered', label: 'Delivered' },
+	{ value: 'returns',   label: 'Returns'   },   // ReturnRequested + ReturnApproved
+	{ value: 'Sold',      label: 'Completed' },   // Sold (refund window elapsed)
+	{ value: 'closed',    label: 'Closed'    },   // Rejected + Cancelled + Refunded
+];
+
+const SORT_OPTIONS = [
+	{ value: 'newest',  label: 'Newest first'    },
+	{ value: 'oldest',  label: 'Oldest first'    },
+	{ value: 'highest', label: 'Highest value'   },
+	{ value: 'lowest',  label: 'Lowest value'    },
+];
+
 const SellerOrders = () => {
-	const [orders, setOrders] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const [orders, setOrders]               = useState([]);
+	const [loading, setLoading]             = useState(true);
+	const [error, setError]                 = useState(null);
 	const [updatingOrder, setUpdatingOrder] = useState(null);
-	const [filterStatus, setFilterStatus] = useState('all');
-	const [rejectionModal, setRejectionModal] = useState({ open: false, orderId: null, reason: '' });
-	const [trackingModal, setTrackingModal] = useState({ open: false, orderId: null, trackingNumber: '', trackingUrl: '' });
+	const [activeTab, setActiveTab]         = useState('all');
+	const [search, setSearch]               = useState('');
+	const [sortBy, setSortBy]               = useState('newest');
+	const [rejectionModal, setRejectionModal]   = useState({ open: false, orderId: null, reason: '' });
+	const [trackingModal, setTrackingModal]     = useState({ open: false, orderId: null, trackingNumber: '', trackingUrl: '' });
 	const navigate = useNavigate();
 
 	useEffect(() => {
@@ -91,9 +115,53 @@ const SellerOrders = () => {
 		}
 	};
 
-	const getStatusInfo = (status) => statusConfig[status] || statusConfig.Processing;
+	const getDisplayStatus = (order) => {
+		if (order.RefundStatus === 'Refunded') return 'Refunded';
+		if (order.RefundStatus === 'PartialRefunded') return 'PartialRefunded';
+		if (order.RefundStatus === 'ReturnRequested') return 'ReturnRequested';
+		if (order.RefundStatus === 'ReturnApproved') return 'ReturnApproved';
+		return order.DeliveryStatus;
+	};
 
-	const filteredOrders = orders.filter((o) => filterStatus === 'all' || o.DeliveryStatus === filterStatus);
+	const getStatusInfo = (order) => statusConfig[getDisplayStatus(order)] || statusConfig.Processing;
+
+	// Tab matching
+	const matchesTab = (o, tab) => {
+		if (tab === 'all') return true;
+		if (tab === 'active') return ['Confirmed', 'Shipped'].includes(o.DeliveryStatus);
+		if (tab === 'returns') return ['ReturnRequested', 'ReturnApproved', 'Refunded', 'ReturnRejected', 'PartialRefunded'].includes(o.RefundStatus);
+		if (tab === 'closed') return ['Rejected', 'Cancelled'].includes(o.DeliveryStatus) && !o.RefundStatus;
+		if (tab === 'Sold') return o.DeliveryStatus === 'Sold';
+		return o.DeliveryStatus === tab;
+	};
+
+	const tabCount = (tab) => orders.filter((o) => matchesTab(o, tab)).length;
+
+	// Memoised derived list
+	const displayedOrders = useMemo(() => {
+		let list = orders.filter((o) => matchesTab(o, activeTab));
+
+		// Search: buyer name or order ID prefix (case-insensitive)
+		const q = search.trim().toLowerCase();
+		if (q) {
+			list = list.filter(
+				(o) =>
+					(o.BuyerName || '').toLowerCase().includes(q) ||
+					o.OrderId.toLowerCase().startsWith(q)
+			);
+		}
+
+		// Sort
+		list = [...list].sort((a, b) => {
+			if (sortBy === 'oldest')  return new Date(a.OrderDate) - new Date(b.OrderDate);
+			if (sortBy === 'highest') return Number(b.TotalAmount) - Number(a.TotalAmount);
+			if (sortBy === 'lowest')  return Number(a.TotalAmount) - Number(b.TotalAmount);
+			// newest (default)
+			return new Date(b.OrderDate) - new Date(a.OrderDate);
+		});
+
+		return list;
+	}, [orders, activeTab, search, sortBy]);
 
 	const getActions = (order) => {
 		const isUpdating = updatingOrder === order.OrderId;
@@ -104,8 +172,7 @@ const SellerOrders = () => {
 				const isUrgent = hoursLeft < 6;
 				return (
 					<div className='mt-3 space-y-2'>
-						{/* 48hr expiry indicator */}
-						<div className={`text-xs px-2.5 py-1.5 rounded-lg space-y-0.5 ${
+						<div className={`text-xs px-2.5 py-1.5 rounded-lg ${
 							isUrgent ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'
 						}`}>
 							<div className='flex items-center gap-1.5 font-semibold'>
@@ -153,7 +220,22 @@ const SellerOrders = () => {
 					</button>
 				);
 			case 'Delivered': {
-				const days = daysSince(order.UpdatedAt);
+				if (order.RefundStatus === 'ReturnRequested') {
+					return (
+						<p className='mt-3 text-center text-xs font-medium text-amber-800 bg-amber-100/80 border border-amber-200 rounded-lg py-2 px-2'>
+							Return request pending — open details to approve or reject
+						</p>
+					);
+				}
+				if (order.RefundStatus === 'ReturnApproved') {
+					return (
+						<p className='mt-3 text-center text-xs font-medium text-green-800 bg-green-100/80 border border-green-200 rounded-lg py-2 px-2'>
+							Return approved — open details to mark refund completed
+						</p>
+					);
+				}
+				const anchor = order.DeliveredAt || order.UpdatedAt;
+				const days = daysSince(anchor);
 				const canSell = days >= 14;
 				const remaining = Math.max(0, 14 - days);
 				return (
@@ -185,7 +267,6 @@ const SellerOrders = () => {
 	};
 
 	const closeRejectionModal = () => setRejectionModal({ open: false, orderId: null, reason: '' });
-
 	const confirmRejection = () => {
 		if (!rejectionModal.reason.trim()) return;
 		handleUpdateStatus(rejectionModal.orderId, 'Rejected', rejectionModal.reason.trim());
@@ -193,7 +274,6 @@ const SellerOrders = () => {
 	};
 
 	const closeTrackingModal = () => setTrackingModal({ open: false, orderId: null, trackingNumber: '', trackingUrl: '' });
-
 	const confirmShipping = () => {
 		if (!trackingModal.trackingNumber.trim() || !trackingModal.trackingUrl.trim()) return;
 		handleUpdateStatus(trackingModal.orderId, 'Shipped', null, trackingModal.trackingNumber.trim(), trackingModal.trackingUrl.trim());
@@ -203,6 +283,7 @@ const SellerOrders = () => {
 	return (
 		<>
 			<NavBar />
+
 			{/* Rejection Reason Modal */}
 			{rejectionModal.open && (
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
@@ -241,6 +322,7 @@ const SellerOrders = () => {
 					</div>
 				</div>
 			)}
+
 			{/* Tracking Info Modal */}
 			{trackingModal.open && (
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
@@ -298,11 +380,13 @@ const SellerOrders = () => {
 					</div>
 				</div>
 			)}
+
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
 				<div className='flex-1 p-6 overflow-y-auto'>
+
 					{/* Header */}
-					<div className='flex items-center gap-3 mb-6'>
+					<div className='flex items-center gap-3 mb-4'>
 						<div className='w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center'>
 							<ShoppingBag size={20} className='text-primary-600' />
 						</div>
@@ -312,33 +396,44 @@ const SellerOrders = () => {
 						</div>
 					</div>
 
-					{/* Status filter tabs */}
+					{/* Search + Sort row */}
+					<div className='flex flex-col sm:flex-row gap-3 mb-4'>
+						<div className='relative flex-1'>
+							<Search size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none' />
+							<input
+								type='text'
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								placeholder='Search by buyer name or order ID…'
+								className='w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-300'
+							/>
+						</div>
+						<select
+							value={sortBy}
+							onChange={(e) => setSortBy(e.target.value)}
+							className='sm:w-44 px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-300'
+						>
+							{SORT_OPTIONS.map((o) => (
+								<option key={o.value} value={o.value}>{o.label}</option>
+							))}
+						</select>
+					</div>
+
+					{/* Status tabs */}
 					<div className='flex flex-wrap gap-2 mb-6'>
-						{[
-							{ value: 'all', label: 'All' },
-							{ value: 'Processing', label: 'Processing' },
-							{ value: 'Confirmed', label: 'Confirmed' },
-							{ value: 'Shipped', label: 'Shipped' },
-							{ value: 'Delivered', label: 'Delivered' },
-							{ value: 'Sold', label: 'Sold' },
-							{ value: 'Rejected', label: 'Rejected' },
-							{ value: 'Cancelled', label: 'Cancelled' },
-						].map((f) => {
-							const count = f.value === 'all' ? orders.length : orders.filter((o) => o.DeliveryStatus === f.value).length;
-							return (
-								<button
-									key={f.value}
-									onClick={() => setFilterStatus(f.value)}
-									className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-										filterStatus === f.value
-											? 'bg-primary-500 text-white'
-											: 'bg-white text-gray-600 border border-gray-200 hover:border-primary-300'
-									}`}
-								>
-									{f.label} ({count})
-								</button>
-							);
-						})}
+						{TABS.map((t) => (
+							<button
+								key={t.value}
+								onClick={() => setActiveTab(t.value)}
+								className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+									activeTab === t.value
+										? 'bg-primary-500 text-white'
+										: 'bg-white text-gray-600 border border-gray-200 hover:border-primary-300'
+								}`}
+							>
+								{t.label} ({tabCount(t.value)})
+							</button>
+						))}
 					</div>
 
 					{loading ? (
@@ -347,7 +442,7 @@ const SellerOrders = () => {
 						</div>
 					) : error ? (
 						<p className='text-red-500'>{error}</p>
-					) : filteredOrders.length === 0 ? (
+					) : displayedOrders.length === 0 ? (
 						<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center'>
 							<ShoppingBag size={48} className='mx-auto text-gray-300 mb-4' />
 							<h3 className='text-lg font-semibold text-gray-700 mb-2'>
@@ -356,76 +451,99 @@ const SellerOrders = () => {
 							<p className='text-gray-500'>
 								{orders.length === 0
 									? 'When buyers purchase your products, orders will appear here.'
-									: 'Try selecting a different status filter.'}
+									: 'Try a different tab or search term.'}
 							</p>
 						</div>
 					) : (
 						<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-							{filteredOrders.map((order) => {
-								const statusInfo = getStatusInfo(order.DeliveryStatus);
+							{displayedOrders.map((order) => {
+								const statusInfo = getStatusInfo(order);
 								const StatusIcon = statusInfo.icon;
+								const firstItem = order.OrderItems?.[0];
+								const thumbnail = firstItem?.ProductImageUrl;
+								const extraItems = (order.OrderItems?.length || 1) - 1;
 
 								return (
 									<div
 										key={order.OrderId}
-										className='bg-white shadow-sm rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-shadow'
+										className='bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow'
 									>
-										{/* Order ID + Status badge */}
-										<div className='flex items-center justify-between mb-3'>
-											<h3 className='font-semibold text-gray-900'>Order #{order.OrderId.slice(0, 8)}</h3>
-											<div className='flex items-center gap-1.5'>
-												<div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusInfo.bg} ${statusInfo.color} ${statusInfo.border} border`}>
-													<StatusIcon size={12} />
-													{statusInfo.label}
-												</div>
-												{order.DeliveryStatus === 'Processing' && (
-													<div className='relative group'>
-														<Info size={14} className='text-amber-500 cursor-help' />
-														<div className='absolute right-0 top-5 w-56 bg-gray-800 text-white text-xs rounded-lg p-2.5 hidden group-hover:block z-10 shadow-lg leading-relaxed'>
-															Orders not confirmed or rejected within <strong>24 hours</strong> are automatically cancelled and the buyer is notified.
-														</div>
-													</div>
+										{/* Thumbnail strip */}
+										{thumbnail && (
+											<div className='relative h-28 bg-gray-100'>
+												<img
+													src={thumbnail}
+													alt={firstItem.ProductName}
+													className='w-full h-full object-cover'
+												/>
+												{extraItems > 0 && (
+													<span className='absolute bottom-2 right-2 text-xs font-semibold bg-black/60 text-white px-2 py-0.5 rounded-full'>
+														+{extraItems} more
+													</span>
 												)}
 											</div>
+										)}
+
+										<div className='p-5'>
+											{/* Order ID + Status badge */}
+											<div className='flex items-center justify-between mb-3'>
+												<h3 className='font-semibold text-gray-900'>Order #{order.OrderId.slice(0, 8)}</h3>
+												<div className='flex items-center gap-1.5'>
+													<div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusInfo.bg} ${statusInfo.color} ${statusInfo.border} border`}>
+														<StatusIcon size={12} />
+														{statusInfo.label}
+													</div>
+													{order.DeliveryStatus === 'Processing' && (
+														<div className='relative group'>
+															<Info size={14} className='text-amber-500 cursor-help' />
+															<div className='absolute right-0 top-5 w-56 bg-gray-800 text-white text-xs rounded-lg p-2.5 hidden group-hover:block z-10 shadow-lg leading-relaxed'>
+																Orders not confirmed or rejected within <strong>24 hours</strong> are automatically cancelled and the buyer is notified.
+															</div>
+														</div>
+													)}
+												</div>
+											</div>
+
+											{/* Order info */}
+											<div className='space-y-1.5 text-sm'>
+												<p className='text-gray-500'>
+													Buyer: <span className='font-medium text-gray-900'>{order.BuyerName}</span>
+												</p>
+												<p className='text-gray-500'>
+													Total: <span className='font-bold text-primary-600'>&euro;{Number(order.TotalAmount).toFixed(2)}</span>
+												</p>
+												<p className='text-xs text-gray-400'>
+													{new Date(order.OrderDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+												</p>
+											</div>
+
+											{/* Items list (when no thumbnail or multi-item) */}
+											{(!thumbnail || order.OrderItems?.length > 1) && (
+												<div className='border-t border-gray-100 pt-3 mt-3'>
+													<p className='text-sm font-medium text-gray-700 mb-1.5'>Items:</p>
+													<ul className='space-y-1 max-h-28 overflow-y-auto text-sm'>
+														{order.OrderItems.map((item) => (
+															<li key={item.OrderItemId} className='flex justify-between text-gray-600'>
+																<span className='truncate mr-2'>{item.ProductName}</span>
+																<span className='flex-shrink-0 text-gray-400'>x{item.Quantity}</span>
+															</li>
+														))}
+													</ul>
+												</div>
+											)}
+
+											{/* Status Actions */}
+											{getActions(order)}
+
+											{/* View Details */}
+											<button
+												onClick={() => navigate(`/my-orders/${order.OrderId}`)}
+												className='mt-3 w-full flex items-center justify-center gap-1.5 text-sm font-medium text-primary-500 hover:text-primary-600 border border-primary-200 hover:border-primary-300 py-2 rounded-lg transition-colors'
+											>
+												View Details
+												<ChevronRight size={16} />
+											</button>
 										</div>
-
-										{/* Order info */}
-										<div className='space-y-1.5 text-sm'>
-											<p className='text-gray-500'>
-												Buyer: <span className='font-medium text-gray-900'>{order.BuyerName}</span>
-											</p>
-											<p className='text-gray-500'>
-												Total: <span className='font-bold text-primary-600'>&euro;{Number(order.TotalAmount).toFixed(2)}</span>
-											</p>
-											<p className='text-xs text-gray-400'>
-												{new Date(order.OrderDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-											</p>
-										</div>
-
-										{/* Items list */}
-										<div className='border-t border-gray-100 pt-3 mt-3'>
-											<p className='text-sm font-medium text-gray-700 mb-1.5'>Items:</p>
-											<ul className='space-y-1 max-h-32 overflow-y-auto text-sm'>
-												{order.OrderItems.map((item) => (
-													<li key={item.OrderItemId} className='flex justify-between text-gray-600'>
-														<span className='truncate mr-2'>{item.ProductName}</span>
-														<span className='flex-shrink-0 text-gray-400'>x{item.Quantity}</span>
-													</li>
-												))}
-											</ul>
-										</div>
-
-										{/* Status Actions */}
-										{getActions(order)}
-
-										{/* View Details button */}
-										<button
-											onClick={() => navigate(`/my-orders/${order.OrderId}`)}
-											className='mt-3 w-full flex items-center justify-center gap-1.5 text-sm font-medium text-primary-500 hover:text-primary-600 border border-primary-200 hover:border-primary-300 py-2 rounded-lg transition-colors'
-										>
-											View Details
-											<ChevronRight size={16} />
-										</button>
 									</div>
 								);
 							})}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Package, ShoppingBag, Euro, CheckCircle, CreditCard } from 'lucide-react';
+import { Loader2, Package, ShoppingBag, Euro, CheckCircle, CreditCard, TrendingUp } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
 import SellerTour from './SellerTour';
@@ -60,9 +60,9 @@ const SellerDashboard = () => {
 					OrderItems: typeof o.OrderItems === 'string' ? JSON.parse(o.OrderItems || '[]') : o.OrderItems || [],
 				}));
 
-				const soldOrders   = formattedOrders.filter((o) => o.DeliveryStatus === 'Sold');
-				const totalSold    = soldOrders.reduce((sum, o) => sum + o.OrderItems.reduce((s, item) => s + (item.Quantity || 0), 0), 0);
-				const totalRevenue = soldOrders.reduce((sum, o) => sum + Number(o.TotalAmount || 0), 0);
+				const completedOrders = formattedOrders.filter((o) => ['Delivered', 'Sold'].includes(o.DeliveryStatus));
+				const totalSold    = completedOrders.reduce((sum, o) => sum + o.OrderItems.reduce((s, item) => s + (item.Quantity || 0), 0), 0);
+				const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.TotalAmount || 0), 0);
 
 				setStats({
 					totalProducts: products.length,
@@ -113,7 +113,7 @@ const SellerDashboard = () => {
 			label: 'Revenue',
 			tourId: 'stat-revenue',
 			value: `€${stats.totalRevenue.toFixed(2)}`,
-			icon: <Euro className='text-green-500 w-5 h-5' />,
+			icon: <TrendingUp className='text-green-500 w-5 h-5' />,
 			iconBg: 'bg-green-50',
 			onClick: () => navigate('/my-revenue'),
 			clickable: true,
@@ -260,7 +260,7 @@ const SellerDashboard = () => {
 				</div>
 			</div>
 
-			{/* Guided tour */}
+{/* Guided tour */}
 			{showTour && <SellerTour onFinish={() => setShowTour(false)} />}
 
 			{/* Help button — restarts tour */}

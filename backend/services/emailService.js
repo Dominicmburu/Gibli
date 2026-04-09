@@ -642,6 +642,191 @@ export async function sendOrderAutoCancelledEmail(buyerEmail, buyerName, orderId
 	}
 }
 
+// ═══════════════════════════════════════════════════════════
+// RETURN / REFUND EMAILS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Notifies the seller when a buyer submits a return request.
+ */
+export async function sendReturnSubmittedEmail(sellerEmail, sellerName, orderId, buyerName, reason) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#b45309;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Return Request Received</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${sellerName || 'Seller'},</h2>
+	    <p>Buyer <strong>${buyerName || 'A buyer'}</strong> has submitted a return request for order <strong>#${shortId}</strong>.</p>
+	    <div style="background:#fef3c7;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #f59e0b;">
+	      <p style="margin:0 0 6px 0;font-size:13px;font-weight:bold;color:#92400e;">Buyer reason:</p>
+	      <p style="margin:0;font-size:13px;color:#78350f;">${reason}</p>
+	    </div>
+	    <p style="background:#fee2e2;padding:12px;border-radius:6px;border-left:4px solid #dc2626;font-size:13px;">
+	      <strong>You have 3 days to approve or reject this request.</strong> If you do not respond, the return will be auto-approved and the buyer will be refunded automatically.
+	    </p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	  </div>
+	</div>`;
+	try {
+		const { error } = await resend.emails.send({ from: FROM_EMAIL, to: sellerEmail, subject: `Return Request — Order #${shortId}`, html });
+		if (error) console.error('Error sending return submitted email:', error);
+		else console.log(`Return submitted email sent to ${sellerEmail}`);
+	} catch (err) {
+		console.error('Error sending return submitted email:', err);
+	}
+}
+
+/**
+ * Notifies the buyer when a seller approves their return request.
+ */
+export async function sendReturnApprovedEmail(buyerEmail, buyerName, orderId, sellerInstructions) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#059669;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Return Approved</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${buyerName || 'Customer'},</h2>
+	    <p>Good news — the seller has approved your return request for order <strong>#${shortId}</strong>.</p>
+	    <div style="background:#d1fae5;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #059669;">
+	      <p style="margin:0 0 6px 0;font-size:13px;font-weight:bold;color:#065f46;">Seller instructions:</p>
+	      <p style="margin:0;font-size:13px;color:#064e3b;white-space:pre-wrap;">${sellerInstructions}</p>
+	    </div>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	  </div>
+	</div>`;
+	try {
+		const { error } = await resend.emails.send({ from: FROM_EMAIL, to: buyerEmail, subject: `Return Approved — Order #${shortId}`, html });
+		if (error) console.error('Error sending return approved email:', error);
+		else console.log(`Return approved email sent to ${buyerEmail}`);
+	} catch (err) {
+		console.error('Error sending return approved email:', err);
+	}
+}
+
+/**
+ * Notifies the buyer when a seller rejects their return request.
+ */
+export async function sendReturnRejectedEmail(buyerEmail, buyerName, orderId, rejectionReason) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#dc2626;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Return Request Declined</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${buyerName || 'Customer'},</h2>
+	    <p>Unfortunately, the seller has declined your return request for order <strong>#${shortId}</strong>.</p>
+	    <div style="background:#fee2e2;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #dc2626;">
+	      <p style="margin:0 0 6px 0;font-size:13px;font-weight:bold;color:#991b1b;">Seller reason:</p>
+	      <p style="margin:0;font-size:13px;color:#7f1d1d;">${rejectionReason}</p>
+	    </div>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	  </div>
+	</div>`;
+	try {
+		const { error } = await resend.emails.send({ from: FROM_EMAIL, to: buyerEmail, subject: `Return Declined — Order #${shortId}`, html });
+		if (error) console.error('Error sending return rejected email:', error);
+		else console.log(`Return rejected email sent to ${buyerEmail}`);
+	} catch (err) {
+		console.error('Error sending return rejected email:', err);
+	}
+}
+
+/**
+ * Notifies the buyer when a refund has been processed via Stripe.
+ */
+export async function sendRefundProcessedEmail(buyerEmail, buyerName, orderId, amount) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#6d28d9;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Refund Processed</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${buyerName || 'Customer'},</h2>
+	    <p>Your refund for order <strong>#${shortId}</strong> has been processed.</p>
+	    <div style="background:#f3f4f6;padding:20px;border-radius:8px;margin:20px 0;">
+	      <p style="margin:0;font-size:15px;">Refund amount: <strong>&euro;${Number(amount).toFixed(2)}</strong></p>
+	      <p style="margin:8px 0 0 0;font-size:13px;color:#6b7280;">Funds typically appear within 5–10 business days depending on your bank.</p>
+	    </div>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	  </div>
+	</div>`;
+	try {
+		const { error } = await resend.emails.send({ from: FROM_EMAIL, to: buyerEmail, subject: `Refund Processed — Order #${shortId}`, html });
+		if (error) console.error('Error sending refund processed email:', error);
+		else console.log(`Refund processed email sent to ${buyerEmail}`);
+	} catch (err) {
+		console.error('Error sending refund processed email:', err);
+	}
+}
+
+export async function sendPartialRefundAgreedEmail(buyerEmail, buyerName, orderId, amount, sellerNote) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+	const noteBlock = sellerNote
+		? `<div style="background:#fef9c3;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #ca8a04;">
+		       <p style="margin:0;font-size:13px;color:#92400e;font-weight:600;">Note from seller</p>
+		       <p style="margin:6px 0 0 0;font-size:14px;color:#78350f;">${sellerNote}</p>
+		     </div>`
+		: '';
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#0369a1;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Partial Refund Agreed</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${buyerName || 'Customer'},</h2>
+	    <p>The seller has agreed to a partial refund for order <strong>#${shortId}</strong>. You get to keep the item.</p>
+	    <div style="background:#f0f9ff;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #0369a1;">
+	      <p style="margin:0;font-size:15px;">Partial refund amount: <strong>&euro;${Number(amount).toFixed(2)}</strong></p>
+	      <p style="margin:8px 0 0 0;font-size:13px;color:#6b7280;">You keep the item — no need to ship anything back.</p>
+	      <p style="margin:8px 0 0 0;font-size:13px;color:#6b7280;">Funds typically appear within 5–10 business days.</p>
+	    </div>
+	    ${noteBlock}
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	  </div>
+	</div>`;
+	try {
+		const { error } = await resend.emails.send({ from: FROM_EMAIL, to: buyerEmail, subject: `Partial Refund Agreed — Order #${shortId}`, html });
+		if (error) console.error('Error sending partial refund email:', error);
+		else console.log(`Partial refund agreed email sent to ${buyerEmail}`);
+	} catch (err) {
+		console.error('Error sending partial refund email:', err);
+	}
+}
+
+export async function sendBuyerShippedEmail(sellerEmail, sellerName, orderId, buyerName, trackingNumber, trackingUrl) {
+	const shortId = String(orderId).slice(0, 8).toUpperCase();
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;">
+	  <div style="background:#2563eb;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+	    <h1 style="color:white;margin:0;font-size:24px;">Item Shipped</h1>
+	  </div>
+	  <div style="padding:30px;background:#fff;border:1px solid #e5e7eb;border-top:none;">
+	    <h2 style="color:#1f2937;">Hi ${sellerName || 'there'},</h2>
+	    <p>The buyer <strong>${buyerName || 'Customer'}</strong> has shipped the returned item for order <strong>#${shortId}</strong>.</p>
+	    <div style="background:#eff6ff;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #2563eb;">
+	      <p style="margin:0 0 8px 0;font-size:15px;font-weight:600;">Tracking Number</p>
+	      <p style="margin:0;font-size:15px;font-family:monospace;">${trackingNumber}</p>
+	      ${trackingUrl ? `<p style="margin:8px 0 0 0;"><a href="${trackingUrl}" style="color:#2563eb;">Track the shipment &rarr;</a></p>` : ''}
+	    </div>
+	    <p>Once you receive the item and confirm it's in acceptable condition, please confirm receipt in your dashboard to complete the return and issue the refund.</p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	  </div>
+	</div>`;
+	try {
+		const { error } = await resend.emails.send({ from: FROM_EMAIL, to: sellerEmail, subject: `Item Shipped — Return for Order #${shortId}`, html });
+		if (error) console.error('Error sending buyer shipped email:', error);
+		else console.log(`Buyer shipped email sent to ${sellerEmail}`);
+	} catch (err) {
+		console.error('Error sending buyer shipped email:', err);
+	}
+}
+
 /**
  * 2️⃣ Seller New Order Notification Email
  */
@@ -694,5 +879,39 @@ export async function sendSellerOrderNotificationEmail(
 		console.log(`✅ Seller notification sent to ${sellerEmail}:`, data);
 	} catch (error) {
 		console.error('❌ Error sending seller notification email:', error);
+	}
+}
+
+export async function sendNewReviewEmail(sellerEmail, sellerName, productName, buyerName, rating) {
+	const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+	const htmlContent = `
+    <div style="font-family:Arial,sans-serif;color:#333;max-width:600px;">
+      <div style="background:linear-gradient(135deg,#0057B8,#0096C7);padding:24px 32px;border-radius:12px 12px 0 0;">
+        <h2 style="color:#fff;margin:0;font-size:22px;">New Review on Your Product</h2>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+        <p>Hi <strong>${sellerName || 'Seller'}</strong>,</p>
+        <p>A buyer has left a new review for one of your products on <strong>The Marketplace</strong>.</p>
+        <div style="background:#f9fafb;border-radius:10px;padding:18px 22px;margin:20px 0;border-left:4px solid #0057B8;">
+          <p style="margin:4px 0;"><strong>Product:</strong> ${productName}</p>
+          <p style="margin:4px 0;"><strong>Buyer:</strong> ${buyerName}</p>
+          <p style="margin:4px 0;font-size:20px;color:#F59E0B;">${stars}</p>
+        </div>
+        <p>Log in to your seller dashboard to view the full review and respond.</p>
+        <p style="color:#6b7280;font-size:13px;margin-top:24px;">The Marketplace Team</p>
+      </div>
+    </div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: sellerEmail,
+			subject: `⭐ New ${rating}-star review on "${productName}"`,
+			html: htmlContent,
+		});
+		if (error) { console.error('❌ Error sending review notification email:', error); return; }
+		console.log(`✅ Review notification sent to ${sellerEmail}:`, data);
+	} catch (error) {
+		console.error('❌ Error sending review notification email:', error);
 	}
 }

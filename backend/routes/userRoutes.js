@@ -405,9 +405,7 @@ userRouter.delete('/delete/user/:id', async (req, res) => {
 });
 userRouter.post('/complete-onboarding', authenticateToken, async (req, res) => {
 	try {
-		// Mark HasSelectedRole = 1 via inline query (no new SP needed)
-		const pool = await db.pool;
-		await pool.request().input('UserId', req.user.id).query('UPDATE Users SET HasSelectedRole = 1 WHERE UserId = @UserId');
+		await db.executeProcedure('CompleteUserOnboarding', { UserId: req.user.id });
 
 		// Re-fetch user to build a fresh JWT
 		const result = await db.executeProcedure('GetUserById', { UserId: req.user.id });

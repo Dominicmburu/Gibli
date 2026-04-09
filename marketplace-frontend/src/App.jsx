@@ -23,9 +23,12 @@ import SellerDashboard from './features/seller/SellerDashboard';
 import SellerProducts from './features/seller/SellerProducts';
 import SellerOrders from './features/seller/SellerOrders';
 import SellerOrderDetail from './features/seller/SellerOrderDetail';
+import SellerReturns from './features/seller/SellerReturns';
+import SellerReturnDetail from './features/seller/SellerReturnDetail';
 import SellerAnalytics from './features/seller/SellerAnalytics';
 import SellerSales from './features/seller/SellerSales';
 import SellerRevenue from './features/seller/SellerRevenue';
+import SellerMessages from './features/seller/SellerMessages';
 import StoreSettings from './features/seller/StoreSettings';
 import NeedsRestock from './features/seller/NeedsRestock';
 import AddProduct from './features/seller/AddProduct';
@@ -39,6 +42,8 @@ import { CartProvider } from './context/CartContext';
 import { useAuth } from './utils/useAuth';
 import RoleSelectionModal from './features/onboarding/RoleSelectionModal';
 import SellerOnboardingPlans from './features/onboarding/SellerOnboardingPlans';
+import PrivacyPolicy from './features/legal/PrivacyPolicy';
+import TermsOfService from './features/legal/TermsOfService';
 
 function App() {
 	const { isLoggedIn, hasSelectedRole, loading } = useAuth();
@@ -80,12 +85,15 @@ function App() {
 					<Route path='/my-products' element={<SellerProducts />} />
 					<Route path='/my-orders' element={<SellerOrders />} />
 					<Route path='/my-orders/:orderId' element={<SellerOrderDetail />} />
+					<Route path='/my-returns' element={<SellerReturns />} />
+				<Route path='/my-returns/:returnRequestId' element={<SellerReturnDetail />} />
 					<Route path='/restock' element={<NeedsRestock />} />
 					<Route path='/new-product' element={<AddProduct />} />
 					<Route path='/store-settings' element={<StoreSettings />} />
 					<Route path='/my-sales' element={<SellerSales />} />
 					<Route path='/my-revenue' element={<SellerRevenue />} />
-					<Route path='/seller-subscription' element={<SellerSubscription />} />
+					<Route path='/seller-messages' element={<SellerMessages />} />
+<Route path='/seller-subscription' element={<SellerSubscription />} />
 
 					{/* SUBSCRIPTION ROUTES */}
 					<Route path='/subscription/success' element={<SubscriptionSuccess />} />
@@ -96,6 +104,10 @@ function App() {
 
 					{/* ONBOARDING ROUTES */}
 					<Route path='/onboarding/seller-plans' element={<SellerOnboardingPlans />} />
+
+					{/* LEGAL ROUTES */}
+					<Route path='/privacy' element={<PrivacyPolicy />} />
+					<Route path='/terms' element={<TermsOfService />} />
 				</Routes>
 				<Toaster position='top-center' reverseOrder={false} />
 			</CartProvider>

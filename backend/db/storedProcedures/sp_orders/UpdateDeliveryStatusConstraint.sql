@@ -19,8 +19,8 @@ END
 -- Add the updated constraint with new statuses
 ALTER TABLE Orders
 ADD CONSTRAINT CK_Orders_DeliveryStatus
-CHECK (DeliveryStatus IN ('Processing', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled', 'Rejected', 'Sold'));
+CHECK (DeliveryStatus IN ('Processing', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled', 'Rejected', 'Sold', 'ReturnRequested', 'ReturnApproved'));
 GO
 
-PRINT 'New DeliveryStatus constraint created with: Processing, Confirmed, Shipped, Delivered, Cancelled, Rejected, Sold';
+PRINT 'DeliveryStatus includes: ReturnRequested, ReturnApproved for buyer return workflow';
 GO

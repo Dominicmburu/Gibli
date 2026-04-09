@@ -15,17 +15,7 @@ cartRouter.post('/additem', authenticateToken, async (req, res) => {
 		const CartItemId = uuidv4();
 
 		// Check current product stock and how many the user already has in their cart
-		const pool = await db.pool;
-		const stockCheck = await pool.request()
-			.input('ProductId', ProductId)
-			.input('UserId', UserId)
-			.query(`
-				SELECT p.InStock, p.ProductName, ISNULL(ci.Quantity, 0) AS CartQty
-				FROM Products p
-				LEFT JOIN CartItems ci ON p.ProductId = ci.ProductId AND ci.UserId = @UserId
-				WHERE p.ProductId = @ProductId
-			`);
-
+		const stockCheck = await db.executeProcedure('CheckAddToCartStock', { ProductId, UserId });
 		const productInfo = stockCheck.recordset?.[0];
 		if (!productInfo) {
 			return res.status(404).json({ message: 'Product not found.' });
@@ -105,16 +95,7 @@ cartRouter.put('/update/:id', authenticateToken, async (req, res) => {
 		const { Quantity } = req.body;
 
 		// Validate the new quantity does not exceed available stock
-		const pool = await db.pool;
-		const stockCheck = await pool.request()
-			.input('CartItemId', id)
-			.query(`
-				SELECT p.InStock, p.ProductName
-				FROM CartItems ci
-				INNER JOIN Products p ON ci.ProductId = p.ProductId
-				WHERE ci.CartItemId = @CartItemId
-			`);
-
+		const stockCheck = await db.executeProcedure('GetCartItemStockByCartItemId', { CartItemId: id });
 		const productInfo = stockCheck.recordset?.[0];
 		if (productInfo && Quantity > productInfo.InStock) {
 			return res.status(400).json({

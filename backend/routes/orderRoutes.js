@@ -1,14 +1,20 @@
 import express from 'express';
-import { v4 as uid } from 'uuid';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
 import DbHelper from '../db/dbHelper.js';
 import { sendOrderStatusUpdateEmail } from '../services/emailService.js';
+import {
+	ensureOrderReturnSchema,
+	fetchOrderRefundFields,
+	fetchLatestReturnRequest,
+	setOrderDeliveredTimestamp,
+} from '../services/orderReturnSupport.js';
 
 const orderRouter = express.Router();
 const db = new DbHelper();
 
 orderRouter.post('/placed', authenticateToken, async (req, res) => {
 	try {
+		await ensureOrderReturnSchema();
 		const UserId = req.user.id;
 
 		const result = await db.executeProcedure('GetUserOrders', {
@@ -35,6 +41,7 @@ orderRouter.post('/placed', authenticateToken, async (req, res) => {
 });
 orderRouter.post('/received', authenticateToken, async (req, res) => {
 	try {
+		await ensureOrderReturnSchema();
 		const UserId = req.user.id;
 
 		const result = await db.executeProcedure('GetUserOrders', {
@@ -63,6 +70,7 @@ orderRouter.post('/received', authenticateToken, async (req, res) => {
 // GET count of new (Processing) orders for the logged-in seller
 orderRouter.get('/new-count', authenticateToken, async (req, res) => {
 	try {
+		await ensureOrderReturnSchema();
 		const UserId = req.user.id;
 		const result = await db.executeProcedure('GetUserOrders', { UserId, Role: 'Seller' });
 		const count = (result.recordset || []).filter((o) => o.DeliveryStatus === 'Processing').length;
@@ -73,9 +81,34 @@ orderRouter.get('/new-count', authenticateToken, async (req, res) => {
 	}
 });
 
+// GET seller payouts  ← must be before /:orderId
+orderRouter.get('/payouts', authenticateToken, async (req, res) => {
+	try {
+		const SellerId = req.user.id;
+		const result = await db.executeProcedure('GetSellerPayouts', { SellerId });
+		return res.status(200).json({ success: true, data: result.recordset || [] });
+	} catch (error) {
+		console.error('Error fetching seller payouts:', error);
+		return res.status(500).json({ success: false, message: 'Failed to fetch payouts.' });
+	}
+});
+
+// GET commission refund requests  ← must be before /:orderId
+orderRouter.get('/commission-refunds', authenticateToken, async (req, res) => {
+	try {
+		const SellerId = req.user.id;
+		const result = await db.executeProcedure('GetCommissionRefundRequests', { SellerId });
+		return res.status(200).json({ success: true, data: result.recordset || [] });
+	} catch (error) {
+		console.error('Error fetching commission refund requests:', error);
+		return res.status(500).json({ success: false, message: 'Failed to fetch commission refund requests.' });
+	}
+});
+
 // GET single order by ID
 orderRouter.get('/:orderId', authenticateToken, async (req, res) => {
 	try {
+		await ensureOrderReturnSchema();
 		const UserId = req.user.id;
 		const { orderId } = req.params;
 
@@ -89,13 +122,22 @@ orderRouter.get('/:orderId', authenticateToken, async (req, res) => {
 			return res.status(404).json({ success: false, message: 'Order not found.' });
 		}
 
+		const refundFields = await fetchOrderRefundFields(orderId);
+		const returnRequest = await fetchLatestReturnRequest(orderId);
+
+		const sid = String(order.SellerId || '').toLowerCase();
+		const bid = String(order.BuyerId || '').toLowerCase();
+		const uid = String(UserId || '').toLowerCase();
+
 		return res.status(200).json({
 			success: true,
 			data: {
 				...order,
+				...refundFields,
 				OrderItems: JSON.parse(order.OrderItems || '[]'),
-				IsBuyer: order.BuyerId === UserId,
-				IsSeller: order.SellerId === UserId,
+				IsBuyer: bid === uid,
+				IsSeller: sid === uid,
+				ReturnRequest: returnRequest,
 			},
 		});
 	} catch (error) {
@@ -161,11 +203,7 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 		// Save rejection reason if provided
 		if (status === 'Rejected' && reason) {
 			try {
-				const pool = await db.pool;
-				await pool.request()
-					.input('RejectionReason', reason)
-					.input('OrderId', orderId)
-					.query('UPDATE Orders SET RejectionReason = @RejectionReason WHERE OrderId = @OrderId');
+				await db.executeProcedure('UpdateOrderRejectionReason', { OrderId: orderId, RejectionReason: reason });
 			} catch (dbErr) {
 				console.error('⚠️ Failed to save rejection reason:', dbErr.message);
 			}
@@ -174,14 +212,18 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 		// Save tracking info if provided
 		if (status === 'Shipped' && trackingNumber) {
 			try {
-				const pool = await db.pool;
-				await pool.request()
-					.input('TrackingNumber', trackingNumber)
-					.input('TrackingUrl', trackingUrl)
-					.input('OrderId', orderId)
-					.query('UPDATE Orders SET TrackingNumber = @TrackingNumber, TrackingUrl = @TrackingUrl WHERE OrderId = @OrderId');
+				await db.executeProcedure('UpdateOrderTrackingInfo', { OrderId: orderId, TrackingNumber: trackingNumber, TrackingUrl: trackingUrl });
 			} catch (dbErr) {
 				console.error('⚠️ Failed to save tracking info:', dbErr.message);
+			}
+		}
+
+		if (status === 'Delivered') {
+			try {
+				await ensureOrderReturnSchema();
+				await setOrderDeliveredTimestamp(orderId);
+			} catch (dbErr) {
+				console.error('⚠️ Failed to set DeliveredAt:', dbErr.message);
 			}
 		}
 
@@ -236,6 +278,33 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 	} catch (error) {
 		console.error('Error updating order status:', error);
 		const message = error.message || 'Failed to update order status.';
+		return res.status(400).json({ success: false, message });
+	}
+});
+
+// POST seller requests commission refund for a returned order
+orderRouter.post('/:orderId/commission-refund', authenticateToken, async (req, res) => {
+	try {
+		const SellerId = req.user.id;
+		const { orderId } = req.params;
+		const { commissionAmount, sellerNote, returnRequestId } = req.body;
+
+		if (!commissionAmount || Number(commissionAmount) <= 0) {
+			return res.status(400).json({ success: false, message: 'Commission amount is required.' });
+		}
+
+		const result = await db.executeProcedure('UpsertCommissionRefundRequest', {
+			OrderId: orderId,
+			ReturnRequestId: returnRequestId || null,
+			SellerId,
+			CommissionAmount: Number(commissionAmount),
+			SellerNote: sellerNote || null,
+		});
+
+		return res.status(201).json({ success: true, message: 'Commission refund request submitted.', data: result.recordset?.[0] });
+	} catch (error) {
+		console.error('Error creating commission refund request:', error);
+		const message = error.message || 'Failed to submit commission refund request.';
 		return res.status(400).json({ success: false, message });
 	}
 });

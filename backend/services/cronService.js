@@ -1,12 +1,15 @@
 import cron from 'node-cron';
+import Stripe from 'stripe';
 import DbHelper from '../db/dbHelper.js';
 import {
 	sendSubscriptionRenewalReminder,
 	sendSubscriptionExpiredEmail,
 	sendOrderAutoCancelledEmail,
+	sendRefundProcessedEmail,
 } from './emailService.js';
 
 const db = new DbHelper();
+const stripe = new Stripe(process.env.SK_TEST);
 
 /**
  * Initialises all cron jobs for the application.
@@ -109,4 +112,56 @@ export function initCronJobs() {
 	});
 
 	console.log('[CRON] Order auto-cancel cron initialised (hourly).');
+
+	// ──────────────────────────────────────────────────────────────
+	// DAILY at 09:00 — Return request auto-approval
+	// Finds pending return requests older than 3 days (seller did not respond),
+	// issues Stripe refund automatically, restores stock, and emails the buyer.
+	// ──────────────────────────────────────────────────────────────
+	cron.schedule('0 9 * * *', async () => {
+		console.log('[CRON] Running return auto-approval check...');
+		try {
+			const result = await db.executeProcedure('GetOverdueReturnRequests', {});
+			const overdueReturns = result.recordset || [];
+
+			if (overdueReturns.length === 0) {
+				console.log('[CRON] No overdue return requests.');
+				return;
+			}
+
+			console.log(`[CRON] Auto-approving ${overdueReturns.length} overdue return(s).`);
+
+			for (const ret of overdueReturns) {
+				try {
+					// Auto-approve in DB + close order (sets Refunded + Sold)
+					await db.executeProcedure('AutoApproveReturnRequest', {
+						ReturnRequestId: ret.ReturnRequestId,
+						OrderId: ret.OrderId,
+					});
+
+					// Restore stock
+					await db.executeProcedure('RestoreOrderItemStock', { OrderId: ret.OrderId });
+
+					// Issue Stripe refund
+					if (ret.PaymentIntentId) {
+						try {
+							await stripe.refunds.create({ payment_intent: ret.PaymentIntentId });
+						} catch (stripeErr) {
+							console.error(`[CRON] Stripe refund failed for order ${ret.OrderId}:`, stripeErr.message);
+						}
+					}
+
+					// Email buyer
+					await sendRefundProcessedEmail(ret.BuyerEmail, ret.BuyerName, ret.OrderId, ret.TotalAmount);
+					console.log(`[CRON] Auto-approved return for order ${ret.OrderId}, refunded ${ret.BuyerEmail}`);
+				} catch (retErr) {
+					console.error(`[CRON] Failed to auto-approve return ${ret.ReturnRequestId}:`, retErr.message);
+				}
+			}
+		} catch (err) {
+			console.error('[CRON] Error in return auto-approval job:', err);
+		}
+	});
+
+	console.log('[CRON] Return auto-approval cron initialised (daily at 09:00).');
 }

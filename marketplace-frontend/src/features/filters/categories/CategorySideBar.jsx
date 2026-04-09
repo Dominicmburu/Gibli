@@ -97,7 +97,7 @@ const CategorySideBar = () => {
 							>
 								<button
 									onClick={() => handleCategoryClick(catId)}
-									className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
+									className={`text-left w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
 										isActive
 											? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
 											: 'text-gray-700 hover:bg-gray-50'

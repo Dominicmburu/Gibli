@@ -16,6 +16,8 @@ BEGIN
         o.DeliveryStatus,
         o.CreatedAt AS OrderDate,
         o.UpdatedAt,
+        o.DeliveredAt,
+        o.RefundStatus,
         o.PaymentIntentId,
         o.TrackingNumber,
         o.TrackingUrl,

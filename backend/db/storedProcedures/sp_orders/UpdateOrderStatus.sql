@@ -30,6 +30,12 @@ BEGIN
         RETURN;
     END
 
+    IF @CurrentStatus IN ('ReturnRequested', 'ReturnApproved')
+    BEGIN
+        RAISERROR('This order is in a return / refund workflow. Use the return tools on the order page.', 16, 1);
+        RETURN;
+    END
+
     -- Validate status transitions
     -- Processing -> Confirmed (accept) or Rejected (reject)
     -- Confirmed -> Shipped
@@ -66,6 +72,12 @@ BEGIN
     END
 
     -- Validate that NewStatus is one of the allowed values
+    IF @NewStatus IN ('ReturnRequested', 'ReturnApproved')
+    BEGIN
+        RAISERROR('Return statuses are managed automatically when buyers or sellers use the return workflow.', 16, 1);
+        RETURN;
+    END
+
     IF @NewStatus NOT IN ('Confirmed', 'Rejected', 'Shipped', 'Delivered', 'Sold')
     BEGIN
         RAISERROR('Invalid status: %s', 16, 1, @NewStatus);
@@ -89,6 +101,18 @@ BEGIN
         UPDATE Orders
         SET DeliveryStatus = @NewStatus, UpdatedAt = GETDATE()
         WHERE OrderId = @OrderId;
+
+        -- On Delivered: create a seller payout record for the full order amount
+        IF @NewStatus = 'Delivered'
+        BEGIN
+            DECLARE @TotalAmount DECIMAL(10,2);
+            SELECT @TotalAmount = TotalAmount FROM Orders WHERE OrderId = @OrderId;
+            IF NOT EXISTS (SELECT 1 FROM SellerPayouts WHERE OrderId = @OrderId)
+            BEGIN
+                INSERT INTO SellerPayouts (OrderId, SellerId, Amount, Status, CreatedAt)
+                VALUES (@OrderId, @SellerId, @TotalAmount, 'Pending', GETDATE());
+            END
+        END
 
         COMMIT TRANSACTION;
 

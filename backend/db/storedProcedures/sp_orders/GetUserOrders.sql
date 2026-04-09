@@ -15,12 +15,14 @@ BEGIN
     END;
 
     -- Auto-mark Delivered orders as Sold after the 14-day refund window
+    -- Skip orders with an active return (RefundStatus = ReturnRequested or ReturnApproved)
     IF @Role IN ('Seller', 'Admin')
     BEGIN
         UPDATE Orders
         SET DeliveryStatus = 'Sold', UpdatedAt = GETDATE()
         WHERE DeliveryStatus = 'Delivered'
-          AND DATEDIFF(DAY, UpdatedAt, GETDATE()) >= 14;
+          AND DATEDIFF(DAY, COALESCE(DeliveredAt, UpdatedAt), GETDATE()) >= 14
+          AND (RefundStatus IS NULL OR RefundStatus NOT IN ('ReturnRequested', 'ReturnApproved'));
     END
 
     SELECT
@@ -29,6 +31,8 @@ BEGIN
         o.DeliveryStatus,
         o.CreatedAt AS OrderDate,
         o.UpdatedAt,
+        o.DeliveredAt,
+        o.RefundStatus,
         o.PaymentIntentId,
 
         -- Buyer info (useful for sellers’ dashboard)

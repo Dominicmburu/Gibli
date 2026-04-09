@@ -8,7 +8,6 @@ const AddToWishList = ({ ProductId }) => {
 	const [isInWishlist, setIsInWishlist] = useState(false);
 	const { isLoggedIn } = useAuth();
 
-	// Check wishlist status when mounted
 	useEffect(() => {
 		if (!isLoggedIn) return;
 
@@ -25,7 +24,6 @@ const AddToWishList = ({ ProductId }) => {
 		checkWishlistStatus();
 	}, [ProductId, isLoggedIn]);
 
-	// Toggle wishlist status
 	const handleToggle = async () => {
 		if (!isLoggedIn) {
 			toast.error('Please log in to use wishlist');
@@ -51,14 +49,14 @@ const AddToWishList = ({ ProductId }) => {
 	return (
 		<button
 			onClick={handleToggle}
-			className='absolute top-3 right-3 p-2 rounded-full bg-white bg-opacity-80 hover:bg-opacity-100 transition'
 			aria-label='Toggle wishlist'
+			className='flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 bg-white border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all duration-200 flex-shrink-0'
 		>
 			<Heart
-				size={22}
+				size={16}
 				fill={isInWishlist ? 'red' : 'none'}
-				stroke={isInWishlist ? 'red' : 'black'}
-				className='transition-transform hover:scale-110'
+				stroke={isInWishlist ? 'red' : 'currentColor'}
+				className='transition-transform hover:scale-110 text-gray-500'
 			/>
 		</button>
 	);

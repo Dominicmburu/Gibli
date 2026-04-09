@@ -21,6 +21,23 @@ const db = new DbHelper();
 const checkoutRouter = express.Router();
 const stripe = new Stripe(process.env.SK_TEST);
 
+/**
+ * Compute the processing fee line item (in cents) to add to a Stripe session
+ * so that after Stripe takes its cut (1.5% + €0.25), Gibli receives exactly
+ * the product+shipping subtotal.
+ *
+ * Formula: grossCharge = (subtotal + fixed) / (1 - rate)
+ *          fee = grossCharge - subtotal  → rounded UP to nearest cent
+ *
+ * 1.5% covers EU cards (1.4%) with a small buffer for non-EU transactions.
+ */
+const STRIPE_RATE  = 0.015; // 1.5%
+const STRIPE_FIXED = 25;    // €0.25 in cents
+
+function calcProcessingFeeCents(subtotalCents) {
+	return Math.ceil((subtotalCents + STRIPE_FIXED) / (1 - STRIPE_RATE) - subtotalCents);
+}
+
 // Helper: Parse shipping address from draft (handles both old and new format)
 const parseShippingAddress = (shippingAddress) => {
 	// New format: { default: {...}, perItem: { ProductId: {...}, ... } }
@@ -91,12 +108,26 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 			};
 		});
 
+		// Add processing fee so Gibli receives exactly the product subtotal after Stripe's cut
+		const subtotalCents = lineItems.reduce((sum, li) => sum + li.price_data.unit_amount * li.quantity, 0);
+		const feeCents = calcProcessingFeeCents(subtotalCents);
+		const lineItemsWithFee = [
+			...lineItems,
+			{
+				price_data: {
+					currency: 'eur',
+					product_data: { name: 'Processing fee' },
+					unit_amount: feeCents,
+				},
+				quantity: 1,
+			},
+		];
+
 		// 💳 Create Stripe Checkout Session
 		const session = await stripe.checkout.sessions.create({
-			//payment_method_types: ['card', 'sepa_debit', 'giropay', 'paypal', 'revolut_pay'],
 			payment_method_types: ['card', 'sepa_debit'],
 			mode: 'payment',
-			line_items: lineItems,
+			line_items: lineItemsWithFee,
 			success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
 			cancel_url: `${process.env.FRONTEND_URL}/payment/fail`,
 			metadata: {
@@ -246,10 +277,25 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 			};
 		});
 
+		// Add processing fee
+		const subtotalCentsBN = lineItems.reduce((sum, li) => sum + li.price_data.unit_amount * li.quantity, 0);
+		const feeCentsBN = calcProcessingFeeCents(subtotalCentsBN);
+		const lineItemsWithFeeBN = [
+			...lineItems,
+			{
+				price_data: {
+					currency: 'eur',
+					product_data: { name: 'Processing fee' },
+					unit_amount: feeCentsBN,
+				},
+				quantity: 1,
+			},
+		];
+
 		const session = await stripe.checkout.sessions.create({
 			payment_method_types: ['card', 'sepa_debit'],
 			mode: 'payment',
-			line_items: lineItems,
+			line_items: lineItemsWithFeeBN,
 			success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
 			cancel_url: `${process.env.FRONTEND_URL}/payment/fail`,
 			metadata: {

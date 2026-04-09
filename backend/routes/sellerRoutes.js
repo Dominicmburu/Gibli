@@ -239,6 +239,18 @@ sellerRouter.get('/needs-restock', authenticateToken, async (req, res) => {
 		res.status(500).json({ success: false, message: 'Failed to fetch restock products.' });
 	}
 });
+// Get count of products needing restock (for sidebar badge)
+sellerRouter.get('/restock-count', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const result = await db.executeProcedure('GetRestockCount', { UserId });
+		const count = result.recordset?.[0]?.RestockCount ?? 0;
+		res.status(200).json({ success: true, count });
+	} catch (error) {
+		console.error('Error fetching restock count:', error);
+		res.status(500).json({ success: false, count: 0 });
+	}
+});
 // sellerRouter.js
 sellerRouter.patch('/snooze/:id', async (req, res) => {
 	try {
@@ -302,6 +314,38 @@ sellerRouter.delete('/delete/product/:id', authenticateToken, async (req, res) =
 	} catch (error) {
 		console.error('Product deletion error:', error);
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });
+	}
+});
+
+sellerRouter.get('/store-info', authenticateToken, async (req, res) => {
+	try {
+		const sellerId = req.user.id;
+		const result = await db.executeProcedure('GetSellerStoreInfo', { SellerId: sellerId });
+		const row = result.recordset?.[0];
+		if (!row) return res.status(404).json({ error: 'Store not found.' });
+		return res.status(200).json({ success: true, data: row });
+	} catch (error) {
+		console.error('Get store info error:', error);
+		return res.status(500).json({ error: 'Failed to load store info.' });
+	}
+});
+
+sellerRouter.patch('/store-info', authenticateToken, async (req, res) => {
+	try {
+		const sellerId = req.user.id;
+		const { businessName, returnAddress } = req.body || {};
+		if (!businessName?.trim()) {
+			return res.status(400).json({ error: 'Business name is required.' });
+		}
+		await db.executeProcedure('UpdateSellerProfile', {
+			SellerId: sellerId,
+			BusinessName: businessName.trim(),
+			ReturnAddress: returnAddress?.trim() || null,
+		});
+		return res.status(200).json({ success: true, message: 'Store profile updated.' });
+	} catch (error) {
+		console.error('Update store info error:', error);
+		return res.status(500).json({ error: 'Failed to update store info.' });
 	}
 });
 

@@ -66,11 +66,7 @@ subscriptionRouter.get('/pending-seller-setup', authenticateToken, async (req, r
 	try {
 		const userId = req.user.id;
 
-		const pool = await db.pool;
-		const result = await pool.request()
-			.input('UserId', userId)
-			.query('SELECT HasCompletedOnboarding FROM Sellers WHERE UserId = @UserId');
-
+		const result = await db.executeProcedure('GetSellerOnboardingStatus', { UserId: userId });
 		const seller = result.recordset?.[0];
 
 		// Not a seller at all
@@ -97,12 +93,8 @@ subscriptionRouter.post('/complete-free-plan', authenticateToken, async (req, re
 	try {
 		const sellerId = req.user.id;
 
-		const pool = await db.pool;
-		const result = await pool.request()
-			.input('UserId', sellerId)
-			.query('UPDATE Sellers SET HasCompletedOnboarding = 1 WHERE UserId = @UserId');
-
-		if (result.rowsAffected?.[0] === 0) {
+		const result = await db.executeProcedure('CompleteSellerOnboarding', { UserId: sellerId });
+		if (result.recordset?.[0]?.RowsAffected === 0) {
 			return res.status(404).json({ message: 'Seller account not found.' });
 		}
 
@@ -450,15 +442,12 @@ subscriptionRouter.post('/activate-session', authenticateToken, async (req, res)
 
 			// Save Stripe customer ID and mark onboarding complete
 			try {
-				const pool = await db.pool;
 				await Promise.all([
 					db.executeProcedure('UpdateSellerStripeCustomerId', {
 						SellerId:         sellerId,
 						StripeCustomerId: session.customer,
 					}),
-					pool.request()
-						.input('SellerId', sellerId)
-						.query('UPDATE Sellers SET HasCompletedOnboarding = 1 WHERE UserId = @SellerId'),
+					db.executeProcedure('CompleteSellerOnboarding', { UserId: sellerId }),
 				]);
 			} catch (_) {
 				// Seller account may not exist yet (pre-registration flow) — that's fine

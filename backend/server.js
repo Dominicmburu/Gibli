@@ -13,8 +13,13 @@ import wishlistRouter from './routes/wishListRoutes.js';
 import storeRouter from './routes/storeRoutes.js';
 import shippingRouter from './routes/shippingRoutes.js';
 import orderRouter from './routes/orderRoutes.js';
+import reviewRouter from './routes/reviewRoutes.js';
+import returnRouter from './routes/returnRoutes.js';
+import messageRouter from './routes/messageRoutes.js';
 import subscriptionRouter from './routes/subscriptionRoutes.js';
 import { initCronJobs } from './services/cronService.js';
+import { ensureOrderReturnSchema } from './services/orderReturnSupport.js';
+
 // 1. Load environment variables
 dotenv.config();
 
@@ -47,8 +52,16 @@ app.use('/store', storeRouter);
 app.use('/shipping', shippingRouter);
 app.use('/orders', orderRouter);
 app.use('/subscriptions', subscriptionRouter);
+app.use('/reviews', reviewRouter);
+app.use('/returns', returnRouter);
+app.use('/messages', messageRouter);
 
-// Initialise daily cron jobs (subscription reminders + expiry)
+// Initialise return schema (tables, columns, constraints) once at startup
+ensureOrderReturnSchema().catch((err) =>
+	console.error('[STARTUP] Failed to initialise order return schema:', err)
+);
+
+// Initialise daily cron jobs (subscription reminders + expiry + return auto-approval)
 initCronJobs();
 
 const PORT = process.env.PORT || 5000;

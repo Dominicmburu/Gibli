@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import NavBar from '../../components/NavBar';
 import Footer from '../../components/Footer';
 import api from '../../api/axios';
-import { Package, Clock, Truck, CheckCircle, XCircle, ChevronRight, ShoppingBag, Loader2 } from 'lucide-react';
+import { Package, Clock, Truck, CheckCircle, XCircle, ChevronRight, ShoppingBag, Loader2, RotateCcw } from 'lucide-react';
 
 const statusConfig = {
 	Processing: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Processing' },
 	Confirmed: { icon: CheckCircle, color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed' },
 	Shipped: { icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Shipped' },
 	Delivered: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Delivered' },
+	Sold: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Sold' },
 	Cancelled: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Cancelled' },
 	Rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Rejected' },
 };
@@ -127,7 +128,7 @@ const OrdersPage = () => {
 											</div>
 
 											{/* Content row */}
-											<div className='flex items-center gap-4'>
+											<div className='flex items-start gap-4'>
 												{/* Product image thumbnail */}
 												<div className='hidden sm:block w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0'>
 													{firstImage ? (
@@ -141,30 +142,32 @@ const OrdersPage = () => {
 
 												{/* Order info */}
 												<div className='flex-1 min-w-0'>
-													<div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-														<div>
-															<p className='text-sm text-gray-600'>
-																{order.OrderItems.length} item{order.OrderItems.length !== 1 ? 's' : ''} from{' '}
-																<span className='font-medium text-gray-900'>{order.SellerName}</span>
-															</p>
-															<p className='text-sm text-gray-400 mt-0.5 truncate'>
-																{order.OrderItems.map((i) => i.ProductName).join(', ')}
-															</p>
-														</div>
-														<p className='text-lg font-bold text-gray-900 flex-shrink-0'>
+													<p className='text-sm text-gray-600'>
+														{order.OrderItems.length} item{order.OrderItems.length !== 1 ? 's' : ''} from{' '}
+														<span className='font-medium text-gray-900'>{order.SellerName}</span>
+													</p>
+													<p className='text-sm text-gray-400 mt-0.5 line-clamp-2'>
+														{order.OrderItems.map((i) => i.ProductName).join(', ')}
+													</p>
+													{['Delivered', 'Sold'].includes(order.DeliveryStatus) && (
+														<p className='text-xs text-primary-600 mt-1'>
+															Rate products from this order
+														</p>
+													)}
+													{/* Amount + View Details row — always on its own line */}
+													<div className='flex items-center justify-between mt-2'>
+														<p className='text-base font-bold text-gray-900'>
 															&euro;{Number(order.TotalAmount).toFixed(2)}
 														</p>
+														<button
+															onClick={() => navigate(`/orders/${order.OrderId}`)}
+															className='flex items-center gap-1 text-sm font-medium text-primary-500 hover:text-primary-600 transition-colors'
+														>
+															<span>View Details</span>
+															<ChevronRight size={16} />
+														</button>
 													</div>
 												</div>
-
-												{/* View details button */}
-												<button
-													onClick={() => navigate(`/orders/${order.OrderId}`)}
-													className='flex-shrink-0 flex items-center gap-1 text-sm font-medium text-primary-500 hover:text-primary-600 transition-colors'
-												>
-													<span className='hidden sm:inline'>View Details</span>
-													<ChevronRight size={18} />
-												</button>
 											</div>
 										</div>
 									</div>
