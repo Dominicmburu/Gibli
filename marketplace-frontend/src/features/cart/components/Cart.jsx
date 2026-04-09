@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
-import NavBar from '../../../components/Navbar';
+import NavBar from '../../../components/NavBar';
 import Footer from '../../../components/Footer';
 import { MapPin, Store, Minus, Plus, Trash2, ShoppingCart, Loader2, ShoppingBag, ArrowRight, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';

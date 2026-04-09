@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Trash2, Store, MapPin, Loader2 } from 'lucide-react';
 import api from '../../../api/axios';
-import NavBar from '../../../components/Navbar';
+import NavBar from '../../../components/NavBar';
 import Footer from '../../../components/Footer';
 import AddToCart from '../../cart/components/AddToCart';
 import toast from 'react-hot-toast';
