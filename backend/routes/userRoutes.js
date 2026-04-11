@@ -36,8 +36,8 @@ const isProd = process.env.NODE_ENV === 'production';
 function setAuthCookie(res, token) {
 	res.cookie('token', token, {
 		httpOnly: true,
-		secure: isProd,
-		sameSite: isProd ? 'strict' : 'lax',
+		secure: true,       // must be true when sameSite=none
+		sameSite: 'none',   // required for cross-origin cookies (frontend and backend on different domains)
 		maxAge: 2 * 60 * 60 * 1000, // 2 hours
 	});
 }
@@ -437,8 +437,8 @@ userRouter.get('/me', authenticateToken, (req, res) => {
 userRouter.post('/logout', (req, res) => {
 	res.clearCookie('token', {
 		httpOnly: true,
-		secure: isProd,
-		sameSite: isProd ? 'strict' : 'lax',
+		secure: true,
+		sameSite: 'none',
 	});
 	res.status(200).json({ message: 'Logged out' });
 });
