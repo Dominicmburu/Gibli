@@ -41,6 +41,8 @@ app.use((req, res, next) => {
 	next();
 });
 
+app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+
 app.use('/users', userRouter);
 app.use('/categories', categoryRouter);
 app.use('/uploads', sellerRouter);
