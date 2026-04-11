@@ -1,4 +1,5 @@
 import express from 'express';
+import Stripe from 'stripe';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
 import DbHelper from '../db/dbHelper.js';
 import { sendOrderStatusUpdateEmail } from '../services/emailService.js';
@@ -11,6 +12,7 @@ import {
 
 const orderRouter = express.Router();
 const db = new DbHelper();
+const stripe = new Stripe(process.env.SK_TEST);
 
 orderRouter.post('/placed', authenticateToken, async (req, res) => {
 	try {
@@ -70,10 +72,8 @@ orderRouter.post('/received', authenticateToken, async (req, res) => {
 // GET count of new (Processing) orders for the logged-in seller
 orderRouter.get('/new-count', authenticateToken, async (req, res) => {
 	try {
-		await ensureOrderReturnSchema();
-		const UserId = req.user.id;
-		const result = await db.executeProcedure('GetUserOrders', { UserId, Role: 'Seller' });
-		const count = (result.recordset || []).filter((o) => o.DeliveryStatus === 'Processing').length;
+		const result = await db.executeProcedure('GetNewOrderCount', { SellerId: req.user.id });
+		const count = result.recordset?.[0]?.NewOrderCount ?? 0;
 		return res.status(200).json({ count });
 	} catch (error) {
 		console.error('Error fetching new order count:', error);
@@ -162,9 +162,22 @@ orderRouter.post('/:orderId/cancel', authenticateToken, async (req, res) => {
 			return res.status(400).json({ success: false, message: 'Failed to cancel order.' });
 		}
 
+		// Issue Stripe refund — payment was captured at checkout, buyer must get money back
+		if (updated.PaymentIntentId) {
+			try {
+				await stripe.refunds.create({
+					payment_intent: updated.PaymentIntentId,
+					idempotencyKey: `cancel-${orderId}`,
+				});
+			} catch (stripeErr) {
+				console.error('⚠️ Stripe refund failed on cancel for order', orderId, stripeErr.message);
+				// Order is already cancelled in DB — log for manual resolution but don't block the response
+			}
+		}
+
 		return res.status(200).json({
 			success: true,
-			message: 'Order cancelled successfully. Stock has been restored.',
+			message: 'Order cancelled successfully. Your refund has been initiated.',
 			data: updated,
 		});
 	} catch (error) {
@@ -219,12 +232,8 @@ orderRouter.patch('/:orderId/status', authenticateToken, async (req, res) => {
 		}
 
 		if (status === 'Delivered') {
-			try {
-				await ensureOrderReturnSchema();
-				await setOrderDeliveredTimestamp(orderId);
-			} catch (dbErr) {
-				console.error('⚠️ Failed to set DeliveredAt:', dbErr.message);
-			}
+			await ensureOrderReturnSchema();
+			await setOrderDeliveredTimestamp(orderId);
 		}
 
 		const messages = {

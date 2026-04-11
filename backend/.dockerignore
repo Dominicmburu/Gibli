@@ -1,0 +1,5 @@
+node_modules
+.env
+*.log
+fixes-to-do
+test-email.js

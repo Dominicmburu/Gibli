@@ -10,9 +10,10 @@ BEGIN
     SET NOCOUNT ON;
 
     DECLARE @CurrentStatus NVARCHAR(50);
+    DECLARE @CurrentRefundStatus NVARCHAR(50);
     DECLARE @OrderSellerId VARCHAR(50);
 
-    SELECT @CurrentStatus = DeliveryStatus, @OrderSellerId = SellerId
+    SELECT @CurrentStatus = DeliveryStatus, @CurrentRefundStatus = RefundStatus, @OrderSellerId = SellerId
     FROM Orders
     WHERE OrderId = @OrderId AND IsDeleted = 0;
 
@@ -30,7 +31,8 @@ BEGIN
         RETURN;
     END
 
-    IF @CurrentStatus IN ('ReturnRequested', 'ReturnApproved')
+    -- Block delivery status changes while a return is active (check RefundStatus, not DeliveryStatus)
+    IF @CurrentRefundStatus IN ('ReturnRequested', 'ReturnApproved')
     BEGIN
         RAISERROR('This order is in a return / refund workflow. Use the return tools on the order page.', 16, 1);
         RETURN;

@@ -51,8 +51,8 @@ BEGIN
 
         COMMIT TRANSACTION;
 
-        -- Return the updated order
-        SELECT OrderId, DeliveryStatus, UpdatedAt
+        -- Return the updated order (include PaymentIntentId so the route can issue a Stripe refund)
+        SELECT OrderId, DeliveryStatus, UpdatedAt, PaymentIntentId
         FROM Orders
         WHERE OrderId = @OrderId;
     END TRY

@@ -133,28 +133,39 @@ export function initCronJobs() {
 
 			for (const ret of overdueReturns) {
 				try {
-					// Auto-approve in DB + close order (sets Refunded + Sold)
+					// 1. Issue Stripe refund FIRST — if this fails, abort everything for this return.
+					//    Do NOT mark the DB as Refunded or email the buyer until money is confirmed sent.
+					if (ret.PaymentIntentId) {
+						await stripe.refunds.create(
+							{ payment_intent: ret.PaymentIntentId },
+							{ idempotencyKey: `auto-${ret.ReturnRequestId}` }
+						);
+					}
+
+					// 2. Stripe succeeded (or no payment intent) — now update DB
 					await db.executeProcedure('AutoApproveReturnRequest', {
 						ReturnRequestId: ret.ReturnRequestId,
 						OrderId: ret.OrderId,
 					});
 
-					// Restore stock
-					await db.executeProcedure('RestoreOrderItemStock', { OrderId: ret.OrderId });
-
-					// Issue Stripe refund
-					if (ret.PaymentIntentId) {
-						try {
-							await stripe.refunds.create({ payment_intent: ret.PaymentIntentId });
-						} catch (stripeErr) {
-							console.error(`[CRON] Stripe refund failed for order ${ret.OrderId}:`, stripeErr.message);
+					// 3. Restore stock — respect partial return items if the buyer specified them
+					const itemsResult = await db.executeProcedure('GetReturnItems', { ReturnRequestId: ret.ReturnRequestId });
+					const returnItems = itemsResult.recordset || [];
+					if (returnItems.length > 0) {
+						for (const ri of returnItems) {
+							const productId = ri.ProductId ?? ri.productid;
+							const qty = Number(ri.ReturnQuantity ?? ri.returnquantity ?? 1);
+							await db.executeProcedure('RestoreSpecificItemStock', { ProductId: productId, Quantity: qty });
 						}
+					} else {
+						await db.executeProcedure('RestoreOrderItemStock', { OrderId: ret.OrderId });
 					}
 
-					// Email buyer
+					// 4. Email buyer — only after everything above succeeded
 					await sendRefundProcessedEmail(ret.BuyerEmail, ret.BuyerName, ret.OrderId, ret.TotalAmount);
 					console.log(`[CRON] Auto-approved return for order ${ret.OrderId}, refunded ${ret.BuyerEmail}`);
 				} catch (retErr) {
+					// If Stripe threw, the DB was never updated — safe to retry on the next cron run
 					console.error(`[CRON] Failed to auto-approve return ${ret.ReturnRequestId}:`, retErr.message);
 				}
 			}

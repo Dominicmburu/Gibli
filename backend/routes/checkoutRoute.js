@@ -547,7 +547,6 @@ export const stripeWebhook = async (req, res) => {
 			}
 
 			await db.executeProcedure('MarkCheckoutDraftAsUsed', { DraftId: draftId });
-			res.status(200).send('✅ Orders inserted successfully');
 
 			await db.executeProcedure('ClearUserCart', { UserId: userId });
 			const buyer = await db.executeProcedure('GetUserById', { UserId: userId });
@@ -561,6 +560,9 @@ export const stripeWebhook = async (req, res) => {
 				draftRow.TotalAmount,
 				shippingOptions
 			);
+
+			// All processing complete — respond 200 so Stripe doesn't retry
+			res.status(200).send('✅ Orders inserted successfully');
 		} catch (err) {
 			console.error('❌ Error processing webhook:', err);
 			res.status(500).send('Webhook processing failed');

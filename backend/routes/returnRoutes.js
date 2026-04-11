@@ -55,6 +55,10 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 		const { orderId } = req.params;
 		const reason = (req.body?.reason || '').trim();
 
+		if (reason.length < 10) {
+			return res.status(400).json({ success: false, message: 'Please describe your reason for returning (at least 10 characters).' });
+		}
+
 		const files = req.files || [];
 
 		const orderResult = await db.executeProcedure('GetOrderForReturn', { OrderId: orderId });
@@ -85,6 +89,9 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 		if (latest?.Status === 'Approved' || refundStatus === 'ReturnApproved' || refundStatus === 'Refunded') {
 			return res.status(400).json({ success: false, message: 'A return has already been approved or completed for this order.' });
 		}
+		if (refundStatus === 'PartialRefunded') {
+			return res.status(400).json({ success: false, message: 'A partial refund has already been issued for this order. No further returns can be submitted.' });
+		}
 
 		const mediaPayload = await buildReturnMediaPayload(files);
 		const returnRequestId = uuidv4();
@@ -114,6 +121,25 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 			try {
 				parsedReturnItems = JSON.parse(req.body?.returnItems || '[]');
 			} catch { parsedReturnItems = []; }
+
+			// Validate every submitted OrderItemId actually belongs to this order
+			if (parsedReturnItems.length > 0) {
+				const validItemsResult = await transaction.request()
+					.input('OrderId', orderId)
+					.execute('GetOrderItems');
+				const validIds = new Set(
+					(validItemsResult.recordset || []).map((r) =>
+						String(r.OrderItemId ?? r.orderitemid ?? '').toLowerCase()
+					)
+				);
+				for (const item of parsedReturnItems) {
+					if (!validIds.has(String(item.orderItemId || '').toLowerCase())) {
+						await transaction.rollback();
+						return res.status(400).json({ success: false, message: `Item ${item.orderItemId} does not belong to this order.` });
+					}
+				}
+			}
+
 			for (const item of parsedReturnItems) {
 				await transaction.request()
 					.input('ReturnItemId', uuidv4())
@@ -293,9 +319,11 @@ returnRouter.post('/:returnRequestId/mark-refunded', authenticateToken, async (r
 		// Issue Stripe refund — skip for exchange (buyer gets replacement, not money back)
 		// Always specify amount explicitly — this refunds only the product+shipping total,
 		// NOT the processing fee (which is non-refundable, same as a booking fee).
+		const orderTotal = Number(pickCol(row, 'TotalAmount') || 0);
+		let actualRefundAmount = orderTotal; // track the real amount for the email
+
 		if (paymentIntentId && resolutionType !== 'exchange') {
 			try {
-				const orderTotal = Number(pickCol(row, 'TotalAmount') || 0);
 				let refundAmountCents = Math.round(orderTotal * 100);
 
 				// If specific items were returned, refund only their sub-total
@@ -307,13 +335,14 @@ returnRouter.post('/:returnRequestId/mark-refunded', authenticateToken, async (r
 					}, 0);
 					if (partialTotal > 0 && partialTotal < orderTotal) {
 						refundAmountCents = Math.round(partialTotal * 100);
+						actualRefundAmount = partialTotal; // use real partial amount in email
 					}
 				}
 
 				await stripe.refunds.create({
 					payment_intent: paymentIntentId,
 					amount: refundAmountCents,
-				});
+				}, { idempotencyKey: `refund-${returnRequestId}` });
 			} catch (stripeErr) {
 				console.error('Stripe refund failed:', stripeErr.message);
 				return res.status(500).json({ success: false, message: 'Failed to process refund via Stripe. Please try again.' });
@@ -339,13 +368,12 @@ returnRouter.post('/:returnRequestId/mark-refunded', authenticateToken, async (r
 			}
 		}
 
-		// Notify buyer (fire-and-forget)
+		// Notify buyer with the actual refund amount (not blindly the order total)
 		;(async () => {
 			try {
-				const totalAmount = pickCol(row, 'TotalAmount');
 				const buyerEmail = pickCol(row, 'BuyerEmail');
 				const buyerName = pickCol(row, 'BuyerName');
-				await sendRefundProcessedEmail(buyerEmail, buyerName, mrOid, totalAmount);
+				await sendRefundProcessedEmail(buyerEmail, buyerName, mrOid, actualRefundAmount);
 			} catch (emailErr) {
 				console.error('Failed to send refund processed email:', emailErr.message);
 			}
@@ -542,7 +570,7 @@ returnRouter.post('/:returnRequestId/partial-refund', authenticateToken, async (
 				await stripe.refunds.create({
 					payment_intent: paymentIntentId,
 					amount: Math.round(parsedAmount * 100), // Stripe expects cents
-				});
+				}, { idempotencyKey: `partial-${returnRequestId}` });
 			} catch (stripeErr) {
 				console.error('Stripe partial refund failed:', stripeErr.message);
 				return res.status(500).json({ success: false, message: 'Failed to process refund via Stripe. Please try again.' });

@@ -11,14 +11,16 @@ const sqlConfig = {
 	password: process.env.DB_PWD,
 	database: process.env.DB_NAME,
 	server: process.env.DB_SERVER,
+	port: parseInt(process.env.DB_PORT || '1433', 10),
 	pool: {
 		max: 10,
 		min: 0,
 		idleTimeoutMillis: 30000,
 	},
 	options: {
-		encrypt: true, // for azure
-		trustServerCertificate: true, // change to true for local dev / self-signed certs
+		encrypt: process.env.DB_ENCRYPT !== 'false',
+		// Set DB_TRUST_CERT=true for local dev or when using Cloud SQL Auth Proxy
+		trustServerCertificate: process.env.DB_TRUST_CERT === 'true',
 	},
 };
 //test connection

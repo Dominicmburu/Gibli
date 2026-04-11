@@ -56,7 +56,18 @@ BEGIN
             GETDATE() AS CreatedAt
         FROM OPENJSON(@CartItemsJson) AS item;
 
-        -- 📦 3️⃣ Reduce stock for each ordered product
+        -- 📦 3️⃣ Verify stock is still sufficient (race-condition guard — checked inside the transaction)
+        IF EXISTS (
+            SELECT 1
+            FROM OPENJSON(@CartItemsJson) AS item
+            INNER JOIN Products p ON p.ProductId = JSON_VALUE(item.value, '$.ProductId')
+            WHERE p.InStock < CAST(JSON_VALUE(item.value, '$.Quantity') AS INT)
+        )
+        BEGIN
+            RAISERROR('One or more items no longer have sufficient stock. Please review your cart.', 16, 1);
+        END
+
+        -- Reduce stock for each ordered product
         UPDATE p
         SET p.InStock = p.InStock - CAST(JSON_VALUE(item.value, '$.Quantity') AS INT)
         FROM Products p
