@@ -3,12 +3,17 @@ import sqlConfig from './dbConnection.js';
 
 class DbHelper {
 	constructor() {
-		// Initialize the connection pool when an instance of DbHelper is created.
-		// Attach a no-op catch so that a startup connection failure does NOT cause
-		// an unhandled promise rejection (which kills the Node.js 20 process).
-		// executeProcedure still surfaces the error to callers via its own try/catch.
-		this.pool = mssql.connect(sqlConfig);
-		this.pool.catch(() => {});
+		this._pool = null;
+	}
+
+	get pool() {
+		if (!this._pool) {
+			this._pool = mssql.connect(sqlConfig).catch((err) => {
+				this._pool = null; // reset so the next call retries
+				return Promise.reject(err);
+			});
+		}
+		return this._pool;
 	}
 
 	/**
