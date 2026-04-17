@@ -15,9 +15,8 @@ SELECT
         COUNT(*) AS TotalCount
     FROM Products p
     INNER JOIN Sellers s ON p.UserId = s.UserId
-    WHERE 
-        p.InStock > 0
-        AND (@searchTerm IS NULL 
+    WHERE
+        (@searchTerm IS NULL
             OR p.ProductName LIKE '%' + @searchTerm + '%'
             OR p.Description LIKE '%' + @searchTerm + '%')
         AND (@categoryId IS NULL OR p.CategoryId = @categoryId);
@@ -43,8 +42,7 @@ SELECT
         WHERE ProductId = p.ProductId 
         ORDER BY ImageId -- assuming ImageId reflects upload order
     ) pi
-    WHERE InStock>0
-    AND (@searchTerm IS NULL 
+    WHERE (@searchTerm IS NULL
             OR p.ProductName LIKE '%' + @searchTerm + '%'
             OR p.Description LIKE '%' + @searchTerm + '%')
         AND (@categoryId IS NULL OR p.CategoryId = @categoryId)

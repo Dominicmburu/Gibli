@@ -25,8 +25,7 @@ BEGIN
         ORDER BY ImageId
     ) pi
     WHERE 
-        s.IsVerified = 0 
-        AND p.InStock > 0
+        s.IsVerified = 0
         AND p.ProductName LIKE '%' + @SearchTerm + '%'
     ORDER BY 
         CASE 

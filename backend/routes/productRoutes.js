@@ -158,4 +158,45 @@ productRouter.get('/category/:id', async (req, res) => {
 	}
 });
 
+// ── Stock notification subscribe/unsubscribe (uses RestockReminders table) ──
+productRouter.post('/:id/notify-stock', authenticateToken, async (req, res) => {
+	try {
+		await db.executeProcedure('UpsertRestockReminder', {
+			ReminderId: uid(),
+			ProductId: req.params.id,
+			UserId: String(req.user.id),
+			Email: req.user.email,
+		});
+		res.json({ subscribed: true });
+	} catch (err) {
+		console.error('notify-stock error:', err);
+		res.status(500).json({ message: 'Failed to subscribe.' });
+	}
+});
+
+productRouter.delete('/:id/notify-stock', authenticateToken, async (req, res) => {
+	try {
+		await db.executeProcedure('DeleteRestockReminder', {
+			ProductId: req.params.id,
+			UserId: String(req.user.id),
+		});
+		res.json({ subscribed: false });
+	} catch (err) {
+		console.error('unsubscribe-stock error:', err);
+		res.status(500).json({ message: 'Failed to unsubscribe.' });
+	}
+});
+
+productRouter.get('/:id/notify-stock', authenticateToken, async (req, res) => {
+	try {
+		const r = await db.executeProcedure('GetUserRestockReminder', {
+			ProductId: req.params.id,
+			UserId: String(req.user.id),
+		});
+		res.json({ subscribed: (r.recordset?.length || 0) > 0 });
+	} catch (err) {
+		res.status(500).json({ message: 'Failed to check subscription.' });
+	}
+});
+
 export default productRouter;

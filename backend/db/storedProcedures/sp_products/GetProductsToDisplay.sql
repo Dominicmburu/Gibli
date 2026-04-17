@@ -9,6 +9,7 @@ BEGIN
         -- p.Description,
         --p.InStock,
         p.Price,
+        p.InStock,
         --p.CreatedAt,
         --p.UpdatedAt,
         s.UserId AS SellerId,
@@ -25,5 +26,5 @@ BEGIN
         WHERE ProductId = p.ProductId
         ORDER BY ImageId -- assuming ImageId reflects upload order
     ) pi
-    WHERE s.IsVerified = 0 AND p.InStock > 0
+    WHERE s.IsVerified = 0
 END 

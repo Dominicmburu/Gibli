@@ -116,7 +116,7 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 			{
 				price_data: {
 					currency: 'eur',
-					product_data: { name: 'Processing fee' },
+					product_data: { name: 'Payment processing fee (Stripe)' },
 					unit_amount: feeCents,
 				},
 				quantity: 1,
@@ -285,7 +285,7 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 			{
 				price_data: {
 					currency: 'eur',
-					product_data: { name: 'Processing fee' },
+					product_data: { name: 'Payment processing fee (Stripe)' },
 					unit_amount: feeCentsBN,
 				},
 				quantity: 1,

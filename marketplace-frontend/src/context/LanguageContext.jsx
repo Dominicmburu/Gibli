@@ -3,21 +3,21 @@ import api from '../api/axios';
 import i18n from '../i18n/index.js';
 
 export const LANGUAGES = [
-	{ code: 'en', label: 'English',    flag: '🇬🇧' },
-	{ code: 'de', label: 'Deutsch',    flag: '🇩🇪' },
-	{ code: 'fr', label: 'Français',   flag: '🇫🇷' },
-	{ code: 'es', label: 'Español',    flag: '🇪🇸' },
-	{ code: 'it', label: 'Italiano',   flag: '🇮🇹' },
-	{ code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
-	{ code: 'pl', label: 'Polski',     flag: '🇵🇱' },
-	{ code: 'pt', label: 'Português',  flag: '🇵🇹' },
-	{ code: 'ro', label: 'Română',     flag: '🇷🇴' },
-	{ code: 'sv', label: 'Svenska',    flag: '🇸🇪' },
-	{ code: 'da', label: 'Dansk',      flag: '🇩🇰' },
-	{ code: 'fi', label: 'Suomi',      flag: '🇫🇮' },
-	{ code: 'el', label: 'Ελληνικά',   flag: '🇬🇷' },
-	{ code: 'cs', label: 'Čeština',    flag: '🇨🇿' },
-	{ code: 'hu', label: 'Magyar',     flag: '🇭🇺' },
+	{ code: 'en', country: 'GB', label: 'English',    flag: '🇬🇧' },
+	{ code: 'de', country: 'DE', label: 'Deutsch',    flag: '🇩🇪' },
+	{ code: 'fr', country: 'FR', label: 'Français',   flag: '🇫🇷' },
+	{ code: 'es', country: 'ES', label: 'Español',    flag: '🇪🇸' },
+	{ code: 'it', country: 'IT', label: 'Italiano',   flag: '🇮🇹' },
+	{ code: 'nl', country: 'NL', label: 'Nederlands', flag: '🇳🇱' },
+	{ code: 'pl', country: 'PL', label: 'Polski',     flag: '🇵🇱' },
+	{ code: 'pt', country: 'PT', label: 'Português',  flag: '🇵🇹' },
+	{ code: 'ro', country: 'RO', label: 'Română',     flag: '🇷🇴' },
+	{ code: 'sv', country: 'SE', label: 'Svenska',    flag: '🇸🇪' },
+	{ code: 'da', country: 'DK', label: 'Dansk',      flag: '🇩🇰' },
+	{ code: 'fi', country: 'FI', label: 'Suomi',      flag: '🇫🇮' },
+	{ code: 'el', country: 'GR', label: 'Ελληνικά',   flag: '🇬🇷' },
+	{ code: 'cs', country: 'CZ', label: 'Čeština',    flag: '🇨🇿' },
+	{ code: 'hu', country: 'HU', label: 'Magyar',     flag: '🇭🇺' },
 ];
 
 // In-memory cache: `${lang}|${originalText}` → translatedText

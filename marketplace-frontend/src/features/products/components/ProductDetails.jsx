@@ -198,6 +198,8 @@ const ProductDetails = () => {
 	const [reviewHasMore, setReviewHasMore] = useState(false);
 	const [chatOpen, setChatOpen] = useState(false);
 	const [sellerReplyDraft, setSellerReplyDraft] = useState({});
+	const [notifySubscribed, setNotifySubscribed] = useState(false);
+	const [notifyLoading, setNotifyLoading] = useState(false);
 	const reviewLoadRef = useRef(null);
 	const { id } = useParams();
 
@@ -244,6 +246,34 @@ const ProductDetails = () => {
 
 		fetchProductDetails();
 	}, [id]);
+
+	// Check if user is subscribed to stock notification for this product
+	useEffect(() => {
+		if (!isLoggedIn || !id) return;
+		api.get(`/products/${id}/notify-stock`)
+			.then((r) => setNotifySubscribed(r.data?.subscribed || false))
+			.catch(() => {});
+	}, [id, isLoggedIn]);
+
+	const handleNotifyToggle = async () => {
+		if (!isLoggedIn) { toast.error('Please log in to be notified.'); return; }
+		setNotifyLoading(true);
+		try {
+			if (notifySubscribed) {
+				await api.delete(`/products/${id}/notify-stock`);
+				setNotifySubscribed(false);
+				toast.success('Notification removed.');
+			} else {
+				await api.post(`/products/${id}/notify-stock`);
+				setNotifySubscribed(true);
+				toast.success('We will notify you when this product is back in stock!');
+			}
+		} catch {
+			toast.error('Could not update notification preference.');
+		} finally {
+			setNotifyLoading(false);
+		}
+	};
 
 	// Translate name + description when language or product changes
 	useEffect(() => {
@@ -460,16 +490,20 @@ const ProductDetails = () => {
 							</div>
 
 							{/* Price */}
-							<div className='bg-primary-50 p-4 sm:p-6 rounded-lg border-2 border-primary-200'>
-								<p className='text-3xl sm:text-4xl lg:text-5xl text-primary-500 font-bold'>
+							<div className={`p-4 sm:p-6 rounded-lg border-2 ${productDetails.InStock <= 0 ? 'bg-gray-50 border-gray-200' : 'bg-primary-50 border-primary-200'}`}>
+								<p className={`text-3xl sm:text-4xl lg:text-5xl font-bold ${productDetails.InStock <= 0 ? 'text-gray-400' : 'text-primary-500'}`}>
 									€{productDetails.Price?.toFixed(2)}
 								</p>
 								<div className='mt-3 sm:mt-4 flex items-center gap-2'>
-									<Package className='w-5 h-5 text-gray-600' />
-									<span className='text-sm sm:text-base text-gray-700'>
-										<span className='font-semibold text-primary-500'>{productDetails.InStock}</span>{' '}
-										{t('productDetails.unitsInStock')}
-									</span>
+									<Package className={`w-5 h-5 ${productDetails.InStock <= 0 ? 'text-red-400' : 'text-gray-600'}`} />
+									{productDetails.InStock <= 0 ? (
+										<span className='text-sm sm:text-base font-semibold text-red-500'>Out of Stock</span>
+									) : (
+										<span className='text-sm sm:text-base text-gray-700'>
+											<span className='font-semibold text-primary-500'>{productDetails.InStock}</span>{' '}
+											{t('productDetails.unitsInStock')}
+										</span>
+									)}
 								</div>
 							</div>
 
@@ -552,8 +586,34 @@ const ProductDetails = () => {
 
 							{/* CTA Buttons */}
 							<div className='space-y-3 sm:space-y-4 pt-2 sm:pt-4 border-t'>
-								<BuyNow product={productDetails} />
-								<AddToCart ProductId={productDetails.ProductId} SellerId={productDetails.SellerId} />
+								{productDetails.InStock <= 0 ? (
+									<>
+										<button
+											disabled
+											className='w-full bg-gray-200 text-gray-400 font-bold py-3 sm:py-4 px-6 rounded-lg cursor-not-allowed text-sm sm:text-base'
+										>
+											Out of Stock
+										</button>
+										{!isSeller && (
+											<button
+												onClick={handleNotifyToggle}
+												disabled={notifyLoading}
+												className={`w-full font-medium py-2.5 px-6 rounded-lg border-2 transition-colors text-sm flex items-center justify-center gap-2 ${
+													notifySubscribed
+														? 'bg-primary-50 border-primary-300 text-primary-600'
+														: 'bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600'
+												}`}
+											>
+												{notifySubscribed ? '🔔 Notify me when back in stock (remove)' : '🔔 Notify me when back in stock'}
+											</button>
+										)}
+									</>
+								) : (
+									<>
+										<BuyNow product={productDetails} />
+										<AddToCart ProductId={productDetails.ProductId} SellerId={productDetails.SellerId} />
+									</>
+								)}
 							</div>
 						</div>
 					</div>
@@ -695,7 +755,7 @@ const ProductDetails = () => {
 									)}
 
 									{isSeller && !review.SellerResponse && (
-										<div className='mt-3 flex items-start gap-2'>
+										<div className='mt-3 flex flex-col sm:flex-row items-stretch sm:items-start gap-2'>
 											<input
 												type='text'
 												value={sellerReplyDraft[review.ReviewId] || ''}
@@ -703,12 +763,12 @@ const ProductDetails = () => {
 													setSellerReplyDraft((prev) => ({ ...prev, [review.ReviewId]: event.target.value }))
 												}
 												placeholder={t('productDetails.respondToReview')}
-												className='flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm'
+												className='flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm min-w-0'
 											/>
 											<button
 												type='button'
 												onClick={() => submitSellerReply(review.ReviewId)}
-												className='px-3 py-2 text-sm rounded-md bg-primary-500 text-white'
+												className='w-full sm:w-auto px-4 py-2 text-sm rounded-md bg-primary-500 text-white whitespace-nowrap flex-shrink-0'
 											>
 												{t('productDetails.reply')}
 											</button>

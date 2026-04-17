@@ -27,10 +27,7 @@ const LanguageSelector = () => {
 				title='Change language'
 			>
 				<Globe size={15} className='text-gray-400 flex-shrink-0' />
-				<span className='text-base leading-none'>{current.flag}</span>
-				<span className='text-xs font-medium text-gray-500 hidden sm:inline'>
-					{current.code.toUpperCase()}
-				</span>
+				<span className='text-xs font-medium text-gray-600'>{current.code.toUpperCase()}</span>
 				<ChevronDown size={12} className='text-gray-400' />
 			</button>
 

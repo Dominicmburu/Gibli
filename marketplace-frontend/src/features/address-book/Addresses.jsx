@@ -8,6 +8,7 @@ import SmartAddressField from '../../components/SmartAddressField';
 import { useAddressAutocomplete } from '../../hooks/useAddressAutocomplete';
 import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Globe, Loader2, CheckCircle, Hash, Mail as PostalIcon } from 'lucide-react';
 import { EU_UK_COUNTRIES } from '../../utils/euCountries';
+import { EU_CITIES_BY_COUNTRY, CITY_TO_COUNTRY } from '../../utils/euCitiesData';
 import { validatePostalCode, postalHint } from '../../utils/postalCodeValidation';
 import toast from 'react-hot-toast';
 
@@ -492,19 +493,33 @@ const Addresses = () => {
 										<label className='block text-sm font-medium text-gray-700 mb-1.5'>
 											City / State / County <span className='text-red-500'>*</span>
 										</label>
-										<SmartAddressField
-											fieldKey='City'
-											value={formData.City}
-											onChange={addressAC.handleFieldChange}
-											onFocus={addressAC.handleFieldFocus}
-											onBlur={addressAC.handleFieldBlur}
-											onSelect={addressAC.handleSuggestionSelect}
-											suggestions={addressAC.getSuggestionsForField('City')}
-											isLoading={addressAC.isLoading && addressAC.activeField === 'City'}
-											placeholder='e.g. Leipzig'
-											icon={<MapPin size={16} className='text-gray-400' />}
-											error={errors.City}
-										/>
+										<div className='relative'>
+											<MapPin size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10' />
+											<select
+												value={formData.City}
+												onChange={(e) => {
+													const city = e.target.value;
+													const autoCountry = CITY_TO_COUNTRY[city];
+													setFormData((prev) => ({
+														...prev,
+														City: city,
+														...(autoCountry && !prev.Country ? { Country: autoCountry } : {}),
+													}));
+													setErrors((prev) => ({ ...prev, City: '' }));
+												}}
+												className={`w-full border rounded-lg pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white appearance-none ${
+													errors.City ? 'border-red-500 bg-red-50' : 'border-gray-300'
+												}`}
+											>
+												<option value=''>Select city...</option>
+												{(formData.Country && EU_CITIES_BY_COUNTRY[formData.Country]
+													? EU_CITIES_BY_COUNTRY[formData.Country]
+													: Object.values(EU_CITIES_BY_COUNTRY).flat().sort()
+												).map((city) => (
+													<option key={city} value={city}>{city}</option>
+												))}
+											</select>
+										</div>
 										{errors.City && (
 											<p className='text-xs text-red-500 mt-1'>{errors.City}</p>
 										)}
@@ -520,7 +535,16 @@ const Addresses = () => {
 										<Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
 										<select
 											value={formData.Country}
-											onChange={(e) => { setFormData({ ...formData, Country: e.target.value }); setErrors({ ...errors, Country: '' }); }}
+											onChange={(e) => {
+												const country = e.target.value;
+												const citiesForCountry = EU_CITIES_BY_COUNTRY[country] || [];
+												setFormData((prev) => ({
+													...prev,
+													Country: country,
+													City: citiesForCountry.includes(prev.City) ? prev.City : '',
+												}));
+												setErrors((prev) => ({ ...prev, Country: '' }));
+											}}
 											className={errors.Country ? "w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white border-red-500" : "w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white border-gray-300"}
 										>
 											<option value="">Select country...</option>

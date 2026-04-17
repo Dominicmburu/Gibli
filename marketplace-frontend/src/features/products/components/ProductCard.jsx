@@ -1,19 +1,43 @@
-import { useNavigate } from 'react-router-dom';
-import ProductDetails from './ProductDetails';
+import { useState } from 'react';
 import AddToCart from '../../cart/components/AddToCart';
 import AddToWishList from '../../wishlist/components/AddToWishlist';
-
-import { MapPin } from 'lucide-react';
+import { MapPin, Bell, BellOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../../utils/useAuth';
+import api from '../../../api/axios';
+import toast from 'react-hot-toast';
 
 const ProductCard = (props) => {
 	const { ProductId, ProductName, Description, Price, InStock, ImageUrl, BusinessName, Country, SellerId } = props;
 	const { t } = useTranslation();
+	const { isLoggedIn } = useAuth();
+	const [notifySubscribed, setNotifySubscribed] = useState(false);
+	const [notifyLoading, setNotifyLoading] = useState(false);
 
 	const handleClick = (id) => {
-		// Save the scroll position here so we go back to it
 		sessionStorage.setItem('scrollPosition', window.scrollY);
 		window.location.href = `/product/${id}`;
+	};
+
+	const handleNotify = async (e) => {
+		e.stopPropagation();
+		if (!isLoggedIn) { toast.error('Please log in to be notified.'); return; }
+		setNotifyLoading(true);
+		try {
+			if (notifySubscribed) {
+				await api.delete(`/products/${ProductId}/notify-stock`);
+				setNotifySubscribed(false);
+				toast.success('Notification removed.');
+			} else {
+				await api.post(`/products/${ProductId}/notify-stock`);
+				setNotifySubscribed(true);
+				toast.success('We will notify you when back in stock!');
+			}
+		} catch {
+			toast.error('Could not update notification.');
+		} finally {
+			setNotifyLoading(false);
+		}
 	};
 
 	return (
@@ -49,22 +73,22 @@ const ProductCard = (props) => {
 						)}
 					</div>
 
-					{/* Wishlist Button */}
+					{/* Out of Stock Overlay — pointer-events-none so buttons above it remain clickable */}
+					{InStock === 0 && (
+						<div className='absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/60 to-gray-900/40 flex items-end justify-center pb-4 backdrop-blur-[2px] pointer-events-none'>
+							<div className='bg-white/95 text-gray-800 text-sm font-bold px-5 py-1.5 rounded-full shadow-xl'>
+								{t('productCard.outOfStock')}
+							</div>
+						</div>
+					)}
+
+					{/* Wishlist Button — always visible, above overlay */}
 					<div
-						className='absolute top-3 right-3 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300'
+						className='absolute top-3 right-3 z-10'
 						onClick={(e) => e.stopPropagation()}
 					>
 						<AddToWishList ProductId={ProductId} />
 					</div>
-
-					{/* Out of Stock Overlay */}
-					{InStock === 0 && (
-						<div className='absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/60 to-gray-900/40 flex items-center justify-center backdrop-blur-[2px]'>
-							<div className='bg-white/95 text-gray-800 text-sm sm:text-base font-bold px-6 py-2 rounded-full shadow-xl'>
-{t('productCard.outOfStock')}
-							</div>
-						</div>
-					)}
 
 					{/* Quick View on Hover */}
 					<div className='absolute bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300'>
@@ -113,11 +137,34 @@ const ProductCard = (props) => {
 				</div>
 			</div>
 
-			{/* Add to Cart Button - Enhanced styling */}
-			<div className='p-4 sm:p-5 pt-0 mt-auto'>
-				<div className='transform group-hover/card:scale-[1.02] transition-transform duration-200'>
-					<AddToCart ProductId={ProductId} SellerId={SellerId} />
-				</div>
+			{/* CTA Button */}
+			<div className='p-4 sm:p-5 pt-0 mt-auto space-y-2'>
+				{InStock <= 0 ? (
+					<>
+						<button
+							disabled
+							className='w-full bg-gray-100 text-gray-400 font-medium px-4 py-2.5 rounded-lg cursor-not-allowed flex items-center justify-center text-sm'
+						>
+							{t('productCard.outOfStock')}
+						</button>
+						<button
+							onClick={handleNotify}
+							disabled={notifyLoading}
+							className={`w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-medium transition-colors ${
+								notifySubscribed
+									? 'bg-primary-50 border-primary-300 text-primary-600'
+									: 'bg-white border-gray-300 text-gray-600 hover:border-primary-400 hover:text-primary-600'
+							}`}
+						>
+							{notifySubscribed ? <BellOff size={13} /> : <Bell size={13} />}
+							{notifySubscribed ? 'Remove notification' : 'Notify me when available'}
+						</button>
+					</>
+				) : (
+					<div className='transform group-hover/card:scale-[1.02] transition-transform duration-200'>
+						<AddToCart ProductId={ProductId} SellerId={SellerId} />
+					</div>
+				)}
 			</div>
 		</article>
 	);

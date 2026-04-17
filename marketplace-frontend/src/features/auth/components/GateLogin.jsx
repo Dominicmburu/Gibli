@@ -39,8 +39,8 @@ const GateLogin = () => {
 			style={{ background: 'linear-gradient(135deg, #001f63 0%, #003399 50%, #002d87 100%)' }}
 		>
 			{/* EU Stars decoration */}
-			<div className='absolute top-0 left-0 right-0 flex justify-center pt-8 opacity-20 select-none pointer-events-none'>
-				<span className='text-5xl tracking-[0.5em]'>★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★</span>
+			<div className='absolute top-0 left-0 right-0 flex justify-center pt-8 select-none pointer-events-none'>
+				<span className='text-5xl tracking-[0.5em]' style={{ color: '#FFCC00' }}>★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★</span>
 			</div>
 
 			{/* Card */}
@@ -112,7 +112,7 @@ const GateLogin = () => {
 
 			{/* Bottom label */}
 			<p className='text-white/30 text-xs mt-8 text-center'>
-				GibLi Marketplace · EU Digital Commerce Platform
+				Gibli · EU Digital Commerce Platform
 			</p>
 		</div>
 	);

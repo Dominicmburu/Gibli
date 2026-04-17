@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Your verified domain email
-const FROM_EMAIL = `Marketplace <noreply@gibli.eu>`;
+const FROM_EMAIL = `Gibli <noreply@gibli.eu>`;
 
 export async function sendVerificationEmail(recipient, token) {
 	const verificationLink = `${process.env.FRONTEND_URL}/verify/${token}`;
@@ -18,9 +18,9 @@ export async function sendVerificationEmail(recipient, token) {
 		const { data, error } = await resend.emails.send({
 			from: FROM_EMAIL,
 			to: recipient,
-			subject: 'Verify your Marketplace account',
+			subject: 'Verify your Gibli account',
 			html: `
-				<h2>Welcome to Marketplace!</h2>
+				<h2>Welcome to Gibli!</h2>
 				<p>Please verify your email by clicking the link below:</p>
 				<a href="${verificationLink}" target="_blank"
 				style="background-color:#007bff; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Verify Email</a>
@@ -47,7 +47,7 @@ export async function sendWelcomeEmail(recipient) {
 			to: recipient,
 			subject: 'Thanks for registering',
 			html: `
-                <h1>Hello and Welcome to Marketplace!</h1>
+                <h1>Hello and Welcome to Gibli!</h1>
                 <p>We're excited to have you on board.</p><br/>
 				<br/>
 				<p>Whether you are just looking around or actively searching for your next purchase, we have you covered.</p>
@@ -105,7 +105,7 @@ export async function sellerRegistrationEmail(recipient) {
 			to: recipient,
 			subject: 'Onboard Seller Request',
 			html: `
-                <h1>Start Selling In the Marketplace!</h1>
+                <h1>Start Selling on Gibli!</h1>
                 <p>We're excited to have you become a seller on the platform.</p><br/>
 				<br/>
 				<p>As a security and customer trust policy we will run checks on the information you provided for your business</p>
@@ -203,17 +203,17 @@ export async function sendBuyerOrderConfirmationEmail(buyerEmail, buyerName, ite
 	const htmlContent = `
     <div style="font-family:Arial,sans-serif;color:#333;">
       <h2 style="color:#006B1A;">Hi ${buyerName || 'Customer'},</h2>
-      <p>Thank you for your order with <strong>us</strong>!</p>
+      <p>Thanks for placing an order with <strong>Gibli</strong>!</p>
       <p>Here's a summary of your purchase:</p>
 
       ${generateBuyerItemTable(items, shippingOptions)}
 
       <p style="margin-top:15px;font-weight:bold;">Total Amount: €${total}</p>
 
-      <p style="margin-top:20px;">We'll notify you when your order is shipped. For any inquiries, reply to this email.</p>
+      <p style="margin-top:20px;">We will let you know once your order is confirmed by the seller. For any inquiries, reply to this email.</p>
 
       <p style="color:#555;">
-        <strong>Marketplace Support Team</strong><br/>
+        <strong>Gibli Support Team</strong><br/>
         E-commerce made simple for you by us.
       </p>
     </div>`;
@@ -222,7 +222,7 @@ export async function sendBuyerOrderConfirmationEmail(buyerEmail, buyerName, ite
 		const { data, error } = await resend.emails.send({
 			from: FROM_EMAIL,
 			to: buyerEmail,
-			subject: '🛒 Your Marketplace Order Confirmation',
+			subject: '🛒 You placed an order with Gibli',
 			html: htmlContent,
 		});
 
@@ -265,7 +265,7 @@ export async function sendSubscriptionConfirmationEmail(email, businessName, pla
 	    </div>
 	    <p>Your reduced commission rate is now active on all your sales. Thank you for being a valued seller!</p>
 	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-	      <strong>Marketplace Support Team</strong><br/>
+	      <strong>Gibli Support Team</strong><br/>
 	      Need help? Reply to this email.
 	    </p>
 	  </div>
@@ -314,7 +314,7 @@ export async function sendSubscriptionRenewalReminder(email, businessName, subsc
 	    ${autoRenewMsg}
 	    <p>Visit your <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">subscription dashboard</a> to manage your plan.</p>
 	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-	      <strong>Marketplace Support Team</strong>
+	      <strong>Gibli Support Team</strong>
 	    </p>
 	  </div>
 	</div>`;
@@ -353,7 +353,7 @@ export async function sendSubscriptionPaymentFailedEmail(email, businessName, pl
 	    <p>Visit your <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">subscription dashboard</a> to update your payment method.</p>
 	    <p>If payment continues to fail, your subscription will be cancelled and you will be moved to the Free Plan (5% commission).</p>
 	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-	      <strong>Marketplace Support Team</strong>
+	      <strong>Gibli Support Team</strong>
 	    </p>
 	  </div>
 	</div>`;
@@ -394,7 +394,7 @@ export async function sendSubscriptionCancelledEmail(email, businessName, planNa
 	    </div>
 	    <p>Changed your mind? You can reactivate your subscription anytime before <strong>${formattedDate}</strong> in your <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">subscription dashboard</a>.</p>
 	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-	      <strong>Marketplace Support Team</strong>
+	      <strong>Gibli Support Team</strong>
 	    </p>
 	  </div>
 	</div>`;
@@ -430,7 +430,7 @@ export async function sendSubscriptionExpiredEmail(email, businessName, planName
 	    </p>
 	    <p>Want to continue with a reduced commission rate? <a href="${process.env.FRONTEND_URL}/seller-subscription" style="color:#6d28d9;">Resubscribe here</a>.</p>
 	    <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-	      <strong>Marketplace Support Team</strong>
+	      <strong>Gibli Support Team</strong>
 	    </p>
 	  </div>
 	</div>`;
@@ -472,8 +472,8 @@ export async function sendOrderStatusUpdateEmail(buyerEmail, buyerName, orderId,
 			headerText: 'Order Rejected',
 			message: "We're sorry — the seller was unable to fulfil your order. If a payment was taken it will be refunded to your original payment method within a few business days.",
 			subMessage: reason
-				? `Reason from seller: <em>${reason}</em><br/><br/>Feel free to browse our marketplace for alternative products.`
-				: 'Feel free to browse our marketplace for alternative products.',
+				? `Reason from seller: <em>${reason}</em><br/><br/>Feel free to browse Gibli for alternative products.`
+				: 'Feel free to browse Gibli for alternative products.',
 		},
 		Shipped: {
 			subject: '📦 Your Order Is On Its Way!',
@@ -551,7 +551,7 @@ export async function sendOrderStatusUpdateEmail(buyerEmail, buyerName, orderId,
       <p style="margin-top:20px;color:#555;">${config.subMessage}</p>
 
       <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-        <strong>Marketplace Support Team</strong><br/>
+        <strong>Gibli Support Team</strong><br/>
         E-commerce made simple for you by us.
       </p>
     </div>
@@ -619,10 +619,10 @@ export async function sendOrderAutoCancelledEmail(buyerEmail, buyerName, orderId
       ${itemTable}
 
       <p style="margin-top:20px;color:#555;">If a payment was taken, it will be refunded to your original payment method within a few business days.</p>
-      <p style="color:#555;">We apologise for any inconvenience. Feel free to browse our marketplace for alternative products.</p>
+      <p style="color:#555;">We apologise for any inconvenience. Feel free to browse Gibli for alternative products.</p>
 
       <p style="color:#6b7280;font-size:14px;margin-top:30px;">
-        <strong>Marketplace Support Team</strong><br/>
+        <strong>Gibli Support Team</strong><br/>
         E-commerce made simple for you by us.
       </p>
     </div>
@@ -666,7 +666,7 @@ export async function sendReturnSubmittedEmail(sellerEmail, sellerName, orderId,
 	    <p style="background:#fee2e2;padding:12px;border-radius:6px;border-left:4px solid #dc2626;font-size:13px;">
 	      <strong>You have 3 days to approve or reject this request.</strong> If you do not respond, the return will be auto-approved and the buyer will be refunded automatically.
 	    </p>
-	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Gibli Support Team</strong></p>
 	  </div>
 	</div>`;
 	try {
@@ -695,7 +695,7 @@ export async function sendReturnApprovedEmail(buyerEmail, buyerName, orderId, se
 	      <p style="margin:0 0 6px 0;font-size:13px;font-weight:bold;color:#065f46;">Seller instructions:</p>
 	      <p style="margin:0;font-size:13px;color:#064e3b;white-space:pre-wrap;">${sellerInstructions}</p>
 	    </div>
-	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Gibli Support Team</strong></p>
 	  </div>
 	</div>`;
 	try {
@@ -724,7 +724,7 @@ export async function sendReturnRejectedEmail(buyerEmail, buyerName, orderId, re
 	      <p style="margin:0 0 6px 0;font-size:13px;font-weight:bold;color:#991b1b;">Seller reason:</p>
 	      <p style="margin:0;font-size:13px;color:#7f1d1d;">${rejectionReason}</p>
 	    </div>
-	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Gibli Support Team</strong></p>
 	  </div>
 	</div>`;
 	try {
@@ -753,7 +753,7 @@ export async function sendRefundProcessedEmail(buyerEmail, buyerName, orderId, a
 	      <p style="margin:0;font-size:15px;">Refund amount: <strong>&euro;${Number(amount).toFixed(2)}</strong></p>
 	      <p style="margin:8px 0 0 0;font-size:13px;color:#6b7280;">Funds typically appear within 5–10 business days depending on your bank.</p>
 	    </div>
-	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Gibli Support Team</strong></p>
 	  </div>
 	</div>`;
 	try {
@@ -787,7 +787,7 @@ export async function sendPartialRefundAgreedEmail(buyerEmail, buyerName, orderI
 	      <p style="margin:8px 0 0 0;font-size:13px;color:#6b7280;">Funds typically appear within 5–10 business days.</p>
 	    </div>
 	    ${noteBlock}
-	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Gibli Support Team</strong></p>
 	  </div>
 	</div>`;
 	try {
@@ -815,7 +815,7 @@ export async function sendBuyerShippedEmail(sellerEmail, sellerName, orderId, bu
 	      ${trackingUrl ? `<p style="margin:8px 0 0 0;"><a href="${trackingUrl}" style="color:#2563eb;">Track the shipment &rarr;</a></p>` : ''}
 	    </div>
 	    <p>Once you receive the item and confirm it's in acceptable condition, please confirm receipt in your dashboard to complete the return and issue the refund.</p>
-	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Marketplace Support Team</strong></p>
+	    <p style="color:#6b7280;font-size:14px;margin-top:30px;"><strong>Gibli Support Team</strong></p>
 	  </div>
 	</div>`;
 	try {
@@ -845,7 +845,7 @@ export async function sendSellerOrderNotificationEmail(
 	const htmlContent = `
     <div style="font-family:Arial,sans-serif;color:#333;">
       <h2 style="color:#0057B8;">Hi ${sellerName || 'Seller'},</h2>
-      <p>You've received a new order on <strong>The Marketplace</strong>!</p>
+      <p>You've received a new order on <strong>Gibli</strong>!</p>
       <p>Here are the items a buyer purchased from your store:</p>
 
       ${generateSellerItemTable(items, shippingOptions)}
@@ -858,7 +858,7 @@ export async function sendSellerOrderNotificationEmail(
       <p style="margin-top:20px;">Please prepare the order for shipment as soon as possible.</p>
 
       <p style="color:#555;">
-        <strong>Marketplace</strong><br/>
+        <strong>Gibli</strong><br/>
         Delivering smiles, one parcel at a time.
       </p>
     </div>`;
@@ -958,14 +958,14 @@ export async function sendNewReviewEmail(sellerEmail, sellerName, productName, b
       </div>
       <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
         <p>Hi <strong>${sellerName || 'Seller'}</strong>,</p>
-        <p>A buyer has left a new review for one of your products on <strong>The Marketplace</strong>.</p>
+        <p>A buyer has left a new review for one of your products on <strong>Gibli</strong>.</p>
         <div style="background:#f9fafb;border-radius:10px;padding:18px 22px;margin:20px 0;border-left:4px solid #0057B8;">
           <p style="margin:4px 0;"><strong>Product:</strong> ${productName}</p>
           <p style="margin:4px 0;"><strong>Buyer:</strong> ${buyerName}</p>
           <p style="margin:4px 0;font-size:20px;color:#F59E0B;">${stars}</p>
         </div>
         <p>Log in to your seller dashboard to view the full review and respond.</p>
-        <p style="color:#6b7280;font-size:13px;margin-top:24px;">The Marketplace Team</p>
+        <p style="color:#6b7280;font-size:13px;margin-top:24px;">Gibli Team</p>
       </div>
     </div>`;
 

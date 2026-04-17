@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
 	LayoutDashboard, Package, ShoppingCart, BarChart2, Settings,
@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../utils/useAuth';
 import api from '../../api/axios';
 import SnoozeStore from './SnoozeStore';
+import toast from 'react-hot-toast';
 
 const SellerSidebar = () => {
 	const [isOpen, setIsOpen] = useState(true);
@@ -16,9 +17,19 @@ const SellerSidebar = () => {
 	const [pendingReturnsCount, setPendingReturnsCount] = useState(0);
 	const [restockCount, setRestockCount] = useState(0);
 	const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+	const prevCounts = useRef({ orders: 0, returns: 0, restock: 0, messages: 0 });
+	const initialLoad = useRef(true);
 	const location = useLocation();
 	const { userInfo } = useAuth();
 	const userId = userInfo?.id;
+
+	const notify = (message, icon = '🔔') => {
+		toast(message, {
+			icon,
+			duration: 6000,
+			style: { background: '#1e293b', color: '#f8fafc', fontWeight: '500' },
+		});
+	};
 
 	const allMenuItems = [
 		{ name: 'Dashboard',     icon: <LayoutDashboard className='w-5 h-5' />, path: '/seller-dashboard',   tour: 'sidebar-dashboard'    },
@@ -44,38 +55,97 @@ const SellerSidebar = () => {
 	// Fetch new orders count every 60s
 	useEffect(() => {
 		if (!userId) return;
-		const fetch = async () => {
-			try { const r = await api.get('/orders/new-count'); setNewOrdersCount(r.data?.count || 0); } catch {}
+		const fetchOrders = async () => {
+			try {
+				const r = await api.get('/orders/new-count');
+				const count = r.data?.count || 0;
+				if (!initialLoad.current && count > prevCounts.current.orders) {
+					const diff = count - prevCounts.current.orders;
+					notify(`You have ${diff} new order${diff > 1 ? 's' : ''} waiting!`, '🛒');
+				}
+				prevCounts.current.orders = count;
+				setNewOrdersCount(count);
+			} catch {}
 		};
-		fetch();
-		const id = setInterval(fetch, 60000);
+		fetchOrders();
+		const id = setInterval(fetchOrders, 60000);
 		return () => clearInterval(id);
 	}, [userId]);
 
 	// Fetch unread messages every 30s
 	useEffect(() => {
 		if (!userId) return;
-		const fetch = async () => {
-			try { const r = await api.get('/messages/unread-count?role=Seller'); setUnreadMessagesCount(r.data?.count || 0); } catch {}
+		const fetchMessages = async () => {
+			try {
+				const r = await api.get('/messages/unread-count?role=Seller');
+				const count = r.data?.count || 0;
+				if (!initialLoad.current && count > prevCounts.current.messages) {
+					const diff = count - prevCounts.current.messages;
+					notify(`You have ${diff} new message${diff > 1 ? 's' : ''}!`, '💬');
+				}
+				prevCounts.current.messages = count;
+				setUnreadMessagesCount(count);
+			} catch {}
 		};
-		fetch();
-		const id = setInterval(fetch, 30000);
+		fetchMessages();
+		const id = setInterval(fetchMessages, 30000);
 		return () => clearInterval(id);
 	}, [userId]);
 
 	// Fetch returns + restock every 60s
 	useEffect(() => {
 		if (!userId) return;
-		const fetch = async () => {
+		const fetchReturnsAndRestock = async () => {
 			try {
 				const [rr, rs] = await Promise.all([api.get('/returns/seller'), api.get('/uploads/restock-count')]);
-				setPendingReturnsCount((rr.data?.data || []).filter((r) => r.ReturnStatus === 'Pending').length);
-				setRestockCount(rs.data?.count || 0);
+				const returns = (rr.data?.data || []).filter((r) => r.ReturnStatus === 'Pending').length;
+				const restock = rs.data?.count || 0;
+				if (!initialLoad.current) {
+					if (returns > prevCounts.current.returns) {
+						const diff = returns - prevCounts.current.returns;
+						notify(`${diff} new return request${diff > 1 ? 's' : ''} pending review.`, '↩️');
+					}
+					if (restock > prevCounts.current.restock) {
+						const diff = restock - prevCounts.current.restock;
+						notify(`${diff} product${diff > 1 ? 's' : ''} need${diff === 1 ? 's' : ''} restocking!`, '📦');
+					}
+				}
+				prevCounts.current.returns = returns;
+				prevCounts.current.restock = restock;
+				setPendingReturnsCount(returns);
+				setRestockCount(restock);
 			} catch {}
 		};
-		fetch();
-		const id = setInterval(fetch, 60000);
+		fetchReturnsAndRestock();
+		const id = setInterval(fetchReturnsAndRestock, 60000);
 		return () => clearInterval(id);
+	}, [userId]);
+
+	// Check subscription expiry once on mount
+	useEffect(() => {
+		if (!userId) return;
+		const checkSub = async () => {
+			try {
+				const r = await api.get('/store/subscription-status');
+				const sub = r.data;
+				if (!sub || sub.Status !== 'active' || !sub.CurrentPeriodEnd) return;
+				const daysLeft = Math.ceil((new Date(sub.CurrentPeriodEnd) - Date.now()) / 86400000);
+				if (daysLeft <= 3 && daysLeft > 0) {
+					notify(`Your subscription expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}!`, '⚠️');
+				} else if (daysLeft <= 0) {
+					notify('Your subscription has expired. Renew to keep your reduced commission.', '🔴');
+				}
+			} catch {}
+		};
+		const t = setTimeout(checkSub, 3500);
+		return () => clearTimeout(t);
+	}, [userId]);
+
+	// Mark initial load done after first round of fetches (500ms grace)
+	useEffect(() => {
+		if (!userId) return;
+		const t = setTimeout(() => { initialLoad.current = false; }, 3000);
+		return () => clearTimeout(t);
 	}, [userId]);
 
 	const isActive = (path) => location.pathname === path;
@@ -147,9 +217,9 @@ const SellerSidebar = () => {
 	const mobileFab = (
 		<button
 			onClick={() => setDrawerOpen(true)}
-			className='fixed bottom-6 left-6 z-50 md:hidden w-13 h-13 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
+			className='fixed bottom-6 left-6 z-50 md:hidden bg-primary-600 hover:bg-primary-700 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
 			aria-label='Open seller menu'
-			style={{ width: '52px', height: '52px' }}
+			style={{ width: '60px', height: '60px' }}
 		>
 			<Menu size={22} />
 			{totalBadgeCount > 0 && (
