@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Aproape am ajuns!",
+      "message": "Contul tău de vânzător este configurat — alege un plan și finalizează plata pentru a debloca cea mai bună rată de comision.",
+      "cta": "Plată completă"
+    },
+    "myStore": "Magazinul meu",
+    "searchPlaceholder": "Căutați produse...",
+    "home": "Acasă",
+    "myWishlist": "Lista mea de dorințe",
+    "browseCategories": "Răsfoiți categoriile",
+    "categories": "Categorii"
+  },
+  "footer": {
+    "tagline": "Piața ta europeană de încredere pentru descoperirea și vânzarea de produse de calitate. Conectează cumpărătorii și vânzătorii din întreaga Europă cu ușurință și transparență.",
+    "shipping": {
+      "title": "Livrare optimizată",
+      "subtitle": "Cele mai bune tarife pentru livrare rapidă"
+    },
+    "payment": {
+      "title": "Plată securizată",
+      "subtitle": "100% protejat"
+    },
+    "returns": {
+      "title": "Returnări ușoare",
+      "subtitle": "Politica de 30 de zile"
+    },
+    "support": {
+      "title": "Asistență 24/7",
+      "subtitle": "Ajutor dedicat"
+    },
+    "quickLinks": "Linkuri rapide",
+    "links": {
+      "home": "Acasă",
+      "about": "Despre noi",
+      "contact": "Contactaţi-ne",
+      "faq": "FAQ",
+      "shipping": "Informații despre livrare",
+      "returns": "Politica de returnare"
+    },
+    "getInTouch": "Contactați-ne",
+    "emailUs": "Trimiteți-ne un e-mail",
+    "callUs": "Sunați-ne",
+    "location": "Locaţie",
+    "locationValue": "Uniunea Europeană",
+    "copyright": "© {{year}} GibLi. Toate drepturile rezervate.",
+    "privacyPolicy": "Politica de confidențialitate",
+    "termsOfService": "Termeni și condiții",
+    "designedBy": "Proiectat cu grijă de"
+  },
+  "home": {
+    "filterButton": "Categorii",
+    "browseCategories": "Răsfoiți categoriile"
+  },
+  "productList": {
+    "title": "Produse recomandate",
+    "subtitle": "Descoperiți produse de calitate de la vânzători europeni de încredere",
+    "loading": "Se încarcă produse uimitoare...",
+    "available": "Produse disponibile",
+    "newArrivals": "Sosiri noi zilnic"
+  },
+  "productCard": {
+    "onlyLeft": "A mai rămas doar {{count}}!",
+    "new": "NOU",
+    "outOfStock": "Epuizat",
+    "quickView": "Vizualizare rapidă"
+  },
+  "productDetails": {
+    "loading": "Se încarcă detaliile produsului...",
+    "backToProducts": "Înapoi la produse",
+    "description": "Descriere",
+    "shippingOptions": "Opțiuni de livrare",
+    "standard": "Standard",
+    "express": "Expres",
+    "unitsInStock": "unități în stoc",
+    "sellerInfo": "Informații despre vânzător",
+    "business": "Afaceri:",
+    "location": "Locaţie:",
+    "chatSeller": "Vânzător prin chat",
+    "customerReviews": "Recenzii ale clienților",
+    "ratings": "Evaluări",
+    "allReviews": "Toate recenziile",
+    "latest": "Cele mai recente",
+    "withContent": "Cu conținut",
+    "withPhotos": "Cu fotografii",
+    "allStars": "Toate stelele",
+    "stars": "{{count}} Stele",
+    "oneStar": "1 stea",
+    "sellerResponse": "Răspunsul vânzătorului",
+    "respondToReview": "Răspundeți la această recenzie",
+    "reply": "Răspuns",
+    "loadingReviews": "Se încarcă recenziile...",
+    "showMoreReviews": "Afișează mai multe recenzii",
+    "helpfulCount": "Cumpărătorii {{count}} au considerat această recenzie utilă",
+    "helpful": "Util",
+    "shareTitle": "Distribuie",
+    "copied": "Copiat!",
+    "copyLink": "Copiază linkul",
+    "updatedOn": "Actualizat",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "E-mail"
+  },
+  "cart": {
+    "title": "Cărucior de cumpărături",
+    "empty": "Coșul tău este gol",
+    "emptySub": "Adăugați câteva produse pentru a începe",
+    "continueShopping": "Continuă cumpărăturile",
+    "loading": "Se încarcă coșul...",
+    "orderSummary": "Rezumatul comenzii",
+    "subtotal": "Subtotal",
+    "shipping": "Transport",
+    "total": "Total",
+    "checkout": "Finalizează cumpărăturile",
+    "remove": "Elimina",
+    "outOfStock": "Epuizat",
+    "lowStock": "A mai rămas doar {{count}}",
+    "notifyRestock": "Anunță când revine în stoc",
+    "cancelReminder": "Anulează mementoul",
+    "soldBy": "Vândut de",
+    "standard": "Standard",
+    "express": "Expres",
+    "item": "articol",
+    "items": "articole",
+    "qty": "Cant."
+  },
+  "auth": {
+    "login": {
+      "title": "Log in",
+      "email": "Adresa de e-mail",
+      "password": "Parolă",
+      "showPassword": "Afișează parola",
+      "hidePassword": "Ascunde parola",
+      "forgotPassword": "Aţi uitat parola?",
+      "submit": "Conectare",
+      "noAccount": "Nu aveți un cont?",
+      "signUp": "Înscrie-te"
+    },
+    "signup": {
+      "title": "Creează cont",
+      "username": "Nume de utilizator",
+      "email": "Adresa de e-mail",
+      "password": "Parolă",
+      "confirmPassword": "Confirmați parola",
+      "submit": "Creează cont",
+      "hasAccount": "Ai deja un cont?",
+      "login": "Log in"
+    },
+    "logout": "Deconectare",
+    "profile": "Profilul meu",
+    "orders": "Comenzile mele",
+    "becomeSeller": "Devino vânzător",
+    "sellerDashboard": "Tablou de bord al vânzătorului"
+  },
+  "orders": {
+    "title": "Comenzile mele",
+    "empty": "Nicio comandă încă",
+    "emptySub": "Istoricul comenzilor dvs. va apărea aici",
+    "startShopping": "Începeți cumpărăturile",
+    "loading": "Se încarcă comenzile...",
+    "orderId": "Comanda #{{id}}",
+    "placedOn": "Plasat pe",
+    "total": "Total",
+    "viewDetails": "Vedeți detaliile",
+    "status": {
+      "Processing": "Prelucrare",
+      "Confirmed": "Confirmat",
+      "Shipped": "Expediat",
+      "Delivered": "Livrat",
+      "Sold": "Vândut",
+      "Cancelled": "Anulat",
+      "Rejected": "Respins"
+    },
+    "detail": {
+      "back": "Înapoi la Comenzi",
+      "shippingAddress": "Adresa de transport",
+      "orderItems": "Articole comandate",
+      "summary": "Rezumatul comenzii",
+      "subtotal": "Subtotal",
+      "shipping": "Transport",
+      "total": "Total",
+      "soldBy": "Vândut de",
+      "standard": "Livrare standard",
+      "express": "Livrare expresă",
+      "cancelOrder": "Anulează comanda",
+      "returnOrder": "Cerere de returnare"
+    }
+  },
+  "wishlist": {
+    "title": "Lista mea de dorințe",
+    "empty": "Lista ta de dorințe este goală",
+    "emptySub": "Salvează produsele care îți plac pentru mai târziu",
+    "discover": "Descoperă produse",
+    "remove": "Elimina",
+    "addToCart": "Adaugă in coş",
+    "added": "Adăugat la lista de dorințe",
+    "removed": "Eliminat din lista de dorințe",
+    "loginRequired": "Vă rugăm să vă conectați pentru a utiliza lista de dorințe"
+  },
+  "search": {
+    "placeholder": "Căutați produse...",
+    "results": "Rezultate căutare pentru",
+    "noResults": "Nu s-au găsit produse pentru",
+    "tryDifferent": "Încercați un alt termen de căutare sau răsfoiți categoriile",
+    "loading": "Se caută..."
+  },
+  "categories": {
+    "title": "Categorii",
+    "all": "Toate categoriile",
+    "loading": "Se încarcă categoriile...",
+    "browseBy": "Răsfoire după categorie"
+  },
+  "checkout": {
+    "title": "Verifică",
+    "selectAddress": "Selectați o adresă de livrare",
+    "addAddress": "Adăugați o adresă nouă",
+    "shippingMethod": "Metodă de livrare",
+    "standard": "Livrare standard",
+    "express": "Livrare expresă",
+    "placeOrder": "Plasați comanda",
+    "processing": "Prelucrare...",
+    "success": "Comandă plasată cu succes!",
+    "subtotal": "Subtotal",
+    "shipping": "Transport",
+    "total": "Total"
+  },
+  "address": {
+    "title": "Agendă de adrese",
+    "add": "Adăugați o adresă nouă",
+    "edit": "Editați adresa",
+    "delete": "Ștergeți adresa",
+    "default": "Implicit",
+    "setDefault": "Setare ca implicită",
+    "save": "Salvați adresa",
+    "noAddresses": "Nicio adresă salvată încă"
+  },
+  "seller": {
+    "dashboard": "Bord",
+    "products": "Produse",
+    "orders": "Comenzi",
+    "revenue": "Venituri",
+    "messages": "Mesaje",
+    "settings": "Setări magazin",
+    "addProduct": "Adăugați produs",
+    "newOrders": "Comenzi noi",
+    "analytics": "Analiză",
+    "subscription": "Abonament",
+    "payouts": "Plăți",
+    "returns": "Returnări",
+    "itemsSold": "Articole vândute",
+    "storeStatus": "Starea magazinului",
+    "recentProducts": "Produse recente",
+    "noProductsYet": "Niciun produs încă. Adăugați primul produs pentru a începe.",
+    "dashboardTitle": "Panoul lui {{name}}"
+  },
+  "common": {
+    "loading": "Încărcare...",
+    "error": "Ceva nu a mers bine",
+    "retry": "Încearcă din nou",
+    "save": "Salva",
+    "cancel": "Anula",
+    "delete": "Şterge",
+    "edit": "Edita",
+    "close": "Aproape",
+    "confirm": "Confirma",
+    "back": "Spate",
+    "next": "Următorul",
+    "search": "Căutare",
+    "filter": "Filtra",
+    "clear": "Clar",
+    "viewAll": "Vezi tot",
+    "showMore": "Afișează mai multe",
+    "showLess": "Afișează mai puțin",
+    "addToCart": "Adaugă in coş",
+    "buyNow": "Cumpără acum",
+    "shareProduct": "Distribuiți produsul",
+    "currency": "€"
+  }
+}

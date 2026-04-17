@@ -56,23 +56,21 @@ BEGIN
             GETDATE() AS CreatedAt
         FROM OPENJSON(@CartItemsJson) AS item;
 
-        -- 📦 3️⃣ Verify stock is still sufficient (race-condition guard — checked inside the transaction)
-        IF EXISTS (
-            SELECT 1
-            FROM OPENJSON(@CartItemsJson) AS item
-            INNER JOIN Products p ON p.ProductId = JSON_VALUE(item.value, '$.ProductId')
-            WHERE p.InStock < CAST(JSON_VALUE(item.value, '$.Quantity') AS INT)
-        )
-        BEGIN
-            RAISERROR('One or more items no longer have sufficient stock. Please review your cart.', 16, 1);
-        END
-
-        -- Reduce stock for each ordered product
+        -- 📦 3️⃣ Atomic stock check + deduction in a single statement.
+        -- Using WHERE InStock >= qty means the UPDATE only succeeds if stock is sufficient
+        -- at the exact moment of the write — no race condition between check and deduction.
         UPDATE p
         SET p.InStock = p.InStock - CAST(JSON_VALUE(item.value, '$.Quantity') AS INT)
         FROM Products p
         INNER JOIN OPENJSON(@CartItemsJson) AS item
-            ON p.ProductId = JSON_VALUE(item.value, '$.ProductId');
+            ON p.ProductId = JSON_VALUE(item.value, '$.ProductId')
+        WHERE p.InStock >= CAST(JSON_VALUE(item.value, '$.Quantity') AS INT);
+
+        -- If any product row was NOT updated (rows affected < items count), stock was insufficient
+        IF @@ROWCOUNT < (SELECT COUNT(*) FROM OPENJSON(@CartItemsJson))
+        BEGIN
+            RAISERROR('One or more items no longer have sufficient stock. Please review your cart.', 16, 1);
+        END
 
         -- 🔔 4️⃣ Auto-flag NeedsRestock when stock drops to or below LowStockThreshold
         UPDATE p

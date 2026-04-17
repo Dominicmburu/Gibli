@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Bijna klaar!",
+      "message": "Je verkopersaccount is aangemaakt. Kies een abonnement en voltooi de betaling om je beste commissietarief te ontgrendelen.",
+      "cta": "Voltooi de betaling"
+    },
+    "myStore": "Mijn winkel",
+    "searchPlaceholder": "Producten zoeken...",
+    "home": "Thuis",
+    "myWishlist": "Mijn verlanglijstje",
+    "browseCategories": "Categorieën bekijken",
+    "categories": "Categorieën"
+  },
+  "footer": {
+    "tagline": "Uw vertrouwde Europese marktplaats voor het ontdekken en verkopen van kwaliteitsproducten. Wij verbinden kopers en verkopers in heel Europa op een eenvoudige en transparante manier.",
+    "shipping": {
+      "title": "Geoptimaliseerde verzending",
+      "subtitle": "De beste tarieven voor snelle levering."
+    },
+    "payment": {
+      "title": "Veilige betaling",
+      "subtitle": "100% beschermd"
+    },
+    "returns": {
+      "title": "Eenvoudig retourneren",
+      "subtitle": "30-dagenbeleid"
+    },
+    "support": {
+      "title": "24/7 ondersteuning",
+      "subtitle": "Toegewijde hulp"
+    },
+    "quickLinks": "Snelle links",
+    "links": {
+      "home": "Thuis",
+      "about": "Over ons",
+      "contact": "Neem contact met ons op",
+      "faq": "Veelgestelde vragen",
+      "shipping": "Verzendinformatie",
+      "returns": "Retourbeleid"
+    },
+    "getInTouch": "Neem contact op",
+    "emailUs": "Stuur ons een e-mail",
+    "callUs": "Bel ons",
+    "location": "Locatie",
+    "locationValue": "Europese Unie",
+    "copyright": "© {{year}} GibLi. Alle rechten voorbehouden.",
+    "privacyPolicy": "Privacybeleid",
+    "termsOfService": "Gebruiksvoorwaarden",
+    "designedBy": "Met zorg ontworpen door"
+  },
+  "home": {
+    "filterButton": "Categorieën",
+    "browseCategories": "Categorieën bekijken"
+  },
+  "productList": {
+    "title": "Uitgelichte producten",
+    "subtitle": "Ontdek kwaliteitsproducten van betrouwbare Europese verkopers.",
+    "loading": "Geweldige producten worden geladen...",
+    "available": "{{count}} Beschikbare producten",
+    "newArrivals": "Dagelijks nieuwe artikelen."
+  },
+  "productCard": {
+    "onlyLeft": "Alleen {{count}} is nog over!",
+    "new": "NIEUW",
+    "outOfStock": "Niet op voorraad",
+    "quickView": "Snel overzicht"
+  },
+  "productDetails": {
+    "loading": "Productdetails worden geladen...",
+    "backToProducts": "Terug naar producten",
+    "description": "Beschrijving",
+    "shippingOptions": "Verzendopties",
+    "standard": "Standaard",
+    "express": "Nadrukkelijk",
+    "unitsInStock": "eenheden op voorraad",
+    "sellerInfo": "Verkopersinformatie",
+    "business": "Bedrijf:",
+    "location": "Locatie:",
+    "chatSeller": "Chat met de verkoper",
+    "customerReviews": "Klantenrecensies",
+    "ratings": "Beoordelingen",
+    "allReviews": "Alle recensies",
+    "latest": "Laatste",
+    "withContent": "Met inhoud",
+    "withPhotos": "Met foto's",
+    "allStars": "Alle sterren",
+    "stars": "{{count}} Sterren",
+    "oneStar": "1 ster",
+    "sellerResponse": "Reactie van de verkoper",
+    "respondToReview": "Reageer op deze recensie",
+    "reply": "Antwoord",
+    "loadingReviews": "Recensies laden...",
+    "showMoreReviews": "Meer recensies weergeven",
+    "helpfulCount": "{{count}} kopers vonden deze recensie nuttig",
+    "helpful": "Behulpzaam",
+    "shareTitle": "Deel",
+    "copied": "Gekopieerd!",
+    "copyLink": "Link kopiëren",
+    "updatedOn": "Bijgewerkt",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "E-mail"
+  },
+  "cart": {
+    "title": "Winkelwagen",
+    "empty": "Je winkelwagen is leeg.",
+    "emptySub": "Voeg enkele producten toe om te beginnen.",
+    "continueShopping": "Verder winkelen",
+    "loading": "Je winkelwagen wordt geladen...",
+    "orderSummary": "Besteloverzicht",
+    "subtotal": "Subtotaal",
+    "shipping": "Verzenden",
+    "total": "Totaal",
+    "checkout": "Ga verder naar de kassa",
+    "remove": "Verwijderen",
+    "outOfStock": "Niet op voorraad",
+    "lowStock": "Alleen {{count}} is nog over.",
+    "notifyRestock": "Laat het ons weten wanneer het weer op voorraad is.",
+    "cancelReminder": "Annuleer herinnering",
+    "soldBy": "Verkocht door",
+    "standard": "Standaard",
+    "express": "Nadrukkelijk",
+    "item": "item",
+    "items": "items",
+    "qty": "Aantal"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "email": "E-mailadres",
+      "password": "Wachtwoord",
+      "showPassword": "Wachtwoord weergeven",
+      "hidePassword": "Wachtwoord verbergen",
+      "forgotPassword": "Wachtwoord vergeten?",
+      "submit": "Inloggen",
+      "noAccount": "Nog geen account?",
+      "signUp": "Aanmelden"
+    },
+    "signup": {
+      "title": "Account aanmaken",
+      "username": "Gebruikersnaam",
+      "email": "E-mailadres",
+      "password": "Wachtwoord",
+      "confirmPassword": "Bevestig wachtwoord",
+      "submit": "Account aanmaken",
+      "hasAccount": "Heb je al een account?",
+      "login": "Login"
+    },
+    "logout": "Uitloggen",
+    "profile": "Mijn profiel",
+    "orders": "Mijn bestellingen",
+    "becomeSeller": "Word verkoper",
+    "sellerDashboard": "Verkopersdashboard"
+  },
+  "orders": {
+    "title": "Mijn bestellingen",
+    "empty": "Nog geen bestellingen",
+    "emptySub": "Uw bestelgeschiedenis wordt hier weergegeven.",
+    "startShopping": "Begin met winkelen",
+    "loading": "Bestellingen laden...",
+    "orderId": "Bestelnummer #{{id}}",
+    "placedOn": "Geplaatst op",
+    "total": "Totaal",
+    "viewDetails": "Bekijk details",
+    "status": {
+      "Processing": "Verwerking",
+      "Confirmed": "Bevestigd",
+      "Shipped": "Verzonden",
+      "Delivered": "Afgeleverd",
+      "Sold": "Verkocht",
+      "Cancelled": "Geannuleerd",
+      "Rejected": "Afgewezen"
+    },
+    "detail": {
+      "back": "Terug naar bestellingen",
+      "shippingAddress": "Verzendadres",
+      "orderItems": "Bestelartikelen",
+      "summary": "Besteloverzicht",
+      "subtotal": "Subtotaal",
+      "shipping": "Verzenden",
+      "total": "Totaal",
+      "soldBy": "Verkocht door",
+      "standard": "Standaard verzending",
+      "express": "Expressverzending",
+      "cancelOrder": "Bestelling annuleren",
+      "returnOrder": "Verzoek om retour"
+    }
+  },
+  "wishlist": {
+    "title": "Mijn verlanglijstje",
+    "empty": "Je verlanglijst is leeg.",
+    "emptySub": "Bewaar producten die je leuk vindt voor later.",
+    "discover": "Ontdek producten",
+    "remove": "Verwijderen",
+    "addToCart": "Voeg toe aan winkelwagen",
+    "added": "Toegevoegd aan verlanglijst",
+    "removed": "Verwijderd van de verlanglijst.",
+    "loginRequired": "Log in om je verlanglijstje te gebruiken."
+  },
+  "search": {
+    "placeholder": "Producten zoeken...",
+    "results": "Zoekresultaten voor",
+    "noResults": "Geen producten gevonden voor",
+    "tryDifferent": "Probeer een andere zoekterm of blader door de categorieën.",
+    "loading": "Zoeken..."
+  },
+  "categories": {
+    "title": "Categorieën",
+    "all": "Alle categorieën",
+    "loading": "Categorieën laden...",
+    "browseBy": "Bladeren op categorie"
+  },
+  "checkout": {
+    "title": "Afrekenen",
+    "selectAddress": "Selecteer een verzendadres",
+    "addAddress": "Nieuw adres toevoegen",
+    "shippingMethod": "Verzendmethode",
+    "standard": "Standaard verzending",
+    "express": "Expressverzending",
+    "placeOrder": "Bestelling plaatsen",
+    "processing": "Bezig met verwerken...",
+    "success": "Bestelling succesvol geplaatst!",
+    "subtotal": "Subtotaal",
+    "shipping": "Verzenden",
+    "total": "Totaal"
+  },
+  "address": {
+    "title": "Adresboek",
+    "add": "Nieuw adres toevoegen",
+    "edit": "Adres bewerken",
+    "delete": "Adres verwijderen",
+    "default": "Standaard",
+    "setDefault": "Instellen als standaard",
+    "save": "Adres opslaan",
+    "noAddresses": "Er zijn nog geen adressen opgeslagen."
+  },
+  "seller": {
+    "dashboard": "Dashboard",
+    "products": "Producten",
+    "orders": "Bestellingen",
+    "revenue": "Winst",
+    "messages": "Berichten",
+    "settings": "Winkelinstellingen",
+    "addProduct": "Product toevoegen",
+    "newOrders": "Nieuwe bestellingen",
+    "analytics": "Analyses",
+    "subscription": "Abonnement",
+    "payouts": "Uitbetalingen",
+    "returns": "Retourneert",
+    "itemsSold": "Verkochte artikelen",
+    "storeStatus": "Winkelstatus",
+    "recentProducts": "Recente producten",
+    "noProductsYet": "Nog geen producten. Voeg uw eerste product toe om te beginnen.",
+    "dashboardTitle": "Dashboard van {{name}}"
+  },
+  "common": {
+    "loading": "Laden...",
+    "error": "Er is iets misgegaan.",
+    "retry": "Probeer het opnieuw",
+    "save": "Redden",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerking",
+    "close": "Dichtbij",
+    "confirm": "Bevestigen",
+    "back": "Rug",
+    "next": "Volgende",
+    "search": "Zoekopdracht",
+    "filter": "Filter",
+    "clear": "Duidelijk",
+    "viewAll": "Alles bekijken",
+    "showMore": "Meer weergeven",
+    "showLess": "Minder weergeven",
+    "addToCart": "Voeg toe aan winkelwagen",
+    "buyNow": "Nu kopen",
+    "shareProduct": "Product delen",
+    "currency": "€"
+  }
+}

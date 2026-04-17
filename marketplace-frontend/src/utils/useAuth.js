@@ -49,6 +49,7 @@ export const useAuth = () => {
 	const logout = async () => {
 		try { await api.post('/users/logout'); } catch { /* ignore */ }
 		setAuth({ isLoggedIn: false, tokenExpired: false, userInfo: null, hasSelectedRole: true, loading: false });
+		window.dispatchEvent(new Event('auth-changed'));
 	};
 
 	return { ...auth, logout };

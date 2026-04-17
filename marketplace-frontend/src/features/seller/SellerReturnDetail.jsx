@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
@@ -6,7 +6,9 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
 	ArrowLeft, RotateCcw, Loader2, Clock, CheckCircle, XCircle,
-	Package, User, ThumbsUp, ThumbsDown, BadgeCheck, Image, Zap, Truck, RefreshCcw, DollarSign, SplitSquareHorizontal,
+	Package, User, ThumbsUp, ThumbsDown, BadgeCheck, Image, Zap,
+	Truck, RefreshCcw, DollarSign, SplitSquareHorizontal, Upload,
+	Link as LinkIcon,
 } from 'lucide-react';
 
 function hoursUntilAutoApprove(dateStr) {
@@ -19,20 +21,15 @@ function UrgencyBadge({ dateStr, large = false }) {
 	const hours = hoursUntilAutoApprove(dateStr);
 	let label, cls;
 	if (hours <= 0) {
-		label = 'Overdue — auto-approving shortly';
-		cls = 'bg-red-600 text-white';
+		label = 'Overdue — auto-approving shortly'; cls = 'bg-red-600 text-white';
 	} else if (hours < 24) {
 		const h = Math.floor(hours);
 		const m = Math.floor((hours - h) * 60);
-		label = `${h}h ${m}m left to respond`;
-		cls = 'bg-red-100 text-red-800';
+		label = `${h}h ${m}m left to respond`; cls = 'bg-red-100 text-red-800';
 	} else if (hours < 48) {
-		label = '1 day left to respond';
-		cls = 'bg-orange-100 text-orange-800';
+		label = '1 day left to respond'; cls = 'bg-orange-100 text-orange-800';
 	} else {
-		const days = Math.min(3, Math.ceil(hours / 24));
-		label = `${days} days left to respond`;
-		cls = 'bg-green-100 text-green-800';
+		label = `${Math.min(3, Math.ceil(hours / 24))} days left to respond`; cls = 'bg-green-100 text-green-800';
 	}
 	return (
 		<span className={`inline-flex items-center gap-1.5 font-semibold rounded-lg ${large ? 'text-sm px-3 py-2' : 'text-xs px-2.5 py-1'} ${cls}`}>
@@ -42,11 +39,11 @@ function UrgencyBadge({ dateStr, large = false }) {
 }
 
 const statusConfig = {
-	Pending:         { label: 'Awaiting response',   bg: 'bg-amber-50',  color: 'text-amber-900',  border: 'border-amber-200',  icon: Clock                  },
-	Approved:        { label: 'Return approved',      bg: 'bg-green-50',  color: 'text-green-900',  border: 'border-green-200',  icon: CheckCircle            },
-	Refunded:        { label: 'Refunded',             bg: 'bg-purple-50', color: 'text-purple-900', border: 'border-purple-200', icon: BadgeCheck             },
-	Rejected:        { label: 'Rejected',             bg: 'bg-red-50',    color: 'text-red-900',    border: 'border-red-200',    icon: XCircle                },
-	PartialRefunded: { label: 'Partial refund agreed',bg: 'bg-blue-50',   color: 'text-blue-900',   border: 'border-blue-200',   icon: SplitSquareHorizontal  },
+	Pending:         { label: 'Awaiting response',       bg: 'bg-amber-50',  color: 'text-amber-900',  border: 'border-amber-200',  icon: Clock                 },
+	Approved:        { label: 'Approved — action needed', bg: 'bg-green-50',  color: 'text-green-900',  border: 'border-green-200',  icon: CheckCircle           },
+	Refunded:        { label: 'Completed',                bg: 'bg-purple-50', color: 'text-purple-900', border: 'border-purple-200', icon: BadgeCheck            },
+	Rejected:        { label: 'Rejected',                 bg: 'bg-red-50',    color: 'text-red-900',    border: 'border-red-200',    icon: XCircle               },
+	PartialRefunded: { label: 'Partial refund — complete',bg: 'bg-blue-50',   color: 'text-blue-900',   border: 'border-blue-200',   icon: SplitSquareHorizontal },
 };
 
 const RESOLUTION_OPTIONS = [
@@ -54,25 +51,25 @@ const RESOLUTION_OPTIONS = [
 		value: 'physical_return',
 		icon: Truck,
 		title: 'Request item back',
-		desc: 'Buyer ships the item to you. You confirm receipt, then the refund is issued.',
+		desc: 'Buyer ships the item back. You transfer the money manually, then upload proof.',
 	},
 	{
 		value: 'refund_without_return',
 		icon: RefreshCcw,
 		title: 'Full refund — buyer keeps item',
-		desc: 'Issue the full order refund immediately. No return shipment needed.',
+		desc: 'Transfer the full order amount to the buyer manually, then upload proof of transfer.',
 	},
 	{
 		value: 'partial_refund',
 		icon: SplitSquareHorizontal,
 		title: 'Partial refund — buyer keeps item',
-		desc: 'Agree on a partial amount to refund. Buyer keeps the item, no shipping needed.',
+		desc: 'Transfer an agreed partial amount to the buyer manually, then upload proof.',
 	},
 	{
 		value: 'exchange',
 		icon: RefreshCcw,
 		title: 'Exchange / Replacement',
-		desc: 'Send the buyer a replacement item instead of a refund.',
+		desc: 'Ship a replacement item to the buyer. No money involved — tracked via shipping flow.',
 	},
 ];
 
@@ -86,6 +83,30 @@ const SellerReturnDetail = () => {
 	const [resolutionType, setResolutionType] = useState('physical_return');
 	const [instructions, setInstructions] = useState('');
 	const [storeReturnAddress, setStoreReturnAddress] = useState('');
+	const [rejectionReason, setRejectionReason] = useState('');
+	const [submitting, setSubmitting] = useState(false);
+
+	// Partial refund fields
+	const [partialAmount, setPartialAmount] = useState('');
+	const [partialNote, setPartialNote] = useState('');
+
+	// Proof upload
+	const [proofFile, setProofFile] = useState(null);
+	const [uploadingProof, setUploadingProof] = useState(false);
+	const proofInputRef = useRef(null);
+
+	// Exchange tracking
+	const [exchangeTracking, setExchangeTracking] = useState('');
+	const [exchangeTrackingUrl, setExchangeTrackingUrl] = useState('');
+	const [savingTracking, setSavingTracking] = useState(false);
+	const [markingShipped, setMarkingShipped] = useState(false);
+	const [markingDelivered, setMarkingDelivered] = useState(false);
+
+	// Commission refund
+	const [commissionModal, setCommissionModal] = useState(false);
+	const [commissionNote, setCommissionNote] = useState('');
+	const [submittingCommission, setSubmittingCommission] = useState(false);
+	const [commissionRequestSent, setCommissionRequestSent] = useState(false);
 
 	const buildTemplate = (retData, returnAddr) => {
 		const biz = retData?.SellerBusinessName || '[Business Name]';
@@ -99,23 +120,15 @@ const SellerReturnDetail = () => {
 			setStoreReturnAddress(res.data?.data?.ReturnAddress || '');
 		}).catch(() => {});
 	}, []);
-	const [rejectionReason, setRejectionReason] = useState('');
-	const [submitting, setSubmitting] = useState(false);
-	const [markingRefunded, setMarkingRefunded] = useState(false);
-	const [commissionModal, setCommissionModal] = useState(false);
-	const [commissionAmount, setCommissionAmount] = useState('');
-	const [commissionNote, setCommissionNote] = useState('');
-	const [submittingCommission, setSubmittingCommission] = useState(false);
-	const [commissionRequestSent, setCommissionRequestSent] = useState(false);
-
-	// Partial refund (used inside the approve modal)
-	const [partialAmount, setPartialAmount] = useState('');
-	const [partialNote, setPartialNote] = useState('');
 
 	const loadDetail = async () => {
 		try {
 			const res = await api.get(`/returns/${returnRequestId}/detail`);
-			setRet(res.data?.data);
+			const data = res.data?.data;
+			setRet(data);
+			// Pre-fill exchange tracking if already set
+			if (data?.ExchangeTrackingNumber) setExchangeTracking(data.ExchangeTrackingNumber);
+			if (data?.ExchangeTrackingUrl) setExchangeTrackingUrl(data.ExchangeTrackingUrl);
 		} catch (err) {
 			console.error('Failed to load return detail:', err);
 			if (err.response?.status === 401 || err.response?.status === 403) navigate('/login');
@@ -127,9 +140,9 @@ const SellerReturnDetail = () => {
 
 	useEffect(() => { loadDetail(); }, [returnRequestId]);
 
+	// ── Approve ──────────────────────────────────────────────────────────
 	const handleApprove = async () => {
 		const isPhysical = resolutionType === 'physical_return';
-		const isExchange = resolutionType === 'exchange';
 		const isPartial  = resolutionType === 'partial_refund';
 
 		if (isPhysical && instructions.trim().length < 15) {
@@ -147,32 +160,25 @@ const SellerReturnDetail = () => {
 
 		setSubmitting(true);
 		try {
-			if (isPartial) {
-				await api.post(`/returns/${returnRequestId}/partial-refund`, {
-					amount: parseFloat(partialAmount),
-					sellerNote: partialNote.trim() || null,
-				});
-				toast.success(`Partial refund of €${parseFloat(partialAmount).toFixed(2)} processed. Buyer has been notified.`);
-			} else {
-				let instrText;
-				if (isPhysical) instrText = instructions.trim();
-				else if (isExchange) instrText = instructions.trim() || 'A replacement item will be sent to you. No need to return the original.';
-				else instrText = 'Refund issued — you do not need to return the item.';
-
-				await api.patch(`/returns/${returnRequestId}`, {
-					decision: 'approve',
-					sellerInstructions: instrText,
-					resolutionType,
-				});
-
-				if (resolutionType === 'refund_without_return') {
-					await api.post(`/returns/${returnRequestId}/mark-refunded`);
-					toast.success('Refund issued immediately. Buyer has been notified.');
-				} else {
-					toast.success('Return approved. Buyer has been notified with your instructions.');
-				}
+			let instrText = instructions.trim();
+			if (!instrText && resolutionType === 'refund_without_return') {
+				instrText = 'You do not need to return the item. The seller will transfer the refund to you directly.';
+			}
+			if (!instrText && resolutionType === 'exchange') {
+				instrText = 'A replacement item will be shipped to you. No need to return the original.';
+			}
+			if (!instrText && isPartial) {
+				instrText = `The seller will transfer €${parseFloat(partialAmount).toFixed(2)} to you directly. You may keep the item.`;
 			}
 
+			await api.patch(`/returns/${returnRequestId}`, {
+				decision: 'approve',
+				sellerInstructions: instrText,
+				resolutionType,
+				partialRefundAmount: isPartial ? parseFloat(partialAmount) : undefined,
+			});
+
+			toast.success('Return approved. Buyer has been notified.');
 			setApproveModal(false);
 			await loadDetail();
 		} catch (err) {
@@ -182,6 +188,7 @@ const SellerReturnDetail = () => {
 		}
 	};
 
+	// ── Reject ──────────────────────────────────────────────────────────
 	const handleReject = async () => {
 		if (rejectionReason.trim().length < 10) {
 			toast.error('Please explain your rejection reason (at least 10 characters).');
@@ -203,9 +210,74 @@ const SellerReturnDetail = () => {
 		}
 	};
 
+	// ── Upload proof of bank transfer ────────────────────────────────────
+	const handleUploadProof = async () => {
+		if (!proofFile) { toast.error('Please select an image file as proof of transfer.'); return; }
+		setUploadingProof(true);
+		try {
+			const formData = new FormData();
+			formData.append('proof', proofFile);
+			await api.post(`/returns/${returnRequestId}/upload-proof`, formData, {
+				headers: { 'Content-Type': 'multipart/form-data' },
+			});
+			toast.success('Proof uploaded. Return is complete — order is now Sold.');
+			setProofFile(null);
+			await loadDetail();
+		} catch (err) {
+			toast.error(err.response?.data?.message || 'Failed to upload proof.');
+		} finally {
+			setUploadingProof(false);
+		}
+	};
+
+	// ── Exchange tracking ────────────────────────────────────────────────
+	const handleSaveTracking = async () => {
+		if (!exchangeTracking.trim()) { toast.error('Please enter a tracking number.'); return; }
+		setSavingTracking(true);
+		try {
+			await api.patch(`/returns/${returnRequestId}/exchange-tracking`, {
+				trackingNumber: exchangeTracking.trim(),
+				trackingUrl: exchangeTrackingUrl.trim() || undefined,
+			});
+			toast.success('Tracking information saved.');
+			await loadDetail();
+		} catch (err) {
+			toast.error(err.response?.data?.message || 'Failed to save tracking.');
+		} finally {
+			setSavingTracking(false);
+		}
+	};
+
+	const handleMarkExchangeShipped = async () => {
+		setMarkingShipped(true);
+		try {
+			await api.post(`/returns/${returnRequestId}/exchange-shipped`);
+			toast.success('Replacement marked as shipped.');
+			await loadDetail();
+		} catch (err) {
+			toast.error(err.response?.data?.message || 'Failed to mark as shipped.');
+		} finally {
+			setMarkingShipped(false);
+		}
+	};
+
+	const handleMarkExchangeDelivered = async () => {
+		setMarkingDelivered(true);
+		try {
+			await api.post(`/returns/${returnRequestId}/exchange-delivered`);
+			toast.success('Replacement delivered. Order is now Sold.');
+			await loadDetail();
+		} catch (err) {
+			toast.error(err.response?.data?.message || 'Failed to mark as delivered.');
+		} finally {
+			setMarkingDelivered(false);
+		}
+	};
+
+	// ── Commission refund ────────────────────────────────────────────────
 	const handleCommissionRefundRequest = async () => {
-		const amount = parseFloat(commissionAmount);
-		if (!amount || amount <= 0) { toast.error('Please enter a valid commission amount.'); return; }
+		const amount = Number(ret.CommissionAmount || 0);
+		if (!amount || amount <= 0) { toast.error('No commission amount found for this order.'); return; }
 		setSubmittingCommission(true);
 		try {
 			await api.post(`/orders/${ret.OrderId}/commission-refund`, {
@@ -223,19 +295,7 @@ const SellerReturnDetail = () => {
 		}
 	};
 
-	const handleMarkRefunded = async () => {
-		setMarkingRefunded(true);
-		try {
-			await api.post(`/returns/${returnRequestId}/mark-refunded`);
-			toast.success('Refund processed successfully.');
-			await loadDetail();
-		} catch (err) {
-			toast.error(err.response?.data?.message || 'Failed to process refund.');
-		} finally {
-			setMarkingRefunded(false);
-		}
-	};
-
+	// ── Loading / not found ──────────────────────────────────────────────
 	if (loading) {
 		return (
 			<>
@@ -249,27 +309,38 @@ const SellerReturnDetail = () => {
 			</>
 		);
 	}
-
 	if (!ret) return null;
 
 	const cfg = statusConfig[ret.Status] || statusConfig.Pending;
 	const StatusIcon = cfg.icon;
 	const isAutoApproved = ret.ResolutionType === 'auto_approved';
-	const isPhysicalApproved = ret.ResolutionType === 'physical_return' && ret.Status === 'Approved';
-	const isExchangeApproved = ret.ResolutionType === 'exchange' && ret.Status === 'Approved';
-	const partialRefundAmount = ret.Items?.length > 0
-		? ret.Items.reduce((sum, i) => sum + Number(i.ItemRefundAmount || 0), 0)
-		: Number(ret.TotalAmount || 0);
+
+	const isPhysicalApproved     = ret.ResolutionType === 'physical_return'      && ret.Status === 'Approved';
+	const isFullRefundApproved   = ret.ResolutionType === 'refund_without_return' && ret.Status === 'Approved';
+	const isPartialApproved      = ret.ResolutionType === 'partial_refund'        && ret.Status === 'Approved';
+	const isExchangeApproved     = ret.ResolutionType === 'exchange'              && ret.Status === 'Approved';
+
+	const partialRefundAmount = ret.PartialRefundAmount
+		? Number(ret.PartialRefundAmount)
+		: ret.Items?.length > 0
+			? ret.Items.reduce((s, i) => s + Number(i.ItemRefundAmount || 0), 0)
+			: Number(ret.TotalAmount || 0);
 
 	const submittedDate = ret.CreatedAt
 		? new Date(ret.CreatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 		: '—';
 
+	// Commission refund is only available for physical_return and refund_without_return
+	const canRequestCommission = ['physical_return', 'refund_without_return'].includes(ret.ResolutionType);
+	const showCommissionBlock  = canRequestCommission
+		&& ['Refunded', 'PartialRefunded', 'Rejected'].includes(ret.Status)
+		&& !commissionRequestSent;
+
 	return (
 		<>
 			<NavBar />
 
-			{/* Commission Refund Request Modal */}
+			{/* ── Commission Refund Modal ── */}
 			{commissionModal && (
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
 					<div className='bg-white rounded-2xl p-6 w-full max-w-md shadow-xl'>
@@ -282,48 +353,29 @@ const SellerReturnDetail = () => {
 								<p className='text-sm text-gray-500'>Ask admin to return the commission on this returned order.</p>
 							</div>
 						</div>
-
 						<div className='mb-4'>
-							<label className='block text-sm font-medium text-gray-700 mb-1'>
-								Commission amount to refund (€)
-							</label>
-							<input
-								type='number'
-								min='0.01'
-								step='0.01'
-								value={commissionAmount}
-								onChange={(e) => setCommissionAmount(e.target.value)}
-								placeholder='e.g. 5.00'
-								className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
-							/>
-							<p className='text-xs text-gray-400 mt-1'>Order total: €{Number(ret.TotalAmount || 0).toFixed(2)}</p>
+							<label className='block text-sm font-medium text-gray-700 mb-1'>Commission amount to refund (€)</label>
+							<div className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-900 font-semibold'>
+								€{Number(ret.CommissionAmount || 0).toFixed(2)}
+							</div>
+							<p className='text-xs text-gray-400 mt-1'>
+								{ret.CommissionRate != null
+									? `${(Number(ret.CommissionRate) * 100).toFixed(1)}% commission on €${Number(ret.TotalAmount || 0).toFixed(2)} order total`
+									: `Order total: €${Number(ret.TotalAmount || 0).toFixed(2)}`}
+							</p>
 						</div>
-
 						<div className='mb-5'>
-							<label className='block text-sm font-medium text-gray-700 mb-1'>
-								Note to admin <span className='text-gray-400'>(optional)</span>
-							</label>
+							<label className='block text-sm font-medium text-gray-700 mb-1'>Note to admin <span className='text-gray-400'>(optional)</span></label>
 							<textarea
-								rows={3}
-								value={commissionNote}
+								rows={3} value={commissionNote}
 								onChange={(e) => setCommissionNote(e.target.value)}
 								placeholder='Explain why you are requesting the commission back...'
 								className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400'
 							/>
 						</div>
-
 						<div className='flex gap-3'>
-							<button
-								onClick={() => setCommissionModal(false)}
-								className='flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors'
-							>
-								Cancel
-							</button>
-							<button
-								onClick={handleCommissionRefundRequest}
-								disabled={submittingCommission}
-								className='flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors disabled:opacity-50'
-							>
+							<button onClick={() => setCommissionModal(false)} className='flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors'>Cancel</button>
+							<button onClick={handleCommissionRefundRequest} disabled={submittingCommission} className='flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors disabled:opacity-50'>
 								{submittingCommission ? 'Submitting…' : 'Send Request'}
 							</button>
 						</div>
@@ -331,10 +383,10 @@ const SellerReturnDetail = () => {
 				</div>
 			)}
 
-			{/* Approve Modal */}
+			{/* ── Approve Modal ── */}
 			{approveModal && (
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
-					<div className='bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl'>
+					<div className='bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto'>
 						<div className='flex items-center gap-3 mb-5'>
 							<div className='w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0'>
 								<ThumbsUp size={18} className='text-green-600' />
@@ -345,7 +397,6 @@ const SellerReturnDetail = () => {
 							</div>
 						</div>
 
-						{/* Resolution type choice */}
 						<div className='space-y-2 mb-4'>
 							{RESOLUTION_OPTIONS.map((opt) => {
 								const Icon = opt.icon;
@@ -354,12 +405,11 @@ const SellerReturnDetail = () => {
 									<button
 										key={opt.value}
 										type='button'
-										onClick={() => { setResolutionType(opt.value); if (opt.value === 'physical_return') setInstructions(buildTemplate(ret, storeReturnAddress)); else setInstructions(''); }}
-										className={`w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors ${
-											selected
-												? 'border-green-400 bg-green-50'
-												: 'border-gray-200 hover:border-green-200'
-										}`}
+										onClick={() => {
+											setResolutionType(opt.value);
+											setInstructions(opt.value === 'physical_return' ? buildTemplate(ret, storeReturnAddress) : '');
+										}}
+										className={`w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors ${selected ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-green-200'}`}
 									>
 										<div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${selected ? 'bg-green-100' : 'bg-gray-100'}`}>
 											<Icon size={16} className={selected ? 'text-green-700' : 'text-gray-500'} />
@@ -376,13 +426,10 @@ const SellerReturnDetail = () => {
 						{/* Physical return — instructions */}
 						{resolutionType === 'physical_return' && (
 							<div className='mb-4'>
-								<label className='block text-sm font-medium text-gray-700 mb-1'>
-									Return instructions <span className='text-red-500'>*</span>
-								</label>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>Return instructions <span className='text-red-500'>*</span></label>
 								<textarea
 									value={instructions}
 									onChange={(e) => setInstructions(e.target.value)}
-									placeholder='e.g. Please send the item to: [your address]. Use tracked shipping and keep proof of postage.'
 									rows={4}
 									className='w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none'
 								/>
@@ -390,21 +437,33 @@ const SellerReturnDetail = () => {
 							</div>
 						)}
 
+						{/* Full refund — note (optional) */}
+						{resolutionType === 'refund_without_return' && (
+							<div className='mb-4'>
+								<div className='bg-blue-50 rounded-xl border border-blue-200 px-3 py-2.5 text-sm text-blue-800 mb-3'>
+									You will need to transfer <strong>€{Number(ret?.TotalAmount || 0).toFixed(2)}</strong> to the buyer manually and upload proof.
+								</div>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>Message to buyer <span className='text-gray-400'>(optional)</span></label>
+								<textarea
+									value={instructions}
+									onChange={(e) => setInstructions(e.target.value)}
+									rows={2}
+									placeholder='e.g. We are sorry for the inconvenience. Your full refund will be transferred within 2 business days.'
+									className='w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none'
+								/>
+							</div>
+						)}
+
 						{/* Partial refund — amount + note */}
 						{resolutionType === 'partial_refund' && (
 							<div className='space-y-3 mb-4'>
-								<div className='bg-blue-50 rounded-xl border border-blue-200 px-3 py-2 text-sm text-blue-800'>
-									Order total: <strong>€{Number(ret?.TotalAmount || 0).toFixed(2)}</strong> · Refund processed immediately via Stripe.
+								<div className='bg-blue-50 rounded-xl border border-blue-200 px-3 py-2.5 text-sm text-blue-800'>
+									Order total: <strong>€{Number(ret?.TotalAmount || 0).toFixed(2)}</strong>. You will transfer the agreed partial amount manually and upload proof.
 								</div>
 								<div>
-									<label className='block text-sm font-medium text-gray-700 mb-1'>
-										Refund amount (€) <span className='text-red-500'>*</span>
-									</label>
+									<label className='block text-sm font-medium text-gray-700 mb-1'>Refund amount (€) <span className='text-red-500'>*</span></label>
 									<input
-										type='number'
-										min='0.01'
-										step='0.01'
-										max={Number(ret?.TotalAmount || 0)}
+										type='number' min='0.01' step='0.01' max={Number(ret?.TotalAmount || 0)}
 										value={partialAmount}
 										onChange={(e) => setPartialAmount(e.target.value)}
 										placeholder={`e.g. ${(Number(ret?.TotalAmount || 0) / 2).toFixed(2)}`}
@@ -412,17 +471,34 @@ const SellerReturnDetail = () => {
 									/>
 								</div>
 								<div>
-									<label className='block text-sm font-medium text-gray-700 mb-1'>
-										Note to buyer <span className='text-gray-400'>(optional)</span>
-									</label>
+									<label className='block text-sm font-medium text-gray-700 mb-1'>Note to buyer <span className='text-gray-400'>(optional)</span></label>
 									<textarea
-										rows={2}
-										value={partialNote}
+										rows={2} value={partialNote}
 										onChange={(e) => setPartialNote(e.target.value)}
 										placeholder='e.g. As agreed, we are refunding €X while you keep the item.'
 										className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400'
 									/>
 								</div>
+								<p className='text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2'>
+									Note: Commission refund requests are not available for partial refunds.
+								</p>
+							</div>
+						)}
+
+						{/* Exchange — optional message */}
+						{resolutionType === 'exchange' && (
+							<div className='mb-4'>
+								<div className='bg-purple-50 rounded-xl border border-purple-200 px-3 py-2.5 text-sm text-purple-800 mb-3'>
+									After approving, you will enter the replacement tracking number and mark it shipped, then delivered.
+								</div>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>Message to buyer <span className='text-gray-400'>(optional)</span></label>
+								<textarea
+									value={instructions}
+									onChange={(e) => setInstructions(e.target.value)}
+									rows={2}
+									placeholder='e.g. We are sending you a replacement. No need to return the original item.'
+									className='w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none'
+								/>
 							</div>
 						)}
 
@@ -441,21 +517,23 @@ const SellerReturnDetail = () => {
 									(resolutionType === 'partial_refund' && (!partialAmount || parseFloat(partialAmount) <= 0))
 								}
 								className={`flex-1 py-2.5 text-sm font-medium text-white rounded-xl disabled:opacity-50 transition-colors ${
-									resolutionType === 'partial_refund' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-500 hover:bg-green-600'
+									resolutionType === 'partial_refund'        ? 'bg-blue-600 hover:bg-blue-700'
+									: resolutionType === 'exchange'             ? 'bg-purple-500 hover:bg-purple-600'
+									: 'bg-green-500 hover:bg-green-600'
 								}`}
 							>
 								{submitting ? 'Processing…'
-									: resolutionType === 'partial_refund'   ? 'Confirm Partial Refund'
-									: resolutionType === 'refund_without_return' ? 'Refund Now'
-									: resolutionType === 'exchange'          ? 'Confirm Exchange'
-									:                                          'Approve Return'}
+									: resolutionType === 'partial_refund'        ? 'Confirm Partial Refund'
+									: resolutionType === 'refund_without_return' ? 'Approve Full Refund'
+									: resolutionType === 'exchange'              ? 'Confirm Exchange'
+									:                                              'Approve Return'}
 							</button>
 						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Reject Modal */}
+			{/* ── Reject Modal ── */}
 			{rejectModal && (
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
 					<div className='bg-white rounded-2xl p-6 w-full max-w-md shadow-xl'>
@@ -489,12 +567,12 @@ const SellerReturnDetail = () => {
 				</div>
 			)}
 
+			{/* ── Main Page ── */}
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					<div className='max-w-2xl mx-auto'>
 
-						{/* Back */}
 						<button
 							onClick={() => navigate('/my-returns')}
 							className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors'
@@ -510,7 +588,7 @@ const SellerReturnDetail = () => {
 										<StatusIcon size={20} className={cfg.color} />
 									</div>
 									<div>
-										<div className='flex items-center gap-2'>
+										<div className='flex items-center gap-2 flex-wrap'>
 											<h2 className={`text-lg font-bold ${cfg.color}`}>{cfg.label}</h2>
 											{isAutoApproved && (
 												<span className='flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200'>
@@ -525,12 +603,8 @@ const SellerReturnDetail = () => {
 								</div>
 							</div>
 							<p className='text-xs text-gray-500'>Submitted: {submittedDate}</p>
-
-							{/* Urgency badge for pending */}
 							{ret.Status === 'Pending' && (
-								<div className='mt-3'>
-									<UrgencyBadge dateStr={ret.CreatedAt} large />
-								</div>
+								<div className='mt-3'><UrgencyBadge dateStr={ret.CreatedAt} large /></div>
 							)}
 						</div>
 
@@ -552,27 +626,17 @@ const SellerReturnDetail = () => {
 									{ret.Items.map((item) => (
 										<div key={item.ReturnItemId} className='flex items-center gap-3 py-3 first:pt-0 last:pb-0'>
 											<div className='w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0'>
-												{item.ProductImageUrl ? (
-													<img src={item.ProductImageUrl} alt={item.ProductName} className='w-full h-full object-cover' />
-												) : (
-													<div className='w-full h-full flex items-center justify-center'>
-														<Package size={16} className='text-gray-300' />
-													</div>
-												)}
+												{item.ProductImageUrl
+													? <img src={item.ProductImageUrl} alt={item.ProductName} className='w-full h-full object-cover' />
+													: <div className='w-full h-full flex items-center justify-center'><Package size={16} className='text-gray-300' /></div>}
 											</div>
 											<div className='flex-1 min-w-0'>
 												<p className='text-sm font-medium text-gray-900 truncate'>{item.ProductName}</p>
 												<p className='text-xs text-gray-500'>Qty: {item.ReturnQuantity} × €{Number(item.UnitPrice).toFixed(2)}</p>
 											</div>
-											<p className='text-sm font-bold text-gray-900 flex-shrink-0'>
-												€{Number(item.ItemRefundAmount).toFixed(2)}
-											</p>
+											<p className='text-sm font-bold text-gray-900 flex-shrink-0'>€{Number(item.ItemRefundAmount).toFixed(2)}</p>
 										</div>
 									))}
-								</div>
-								<div className='border-t border-gray-100 pt-3 mt-2 flex justify-between'>
-									<span className='text-sm font-semibold text-gray-700'>Refund amount</span>
-									<span className='text-sm font-bold text-primary-600'>€{partialRefundAmount.toFixed(2)}</span>
 								</div>
 							</div>
 						)}
@@ -586,23 +650,19 @@ const SellerReturnDetail = () => {
 								<div className='flex flex-wrap gap-3'>
 									{ret.Media.map((m) => (
 										<div key={m.MediaId} className='w-24 h-24 rounded-xl overflow-hidden bg-gray-100 border border-gray-200'>
-											{m.MediaType === 'video' ? (
-												<video src={m.MediaUrl} className='w-full h-full object-cover' controls />
-											) : (
-												<a href={m.MediaUrl} target='_blank' rel='noopener noreferrer'>
-													<img src={m.MediaUrl} alt='Evidence' className='w-full h-full object-cover hover:opacity-90 transition-opacity' />
-												</a>
-											)}
+											{m.MediaType === 'video'
+												? <video src={m.MediaUrl} className='w-full h-full object-cover' controls />
+												: <a href={m.MediaUrl} target='_blank' rel='noopener noreferrer'><img src={m.MediaUrl} alt='Evidence' className='w-full h-full object-cover hover:opacity-90 transition-opacity' /></a>}
 										</div>
 									))}
 								</div>
 							</div>
 						)}
 
-						{/* Resolved state info */}
+						{/* Seller's instructions (after approval) */}
 						{ret.SellerInstructions && (
 							<div className='bg-green-50 rounded-2xl border border-green-200 p-5 mb-4'>
-								<h3 className='font-semibold text-green-900 mb-2'>Your return instructions</h3>
+								<h3 className='font-semibold text-green-900 mb-2'>Your instructions to buyer</h3>
 								<p className='text-sm text-green-900 whitespace-pre-wrap'>{ret.SellerInstructions}</p>
 							</div>
 						)}
@@ -612,28 +672,276 @@ const SellerReturnDetail = () => {
 								<p className='text-sm text-red-800 whitespace-pre-wrap'>{ret.SellerRejectionReason}</p>
 							</div>
 						)}
-						{ret.Status === 'Refunded' && (
+
+						{/* ════════════════════════════════════════════════════════
+						    FLOW 1: Physical return — buyer tracks item back to seller
+						    ════════════════════════════════════════════════════════ */}
+						{isPhysicalApproved && (
+							<div className='space-y-4 mb-4'>
+								{/* Step 1: Buyer tracking */}
+								<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5'>
+									<h3 className='font-semibold text-gray-900 mb-3 flex items-center gap-2'>
+										<Truck size={16} className='text-blue-500' />
+										Step 1 — Buyer Return Shipment
+									</h3>
+									{ret.BuyerTrackingNumber ? (
+										<div className='bg-blue-50 rounded-xl border border-blue-200 p-3'>
+											<p className='text-xs font-semibold text-blue-700 mb-1'>Tracking Number</p>
+											<p className='text-sm font-mono text-blue-900'>{ret.BuyerTrackingNumber}</p>
+											{ret.BuyerTrackingUrl && (
+												<a href={ret.BuyerTrackingUrl} target='_blank' rel='noopener noreferrer' className='text-xs text-blue-600 hover:text-blue-700 underline mt-1 block flex items-center gap-1'>
+													<LinkIcon size={11} /> Track shipment →
+												</a>
+											)}
+										</div>
+									) : (
+										<p className='text-sm text-gray-400 italic'>Waiting for buyer to submit their return shipment tracking…</p>
+									)}
+								</div>
+
+								{/* Step 2: Upload proof of transfer */}
+								<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5'>
+									<h3 className='font-semibold text-gray-900 mb-1 flex items-center gap-2'>
+										<Upload size={16} className='text-green-600' />
+										Step 2 — Transfer Money &amp; Upload Proof
+									</h3>
+									<p className='text-xs text-gray-500 mb-3'>
+										Once you receive the item, transfer <strong>€{partialRefundAmount.toFixed(2)}</strong> to the buyer via bank transfer, then upload a screenshot or receipt as proof.
+									</p>
+									<input ref={proofInputRef} type='file' accept='image/*' className='hidden' onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
+									<div
+										onClick={() => proofInputRef.current?.click()}
+										className='border-2 border-dashed border-gray-300 hover:border-green-400 rounded-xl p-6 text-center cursor-pointer transition-colors mb-3'
+									>
+										{proofFile ? (
+											<p className='text-sm font-medium text-gray-700'>{proofFile.name}</p>
+										) : (
+											<>
+												<Upload size={24} className='mx-auto text-gray-400 mb-2' />
+												<p className='text-sm text-gray-500'>Click to upload proof of transfer</p>
+												<p className='text-xs text-gray-400 mt-1'>JPG, PNG, PDF</p>
+											</>
+										)}
+									</div>
+									<button
+										onClick={handleUploadProof}
+										disabled={!proofFile || uploadingProof}
+										className='w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors disabled:opacity-50'
+									>
+										{uploadingProof ? <><Loader2 size={16} className='animate-spin' /> Uploading…</> : <><BadgeCheck size={16} /> Upload Proof &amp; Complete Return</>}
+									</button>
+								</div>
+							</div>
+						)}
+
+						{/* ════════════════════════════════════════════════════════
+						    FLOW 2: Full refund — buyer keeps item
+						    ════════════════════════════════════════════════════════ */}
+						{isFullRefundApproved && (
+							<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4'>
+								<h3 className='font-semibold text-gray-900 mb-1 flex items-center gap-2'>
+									<Upload size={16} className='text-green-600' />
+									Transfer Money &amp; Upload Proof
+								</h3>
+								<p className='text-xs text-gray-500 mb-3'>
+									Transfer <strong>€{Number(ret.TotalAmount || 0).toFixed(2)}</strong> to the buyer via bank transfer, then upload a screenshot or receipt as proof of transfer to complete this return.
+								</p>
+								<input ref={proofInputRef} type='file' accept='image/*' className='hidden' onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
+								<div
+									onClick={() => proofInputRef.current?.click()}
+									className='border-2 border-dashed border-gray-300 hover:border-green-400 rounded-xl p-6 text-center cursor-pointer transition-colors mb-3'
+								>
+									{proofFile ? (
+										<p className='text-sm font-medium text-gray-700'>{proofFile.name}</p>
+									) : (
+										<>
+											<Upload size={24} className='mx-auto text-gray-400 mb-2' />
+											<p className='text-sm text-gray-500'>Click to upload proof of transfer</p>
+											<p className='text-xs text-gray-400 mt-1'>JPG, PNG, PDF</p>
+										</>
+									)}
+								</div>
+								<button
+									onClick={handleUploadProof}
+									disabled={!proofFile || uploadingProof}
+									className='w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors disabled:opacity-50'
+								>
+									{uploadingProof ? <><Loader2 size={16} className='animate-spin' /> Uploading…</> : <><BadgeCheck size={16} /> Upload Proof &amp; Complete Return</>}
+								</button>
+							</div>
+						)}
+
+						{/* ════════════════════════════════════════════════════════
+						    FLOW 3: Partial refund — buyer keeps item
+						    ════════════════════════════════════════════════════════ */}
+						{isPartialApproved && (
+							<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4'>
+								<h3 className='font-semibold text-gray-900 mb-1 flex items-center gap-2'>
+									<Upload size={16} className='text-blue-600' />
+									Transfer Partial Amount &amp; Upload Proof
+								</h3>
+								<p className='text-xs text-gray-500 mb-3'>
+									Transfer <strong>€{Number(ret.PartialRefundAmount || 0).toFixed(2)}</strong> to the buyer via bank transfer, then upload a screenshot or receipt as proof to complete this return.
+								</p>
+								<input ref={proofInputRef} type='file' accept='image/*' className='hidden' onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
+								<div
+									onClick={() => proofInputRef.current?.click()}
+									className='border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-xl p-6 text-center cursor-pointer transition-colors mb-3'
+								>
+									{proofFile ? (
+										<p className='text-sm font-medium text-gray-700'>{proofFile.name}</p>
+									) : (
+										<>
+											<Upload size={24} className='mx-auto text-gray-400 mb-2' />
+											<p className='text-sm text-gray-500'>Click to upload proof of transfer</p>
+											<p className='text-xs text-gray-400 mt-1'>JPG, PNG, PDF</p>
+										</>
+									)}
+								</div>
+								<button
+									onClick={handleUploadProof}
+									disabled={!proofFile || uploadingProof}
+									className='w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50'
+								>
+									{uploadingProof ? <><Loader2 size={16} className='animate-spin' /> Uploading…</> : <><BadgeCheck size={16} /> Upload Proof &amp; Complete Return</>}
+								</button>
+							</div>
+						)}
+
+						{/* ════════════════════════════════════════════════════════
+						    FLOW 4: Exchange — enter tracking, ship, deliver
+						    ════════════════════════════════════════════════════════ */}
+						{isExchangeApproved && (
+							<div className='space-y-4 mb-4'>
+								{/* Tracking form */}
+								<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5'>
+									<h3 className='font-semibold text-gray-900 mb-3 flex items-center gap-2'>
+										<Truck size={16} className='text-purple-500' />
+										Step 1 — Enter Replacement Tracking
+									</h3>
+									<div className='space-y-3'>
+										<div>
+											<label className='block text-xs font-medium text-gray-700 mb-1'>Tracking Number <span className='text-red-500'>*</span></label>
+											<input
+												type='text'
+												value={exchangeTracking}
+												onChange={(e) => setExchangeTracking(e.target.value)}
+												placeholder='e.g. 1Z999AA10123456784'
+												disabled={!!ret.ExchangeShippedAt}
+												className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:bg-gray-50'
+											/>
+										</div>
+										<div>
+											<label className='block text-xs font-medium text-gray-700 mb-1'>Tracking URL <span className='text-gray-400'>(optional)</span></label>
+											<input
+												type='url'
+												value={exchangeTrackingUrl}
+												onChange={(e) => setExchangeTrackingUrl(e.target.value)}
+												placeholder='https://track.carrier.com/...'
+												disabled={!!ret.ExchangeShippedAt}
+												className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:bg-gray-50'
+											/>
+										</div>
+										{!ret.ExchangeShippedAt && (
+											<button
+												onClick={handleSaveTracking}
+												disabled={savingTracking || !exchangeTracking.trim()}
+												className='w-full py-2.5 text-sm font-medium text-white bg-purple-500 hover:bg-purple-600 rounded-xl transition-colors disabled:opacity-50'
+											>
+												{savingTracking ? 'Saving…' : 'Save Tracking'}
+											</button>
+										)}
+									</div>
+								</div>
+
+								{/* Mark shipped */}
+								<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5'>
+									<h3 className='font-semibold text-gray-900 mb-2 flex items-center gap-2'>
+										<Package size={16} className='text-blue-500' />
+										Step 2 — Mark as Shipped
+									</h3>
+									{ret.ExchangeShippedAt ? (
+										<div className='flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2'>
+											<CheckCircle size={15} /> Shipped on {new Date(ret.ExchangeShippedAt).toLocaleDateString('en-GB')}
+										</div>
+									) : (
+										<button
+											onClick={handleMarkExchangeShipped}
+											disabled={markingShipped || !ret.ExchangeTrackingNumber}
+											className='w-full py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors disabled:opacity-50'
+										>
+											{markingShipped ? <><Loader2 size={14} className='animate-spin inline mr-1' />Marking…</> : 'Mark Replacement Shipped'}
+										</button>
+									)}
+								</div>
+
+								{/* Mark delivered */}
+								<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5'>
+									<h3 className='font-semibold text-gray-900 mb-2 flex items-center gap-2'>
+										<BadgeCheck size={16} className='text-green-600' />
+										Step 3 — Mark as Delivered
+									</h3>
+									{ret.ExchangeDeliveredAt ? (
+										<div className='flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2'>
+											<CheckCircle size={15} /> Delivered on {new Date(ret.ExchangeDeliveredAt).toLocaleDateString('en-GB')}
+										</div>
+									) : (
+										<button
+											onClick={handleMarkExchangeDelivered}
+											disabled={markingDelivered || !ret.ExchangeShippedAt}
+											className='w-full py-2.5 text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors disabled:opacity-50'
+										>
+											{markingDelivered ? <><Loader2 size={14} className='animate-spin inline mr-1' />Marking…</> : 'Mark Replacement Delivered (Closes Order as Sold)'}
+										</button>
+									)}
+									{!ret.ExchangeShippedAt && (
+										<p className='text-xs text-gray-400 mt-2 text-center'>Mark the replacement as shipped first.</p>
+									)}
+								</div>
+							</div>
+						)}
+
+						{/* ════════════ Completed states ════════════ */}
+						{ret.Status === 'Refunded' && ret.ResolutionType !== 'exchange' && (
 							<div className='bg-purple-50 rounded-2xl border border-purple-200 p-5 mb-4 text-center'>
 								<BadgeCheck size={32} className='mx-auto text-purple-600 mb-2' />
-								<p className='font-semibold text-purple-900'>Refund processed</p>
-								<p className='text-sm text-purple-700'>€{partialRefundAmount.toFixed(2)} has been refunded to the buyer.</p>
+								<p className='font-semibold text-purple-900'>Return complete</p>
+								<p className='text-sm text-purple-700'>
+									{ret.ResolutionType === 'physical_return'
+										? `€${partialRefundAmount.toFixed(2)} transferred to buyer. Order is Sold.`
+										: `€${Number(ret.TotalAmount || 0).toFixed(2)} transferred to buyer. Order is Sold.`}
+								</p>
+								{ret.ProofUrl && (
+									<a href={ret.ProofUrl} target='_blank' rel='noopener noreferrer' className='text-xs text-purple-600 hover:text-purple-700 underline mt-2 block'>
+										View proof of transfer →
+									</a>
+								)}
+							</div>
+						)}
+						{ret.Status === 'Refunded' && ret.ResolutionType === 'exchange' && (
+							<div className='bg-green-50 rounded-2xl border border-green-200 p-5 mb-4 text-center'>
+								<BadgeCheck size={32} className='mx-auto text-green-600 mb-2' />
+								<p className='font-semibold text-green-900'>Exchange complete</p>
+								<p className='text-sm text-green-700'>Replacement delivered. Order is now Sold.</p>
 							</div>
 						)}
 						{ret.Status === 'PartialRefunded' && (
 							<div className='bg-blue-50 rounded-2xl border border-blue-200 p-5 mb-4 text-center'>
 								<SplitSquareHorizontal size={32} className='mx-auto text-blue-600 mb-2' />
-								<p className='font-semibold text-blue-900'>Partial refund processed</p>
+								<p className='font-semibold text-blue-900'>Partial refund complete</p>
 								<p className='text-sm text-blue-700'>
-									€{Number(ret.PartialRefundAmount || 0).toFixed(2)} refunded — buyer keeps the item.
+									€{Number(ret.PartialRefundAmount || 0).toFixed(2)} transferred to buyer. Buyer kept the item. Order is Sold.
 								</p>
-								{ret.SellerInstructions && (
-									<p className='text-xs text-blue-600 mt-2 italic'>"{ret.SellerInstructions}"</p>
+								{ret.ProofUrl && (
+									<a href={ret.ProofUrl} target='_blank' rel='noopener noreferrer' className='text-xs text-blue-600 hover:text-blue-700 underline mt-2 block'>
+										View proof of transfer →
+									</a>
 								)}
 							</div>
 						)}
 
-						{/* Commission refund request — available when return is resolved */}
-						{['Refunded', 'Rejected', 'PartialRefunded'].includes(ret.Status) && !commissionRequestSent && (
+						{/* ════════════ Commission refund request ════════════ */}
+						{showCommissionBlock && (
 							<div className='bg-amber-50 rounded-2xl border border-amber-200 p-4 mb-4'>
 								<div className='flex items-start gap-3'>
 									<div className='w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0'>
@@ -642,7 +950,7 @@ const SellerReturnDetail = () => {
 									<div className='flex-1'>
 										<p className='text-sm font-semibold text-amber-900'>Commission refund available</p>
 										<p className='text-xs text-amber-700 mt-0.5'>
-											You can request the admin to refund the commission charged on this order since it was returned.
+											Since this order was returned, you can ask admin to refund the commission that was charged.
 										</p>
 										<button
 											onClick={() => setCommissionModal(true)}
@@ -662,7 +970,7 @@ const SellerReturnDetail = () => {
 							</div>
 						)}
 
-						{/* Actions */}
+						{/* ════════════ Pending actions ════════════ */}
 						{ret.Status === 'Pending' && (
 							<div className='flex gap-3'>
 								<button
@@ -675,49 +983,9 @@ const SellerReturnDetail = () => {
 									onClick={() => setRejectModal(true)}
 									className='flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors'
 								>
-									<ThumbsDown size={16} /> Reject Return
+									<ThumbsDown size={16} /> Reject
 								</button>
 							</div>
-						)}
-
-						{/* Physical return — buyer tracking info */}
-						{isPhysicalApproved && ret.BuyerTrackingNumber && (
-							<div className={'bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3'}>
-								<p className={'text-xs font-semibold text-blue-800 mb-1 flex items-center gap-1'}><Truck size={12} /> Buyer Shipment Tracking</p>
-								<p className={'text-sm font-mono text-blue-900'}>{ret.BuyerTrackingNumber}</p>
-								{ret.BuyerTrackingUrl && (
-									<a href={ret.BuyerTrackingUrl} target={'_blank'} rel={'noopener noreferrer'} className={'text-xs text-blue-600 hover:text-blue-700 underline mt-1 block'}>Track shipment &rarr;</a>
-								)}
-							</div>
-						)}
-						{isPhysicalApproved && !ret.BuyerTrackingNumber && (
-							<p className={'text-xs text-gray-400 mb-3 text-center'}>Waiting for buyer to submit shipment tracking...</p>
-						)}
-
-						{/* Physical return — seller confirms receipt */}
-						{isPhysicalApproved && (
-							<button
-								onClick={handleMarkRefunded}
-								disabled={markingRefunded}
-								className='w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-purple-500 hover:bg-purple-600 rounded-xl transition-colors disabled:opacity-50'
-							>
-								{markingRefunded
-									? <><Loader2 size={16} className='animate-spin' /> Processing…</>
-									: <><BadgeCheck size={16} /> Confirm Receipt &amp; Issue Refund (€{partialRefundAmount.toFixed(2)})</>}
-							</button>
-						)}
-
-						{/* Exchange — mark complete */}
-						{isExchangeApproved && (
-							<button
-								onClick={handleMarkRefunded}
-								disabled={markingRefunded}
-								className={'w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors disabled:opacity-50'}
-							>
-								{markingRefunded
-									? <><Loader2 size={16} className={'animate-spin'} /> Processing…</>
-									: <><BadgeCheck size={16} /> Mark Exchange Complete</>}
-							</button>
 						)}
 
 						{/* Buyer info */}
@@ -730,6 +998,7 @@ const SellerReturnDetail = () => {
 								<p className='text-xs text-gray-500'>{ret.BuyerEmail}</p>
 							</div>
 						</div>
+
 					</div>
 				</div>
 			</div>

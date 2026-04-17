@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Almost there!",
+      "message": "Your seller account is set up — choose a plan and complete payment to unlock your best commission rate.",
+      "cta": "Complete Payment"
+    },
+    "myStore": "My Store",
+    "searchPlaceholder": "Search for products...",
+    "home": "Home",
+    "myWishlist": "My Wishlist",
+    "browseCategories": "Browse Categories",
+    "categories": "Categories"
+  },
+  "footer": {
+    "tagline": "Your trusted European marketplace for discovering and selling quality products. Connecting buyers and sellers across Europe with ease and transparency.",
+    "shipping": {
+      "title": "Optimized Shipping",
+      "subtitle": "Best rates for fast delivery"
+    },
+    "payment": {
+      "title": "Secure Payment",
+      "subtitle": "100% protected"
+    },
+    "returns": {
+      "title": "Easy Returns",
+      "subtitle": "30-day policy"
+    },
+    "support": {
+      "title": "24/7 Support",
+      "subtitle": "Dedicated help"
+    },
+    "quickLinks": "Quick Links",
+    "links": {
+      "home": "Home",
+      "about": "About Us",
+      "contact": "Contact Us",
+      "faq": "FAQ",
+      "shipping": "Shipping Info",
+      "returns": "Returns Policy"
+    },
+    "getInTouch": "Get in Touch",
+    "emailUs": "Email Us",
+    "callUs": "Call Us",
+    "location": "Location",
+    "locationValue": "European Union",
+    "copyright": "© {{year}} GibLi. All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "designedBy": "Designed with care by"
+  },
+  "home": {
+    "filterButton": "Categories",
+    "browseCategories": "Browse Categories"
+  },
+  "productList": {
+    "title": "Featured Products",
+    "subtitle": "Discover quality products from trusted European sellers",
+    "loading": "Loading amazing products...",
+    "available": "{{count}} Products Available",
+    "newArrivals": "New arrivals daily"
+  },
+  "productCard": {
+    "onlyLeft": "Only {{count}} left!",
+    "new": "NEW",
+    "outOfStock": "Out of Stock",
+    "quickView": "Quick View"
+  },
+  "productDetails": {
+    "loading": "Loading product details...",
+    "backToProducts": "Back to products",
+    "description": "Description",
+    "shippingOptions": "Shipping Options",
+    "standard": "Standard",
+    "express": "Express",
+    "unitsInStock": "units in stock",
+    "sellerInfo": "Seller Information",
+    "business": "Business:",
+    "location": "Location:",
+    "chatSeller": "Chat Seller",
+    "customerReviews": "Customer reviews",
+    "ratings": "Ratings",
+    "allReviews": "All Reviews",
+    "latest": "Latest",
+    "withContent": "With Content",
+    "withPhotos": "With Photos",
+    "allStars": "All Stars",
+    "stars": "{{count}} Stars",
+    "oneStar": "1 Star",
+    "sellerResponse": "Seller response",
+    "respondToReview": "Respond to this review",
+    "reply": "Reply",
+    "loadingReviews": "Loading reviews...",
+    "showMoreReviews": "Show more reviews",
+    "helpfulCount": "{{count}} buyers found this review helpful",
+    "helpful": "Helpful",
+    "shareTitle": "Share",
+    "copied": "Copied!",
+    "copyLink": "Copy Link",
+    "updatedOn": "Updated",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "Email"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": "Your cart is empty",
+    "emptySub": "Add some products to get started",
+    "continueShopping": "Continue Shopping",
+    "loading": "Loading your cart...",
+    "orderSummary": "Order Summary",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "total": "Total",
+    "checkout": "Proceed to Checkout",
+    "remove": "Remove",
+    "outOfStock": "Out of Stock",
+    "lowStock": "Only {{count}} left",
+    "notifyRestock": "Notify when back in stock",
+    "cancelReminder": "Cancel reminder",
+    "soldBy": "Sold by",
+    "standard": "Standard",
+    "express": "Express",
+    "item": "item",
+    "items": "items",
+    "qty": "Qty"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "email": "Email address",
+      "password": "Password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign In",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "signup": {
+      "title": "Create Account",
+      "username": "Username",
+      "email": "Email address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "login": "Login"
+    },
+    "logout": "Logout",
+    "profile": "My Profile",
+    "orders": "My Orders",
+    "becomeSeller": "Become a Seller",
+    "sellerDashboard": "Seller Dashboard"
+  },
+  "orders": {
+    "title": "My Orders",
+    "empty": "No orders yet",
+    "emptySub": "Your order history will appear here",
+    "startShopping": "Start Shopping",
+    "loading": "Loading orders...",
+    "orderId": "Order #{{id}}",
+    "placedOn": "Placed on",
+    "total": "Total",
+    "viewDetails": "View Details",
+    "status": {
+      "Processing": "Processing",
+      "Confirmed": "Confirmed",
+      "Shipped": "Shipped",
+      "Delivered": "Delivered",
+      "Sold": "Sold",
+      "Cancelled": "Cancelled",
+      "Rejected": "Rejected"
+    },
+    "detail": {
+      "back": "Back to Orders",
+      "shippingAddress": "Shipping Address",
+      "orderItems": "Order Items",
+      "summary": "Order Summary",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "total": "Total",
+      "soldBy": "Sold by",
+      "standard": "Standard Shipping",
+      "express": "Express Shipping",
+      "cancelOrder": "Cancel Order",
+      "returnOrder": "Request Return"
+    }
+  },
+  "wishlist": {
+    "title": "My Wishlist",
+    "empty": "Your wishlist is empty",
+    "emptySub": "Save products you love for later",
+    "discover": "Discover Products",
+    "remove": "Remove",
+    "addToCart": "Add to Cart",
+    "added": "Added to wishlist",
+    "removed": "Removed from wishlist",
+    "loginRequired": "Please log in to use your wishlist"
+  },
+  "search": {
+    "placeholder": "Search for products...",
+    "results": "Search Results for",
+    "noResults": "No products found for",
+    "tryDifferent": "Try a different search term or browse categories",
+    "loading": "Searching..."
+  },
+  "categories": {
+    "title": "Categories",
+    "all": "All Categories",
+    "loading": "Loading categories...",
+    "browseBy": "Browse by category"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "selectAddress": "Select a shipping address",
+    "addAddress": "Add new address",
+    "shippingMethod": "Shipping Method",
+    "standard": "Standard Shipping",
+    "express": "Express Shipping",
+    "placeOrder": "Place Order",
+    "processing": "Processing...",
+    "success": "Order placed successfully!",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "total": "Total"
+  },
+  "address": {
+    "title": "Address Book",
+    "add": "Add New Address",
+    "edit": "Edit Address",
+    "delete": "Delete Address",
+    "default": "Default",
+    "setDefault": "Set as Default",
+    "save": "Save Address",
+    "noAddresses": "No addresses saved yet"
+  },
+  "seller": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "orders": "Orders",
+    "revenue": "Revenue",
+    "messages": "Messages",
+    "settings": "Store Settings",
+    "addProduct": "Add Product",
+    "newOrders": "New Orders",
+    "analytics": "Analytics",
+    "subscription": "Subscription",
+    "payouts": "Payouts",
+    "returns": "Returns",
+    "itemsSold": "Items Sold",
+    "storeStatus": "Store Status",
+    "recentProducts": "Recent Products",
+    "noProductsYet": "No products yet. Add your first product to get started.",
+    "dashboardTitle": "{{name}}'s Dashboard"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try Again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "viewAll": "View All",
+    "showMore": "Show More",
+    "showLess": "Show Less",
+    "addToCart": "Add to Cart",
+    "buyNow": "Buy Now",
+    "shareProduct": "Share product",
+    "currency": "€"
+  }
+}

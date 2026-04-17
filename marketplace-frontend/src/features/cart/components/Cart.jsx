@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import NavBar from '../../../components/NavBar';
 import Footer from '../../../components/Footer';
-import { MapPin, Store, Minus, Plus, Trash2, ShoppingCart, Loader2, ShoppingBag, ArrowRight, AlertTriangle } from 'lucide-react';
+import { MapPin, Store, Minus, Plus, Trash2, ShoppingCart, Loader2, ShoppingBag, ArrowRight, AlertTriangle, Bell, BellOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCart } from '../../../context/CartContext';
 import { useAuth } from '../../../utils/useAuth';
@@ -14,6 +14,8 @@ const Cart = () => {
 	const [cartItems, setCartItems] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
+	const [reminders, setReminders] = useState({}); // { productId: true/false }
+	const [reminderLoading, setReminderLoading] = useState({});
 	const { refreshCart } = useCart();
 
 	useEffect(() => {
@@ -26,7 +28,23 @@ const Cart = () => {
 		const fetchCartItems = async () => {
 			try {
 				const res = await api.get('/cart/items');
-				setCartItems(res.data || []);
+				const items = res.data || [];
+				setCartItems(items);
+
+				// Check restock reminders for out-of-stock items
+				const outOfStock = items.filter((i) => i.InStock <= 0);
+				if (outOfStock.length > 0) {
+					const checks = await Promise.allSettled(
+						outOfStock.map((i) => api.get(`/cart/restock-reminder/${i.ProductId}`))
+					);
+					const reminderMap = {};
+					outOfStock.forEach((item, idx) => {
+						if (checks[idx].status === 'fulfilled') {
+							reminderMap[item.ProductId] = checks[idx].value.data.hasReminder;
+						}
+					});
+					setReminders(reminderMap);
+				}
 			} catch (err) {
 				console.error('Error fetching cart items:', err);
 				setError('Unable to load cart. Please log in.');
@@ -38,6 +56,26 @@ const Cart = () => {
 
 		fetchCartItems();
 	}, [isLoggedIn, authLoading, navigate]);
+
+	const toggleReminder = useCallback(async (productId) => {
+		const hasReminder = reminders[productId];
+		setReminderLoading((prev) => ({ ...prev, [productId]: true }));
+		try {
+			if (hasReminder) {
+				await api.delete(`/cart/restock-reminder/${productId}`);
+				setReminders((prev) => ({ ...prev, [productId]: false }));
+				toast.success('Restock reminder cancelled.');
+			} else {
+				await api.post(`/cart/restock-reminder/${productId}`);
+				setReminders((prev) => ({ ...prev, [productId]: true }));
+				toast.success("We'll email you when this is back in stock!");
+			}
+		} catch (err) {
+			toast.error(err.response?.data?.message || 'Failed to update reminder.');
+		} finally {
+			setReminderLoading((prev) => ({ ...prev, [productId]: false }));
+		}
+	}, [reminders]);
 
 	// Update item quantity — validates against available stock
 	const updateQuantity = async (cartItemId, change) => {
@@ -151,7 +189,7 @@ const Cart = () => {
 		<div className='min-h-screen flex flex-col bg-gray-50'>
 			<NavBar />
 
-			<main className='flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 pb-32 sm:pb-36 lg:pb-40'>
+			<main className='flex-1 max-w-6xl mx-auto w-full px-2 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 pb-32 sm:pb-36 lg:pb-40'>
 				{/* Page Header */}
 				<div className='bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6'>
 					<div className='flex items-center justify-between'>
@@ -216,14 +254,41 @@ const Cart = () => {
 										className={`bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow ${exceedsStock ? 'ring-2 ring-red-200' : ''}`}
 									>
 										{/* Stock warning banner */}
-										{exceedsStock && (
-											<div className='bg-red-50 border-b border-red-100 px-4 py-2 flex items-center gap-2'>
-												<AlertTriangle size={15} className='text-red-500 flex-shrink-0' />
-												<p className='text-xs text-red-700 font-medium'>
+										{(isOutOfStock || exceedsStock) && (
+											<div className={`border-b px-4 py-2.5 flex flex-wrap items-center gap-2 ${isOutOfStock ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
+												<AlertTriangle size={15} className={`flex-shrink-0 ${isOutOfStock ? 'text-red-500' : 'text-amber-500'}`} />
+												<p className={`text-xs font-medium flex-1 ${isOutOfStock ? 'text-red-700' : 'text-amber-700'}`}>
 													{isOutOfStock
-														? 'This item is out of stock. Please remove it from your cart.'
-														: `Only ${item.InStock} unit${item.InStock !== 1 ? 's' : ''} available — please reduce the quantity.`}
+														? 'Out of stock.'
+														: `Only ${item.InStock} unit${item.InStock !== 1 ? 's' : ''} available — reduce the quantity.`}
 												</p>
+												{isOutOfStock && (
+													<div className='flex items-center gap-2'>
+														<button
+															onClick={() => toggleReminder(item.ProductId)}
+															disabled={reminderLoading[item.ProductId]}
+															className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+																reminders[item.ProductId]
+																	? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+																	: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+															}`}
+														>
+															{reminders[item.ProductId] ? <BellOff size={12} /> : <Bell size={12} />}
+															{reminderLoading[item.ProductId]
+																? '...'
+																: reminders[item.ProductId]
+																	? 'Cancel reminder'
+																	: 'Notify me'}
+														</button>
+														<button
+															onClick={() => removeItem(item.CartItemId)}
+															className='flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium transition-colors'
+														>
+															<Trash2 size={12} />
+															Remove
+														</button>
+													</div>
+												)}
 											</div>
 										)}
 
@@ -412,7 +477,7 @@ const Cart = () => {
 			{/* Sticky Cart Summary */}
 			{cartItems.length > 0 && (
 				<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40'>
-					<div className='max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4'>
+					<div className='max-w-6xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4'>
 						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4'>
 							{/* Total Amount */}
 							<div>

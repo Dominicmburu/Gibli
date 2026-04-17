@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Næsten der!",
+      "message": "Din sælgerkonto er oprettet – vælg en plan og gennemfør betalingen for at få adgang til din bedste provisionssats.",
+      "cta": "Fuldfør betaling"
+    },
+    "myStore": "Min butik",
+    "searchPlaceholder": "Søg efter produkter...",
+    "home": "Hjem",
+    "myWishlist": "Min ønskeliste",
+    "browseCategories": "Gennemse kategorier",
+    "categories": "Kategorier"
+  },
+  "footer": {
+    "tagline": "Din betroede europæiske markedsplads til at opdage og sælge kvalitetsprodukter. Forbinder købere og sælgere i hele Europa med lethed og gennemsigtighed.",
+    "shipping": {
+      "title": "Optimeret forsendelse",
+      "subtitle": "De bedste priser for hurtig levering"
+    },
+    "payment": {
+      "title": "Sikker betaling",
+      "subtitle": "100% beskyttet"
+    },
+    "returns": {
+      "title": "Nem returnering",
+      "subtitle": "30-dages politik"
+    },
+    "support": {
+      "title": "24/7 support",
+      "subtitle": "Dedikeret hjælp"
+    },
+    "quickLinks": "Hurtige links",
+    "links": {
+      "home": "Hjem",
+      "about": "Om os",
+      "contact": "Kontakt os",
+      "faq": "Ofte stillede spørgsmål",
+      "shipping": "Forsendelsesoplysninger",
+      "returns": "Returneringspolitik"
+    },
+    "getInTouch": "Kontakt os",
+    "emailUs": "Send os en e-mail",
+    "callUs": "Ring til os",
+    "location": "Beliggenhed",
+    "locationValue": "Den Europæiske Union",
+    "copyright": "© {{year}} GibLi. Alle rettigheder forbeholdes.",
+    "privacyPolicy": "Privatlivspolitik",
+    "termsOfService": "Servicevilkår",
+    "designedBy": "Designet med omhu af"
+  },
+  "home": {
+    "filterButton": "Kategorier",
+    "browseCategories": "Gennemse kategorier"
+  },
+  "productList": {
+    "title": "Udvalgte produkter",
+    "subtitle": "Opdag kvalitetsprodukter fra pålidelige europæiske sælgere",
+    "loading": "Indlæser fantastiske produkter...",
+    "available": "{{count}} Tilgængelige produkter",
+    "newArrivals": "Nye varer dagligt"
+  },
+  "productCard": {
+    "onlyLeft": "Kun {{count}} tilbage!",
+    "new": "NY",
+    "outOfStock": "Udsolgt",
+    "quickView": "Hurtig visning"
+  },
+  "productDetails": {
+    "loading": "Indlæser produktoplysninger...",
+    "backToProducts": "Tilbage til produkter",
+    "description": "Beskrivelse",
+    "shippingOptions": "Forsendelsesmuligheder",
+    "standard": "Standard",
+    "express": "Ekspres",
+    "unitsInStock": "enheder på lager",
+    "sellerInfo": "Sælgeroplysninger",
+    "business": "Forretning:",
+    "location": "Beliggenhed:",
+    "chatSeller": "Chat-sælger",
+    "customerReviews": "Kundeanmeldelser",
+    "ratings": "Vurderinger",
+    "allReviews": "Alle anmeldelser",
+    "latest": "Seneste",
+    "withContent": "Med indhold",
+    "withPhotos": "Med fotos",
+    "allStars": "Alle stjerner",
+    "stars": "{{count}} Stjerner",
+    "oneStar": "1 stjerne",
+    "sellerResponse": "Sælgers svar",
+    "respondToReview": "Svar på denne anmeldelse",
+    "reply": "Svar",
+    "loadingReviews": "Indlæser anmeldelser...",
+    "showMoreReviews": "Vis flere anmeldelser",
+    "helpfulCount": "{{count}} købere fandt denne anmeldelse nyttig",
+    "helpful": "Nyttig",
+    "shareTitle": "Dele",
+    "copied": "Kopieret!",
+    "copyLink": "Kopiér link",
+    "updatedOn": "Opdateret",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "E-mail"
+  },
+  "cart": {
+    "title": "Indkøbskurv",
+    "empty": "Din kurv er tom",
+    "emptySub": "Tilføj nogle produkter for at komme i gang",
+    "continueShopping": "Fortsæt shopping",
+    "loading": "Indlæser din kurv...",
+    "orderSummary": "Ordreoversigt",
+    "subtotal": "Subtotal",
+    "shipping": "Forsendelse",
+    "total": "Total",
+    "checkout": "Gå til kassen",
+    "remove": "Fjerne",
+    "outOfStock": "Udsolgt",
+    "lowStock": "Kun {{count}} tilbage",
+    "notifyRestock": "Giv besked når lageret er tilbage",
+    "cancelReminder": "Annuller påmindelse",
+    "soldBy": "Solgt af",
+    "standard": "Standard",
+    "express": "Ekspres",
+    "item": "punkt",
+    "items": "varer",
+    "qty": "Antal"
+  },
+  "auth": {
+    "login": {
+      "title": "Log ind",
+      "email": "E-mailadresse",
+      "password": "Adgangskode",
+      "showPassword": "Vis adgangskode",
+      "hidePassword": "Skjul adgangskode",
+      "forgotPassword": "Glemt adgangskode?",
+      "submit": "Log ind",
+      "noAccount": "Har du ikke en konto?",
+      "signUp": "Tilmeld dig"
+    },
+    "signup": {
+      "title": "Opret konto",
+      "username": "Brugernavn",
+      "email": "E-mailadresse",
+      "password": "Adgangskode",
+      "confirmPassword": "Bekræft adgangskode",
+      "submit": "Opret konto",
+      "hasAccount": "Har du allerede en konto?",
+      "login": "Log ind"
+    },
+    "logout": "Log ud",
+    "profile": "Min profil",
+    "orders": "Mine ordrer",
+    "becomeSeller": "Bliv sælger",
+    "sellerDashboard": "Sælgerdashboard"
+  },
+  "orders": {
+    "title": "Mine ordrer",
+    "empty": "Ingen ordrer endnu",
+    "emptySub": "Din ordrehistorik vises her",
+    "startShopping": "Begynd at shoppe",
+    "loading": "Indlæser ordrer...",
+    "orderId": "Ordre #{{id}}",
+    "placedOn": "Placeret på",
+    "total": "Total",
+    "viewDetails": "Se detaljer",
+    "status": {
+      "Processing": "Forarbejdning",
+      "Confirmed": "Bekræftet",
+      "Shipped": "Sendt",
+      "Delivered": "Leveret",
+      "Sold": "Solgt",
+      "Cancelled": "Annulleret",
+      "Rejected": "Afvist"
+    },
+    "detail": {
+      "back": "Tilbage til ordrer",
+      "shippingAddress": "Leveringsadresse",
+      "orderItems": "Bestil varer",
+      "summary": "Ordreoversigt",
+      "subtotal": "Subtotal",
+      "shipping": "Forsendelse",
+      "total": "Total",
+      "soldBy": "Solgt af",
+      "standard": "Standardforsendelse",
+      "express": "Ekspreslevering",
+      "cancelOrder": "Annuller ordre",
+      "returnOrder": "Anmod om returnering"
+    }
+  },
+  "wishlist": {
+    "title": "Min ønskeliste",
+    "empty": "Din ønskeliste er tom",
+    "emptySub": "Gem produkter, du elsker, til senere",
+    "discover": "Opdag produkter",
+    "remove": "Fjerne",
+    "addToCart": "Læg i kurv",
+    "added": "Tilføjet til ønskeliste",
+    "removed": "Fjernet fra ønskeliste",
+    "loginRequired": "Log venligst ind for at bruge din ønskeliste"
+  },
+  "search": {
+    "placeholder": "Søg efter produkter...",
+    "results": "Søgeresultater for",
+    "noResults": "Ingen produkter fundet til",
+    "tryDifferent": "Prøv et andet søgeord, eller gennemse kategorier",
+    "loading": "Søger..."
+  },
+  "categories": {
+    "title": "Kategorier",
+    "all": "Alle kategorier",
+    "loading": "Indlæser kategorier...",
+    "browseBy": "Gennemse efter kategori"
+  },
+  "checkout": {
+    "title": "Betaling",
+    "selectAddress": "Vælg en leveringsadresse",
+    "addAddress": "Tilføj ny adresse",
+    "shippingMethod": "Forsendelsesmetode",
+    "standard": "Standardforsendelse",
+    "express": "Ekspreslevering",
+    "placeOrder": "Placer ordre",
+    "processing": "Forarbejdning...",
+    "success": "Ordren er gennemført!",
+    "subtotal": "Subtotal",
+    "shipping": "Forsendelse",
+    "total": "Total"
+  },
+  "address": {
+    "title": "Adressebog",
+    "add": "Tilføj ny adresse",
+    "edit": "Rediger adresse",
+    "delete": "Slet adresse",
+    "default": "Misligholdelse",
+    "setDefault": "Angiv som standard",
+    "save": "Gem adresse",
+    "noAddresses": "Ingen adresser gemt endnu"
+  },
+  "seller": {
+    "dashboard": "Dashboard",
+    "products": "Produkter",
+    "orders": "Ordrer",
+    "revenue": "Omsætning",
+    "messages": "Beskeder",
+    "settings": "Butiksindstillinger",
+    "addProduct": "Tilføj produkt",
+    "newOrders": "Nye ordrer",
+    "analytics": "Analyse",
+    "subscription": "Abonnement",
+    "payouts": "Udbetalinger",
+    "returns": "Returneringer",
+    "itemsSold": "Solgte varer",
+    "storeStatus": "Butiksstatus",
+    "recentProducts": "Seneste produkter",
+    "noProductsYet": "Ingen produkter endnu. Tilføj dit første produkt for at komme i gang.",
+    "dashboardTitle": "{{name}}s dashboard"
+  },
+  "common": {
+    "loading": "Indlæser...",
+    "error": "Noget gik galt",
+    "retry": "Prøv igen",
+    "save": "Spare",
+    "cancel": "Ophæve",
+    "delete": "Slet",
+    "edit": "Redigere",
+    "close": "Tæt",
+    "confirm": "Bekræfte",
+    "back": "Tilbage",
+    "next": "Næste",
+    "search": "Søge",
+    "filter": "Filter",
+    "clear": "Klar",
+    "viewAll": "Se alle",
+    "showMore": "Vis mere",
+    "showLess": "Vis mindre",
+    "addToCart": "Læg i kurv",
+    "buyNow": "Køb nu",
+    "shareProduct": "Del produkt",
+    "currency": "€"
+  }
+}

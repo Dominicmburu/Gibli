@@ -102,7 +102,7 @@ const WishList = () => {
 		<div className='min-h-screen flex flex-col bg-gray-50'>
 			<NavBar />
 
-			<main className='flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 lg:py-12'>
+			<main className='flex-1 max-w-6xl mx-auto w-full px-2 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 lg:py-12'>
 				{/* Page Header */}
 				<div className='bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6'>
 					<div className='flex items-center justify-between'>

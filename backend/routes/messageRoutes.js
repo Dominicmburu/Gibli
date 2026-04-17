@@ -164,4 +164,91 @@ messageRouter.post(
 	}
 );
 
+/**
+ * GET /messages/conversations/:conversationId/info
+ * Returns full conversation metadata (Status, block state) for the chat modal
+ */
+messageRouter.get('/conversations/:conversationId/info', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const { conversationId } = req.params;
+		const result = await db.executeProcedure('GetConversationInfo', { ConversationId: conversationId, UserId });
+		const conv = result.recordset?.[0];
+		if (!conv) return res.status(404).json({ success: false, message: 'Conversation not found.' });
+		return res.status(200).json({ success: true, data: conv });
+	} catch (error) {
+		console.error('Error fetching conversation info:', error);
+		const msg = error.message || 'Failed to fetch conversation info.';
+		return res.status(msg.includes('not found') ? 404 : 500).json({ success: false, message: msg });
+	}
+});
+
+/**
+ * PATCH /messages/conversations/:conversationId/close
+ * Marks the conversation as closed (either participant may close)
+ */
+messageRouter.patch('/conversations/:conversationId/close', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const { conversationId } = req.params;
+		await db.executeProcedure('CloseConversation', { ConversationId: conversationId, UserId });
+		return res.status(200).json({ success: true, message: 'Conversation closed.' });
+	} catch (error) {
+		console.error('Error closing conversation:', error);
+		return res.status(400).json({ success: false, message: error.message || 'Failed to close conversation.' });
+	}
+});
+
+/**
+ * DELETE /messages/conversations/:conversationId
+ * Soft-deletes the conversation for the current user.
+ * Physically removes it once both parties have deleted.
+ */
+messageRouter.delete('/conversations/:conversationId', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const { conversationId } = req.params;
+		await db.executeProcedure('DeleteConversation', { ConversationId: conversationId, UserId });
+		return res.status(200).json({ success: true, message: 'Conversation deleted.' });
+	} catch (error) {
+		console.error('Error deleting conversation:', error);
+		return res.status(400).json({ success: false, message: error.message || 'Failed to delete conversation.' });
+	}
+});
+
+/**
+ * POST /messages/block/:userId
+ * Block a user (prevents messaging in either direction)
+ */
+messageRouter.post('/block/:userId', authenticateToken, async (req, res) => {
+	try {
+		const BlockerId = req.user.id;
+		const BlockedId = req.params.userId;
+		if (BlockerId === BlockedId) {
+			return res.status(400).json({ success: false, message: 'Cannot block yourself.' });
+		}
+		await db.executeProcedure('BlockUser', { BlockerId, BlockedId });
+		return res.status(200).json({ success: true, message: 'User blocked.' });
+	} catch (error) {
+		console.error('Error blocking user:', error);
+		return res.status(500).json({ success: false, message: 'Failed to block user.' });
+	}
+});
+
+/**
+ * DELETE /messages/block/:userId
+ * Unblock a previously blocked user
+ */
+messageRouter.delete('/block/:userId', authenticateToken, async (req, res) => {
+	try {
+		const BlockerId = req.user.id;
+		const BlockedId = req.params.userId;
+		await db.executeProcedure('UnblockUser', { BlockerId, BlockedId });
+		return res.status(200).json({ success: true, message: 'User unblocked.' });
+	} catch (error) {
+		console.error('Error unblocking user:', error);
+		return res.status(500).json({ success: false, message: 'Failed to unblock user.' });
+	}
+});
+
 export default messageRouter;

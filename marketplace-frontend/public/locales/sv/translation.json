@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Nästan framme!",
+      "message": "Ditt säljarkonto är konfigurerat – välj en plan och slutför betalningen för att få bästa möjliga provision.",
+      "cta": "Slutför betalning"
+    },
+    "myStore": "Min butik",
+    "searchPlaceholder": "Sök efter produkter...",
+    "home": "Hem",
+    "myWishlist": "Min önskelista",
+    "browseCategories": "Bläddra bland kategorier",
+    "categories": "Kategorier"
+  },
+  "footer": {
+    "tagline": "Din pålitliga europeiska marknadsplats för att upptäcka och sälja kvalitetsprodukter. Kopplar samman köpare och säljare över hela Europa med enkelhet och transparens.",
+    "shipping": {
+      "title": "Optimerad frakt",
+      "subtitle": "Bästa priserna för snabb leverans"
+    },
+    "payment": {
+      "title": "Säker betalning",
+      "subtitle": "100 % skyddad"
+    },
+    "returns": {
+      "title": "Enkla returer",
+      "subtitle": "30-dagarspolicy"
+    },
+    "support": {
+      "title": "Support dygnet runt",
+      "subtitle": "Dedikerad hjälp"
+    },
+    "quickLinks": "Snabblänkar",
+    "links": {
+      "home": "Hem",
+      "about": "Om oss",
+      "contact": "Kontakta oss",
+      "faq": "Vanliga frågor",
+      "shipping": "Leveransinformation",
+      "returns": "Returpolicy"
+    },
+    "getInTouch": "Kontakta oss",
+    "emailUs": "Mejla oss",
+    "callUs": "Ring oss",
+    "location": "Plats",
+    "locationValue": "Europeiska unionen",
+    "copyright": "© {{year}} GibLi. Alla rättigheter förbehållna.",
+    "privacyPolicy": "Integritetspolicy",
+    "termsOfService": "Användarvillkor",
+    "designedBy": "Utformad med omsorg av"
+  },
+  "home": {
+    "filterButton": "Kategorier",
+    "browseCategories": "Bläddra bland kategorier"
+  },
+  "productList": {
+    "title": "Utvalda produkter",
+    "subtitle": "Upptäck kvalitetsprodukter från pålitliga europeiska säljare",
+    "loading": "Laddar fantastiska produkter...",
+    "available": "{{count}} Tillgängliga produkter",
+    "newArrivals": "Nya ankomster dagligen"
+  },
+  "productCard": {
+    "onlyLeft": "Bara {{count}} kvar!",
+    "new": "NY",
+    "outOfStock": "Slut i lager",
+    "quickView": "Snabbvy"
+  },
+  "productDetails": {
+    "loading": "Laddar produktinformation...",
+    "backToProducts": "Tillbaka till produkterna",
+    "description": "Beskrivning",
+    "shippingOptions": "Leveransalternativ",
+    "standard": "Standard",
+    "express": "Uttrycka",
+    "unitsInStock": "enheter i lager",
+    "sellerInfo": "Säljarinformation",
+    "business": "Företag:",
+    "location": "Plats:",
+    "chatSeller": "Chattförsäljare",
+    "customerReviews": "Kundrecensioner",
+    "ratings": "Betyg",
+    "allReviews": "Alla recensioner",
+    "latest": "Senast",
+    "withContent": "Med innehåll",
+    "withPhotos": "Med foton",
+    "allStars": "Alla stjärnor",
+    "stars": "{{count}} Stjärnor",
+    "oneStar": "1 stjärna",
+    "sellerResponse": "Säljarens svar",
+    "respondToReview": "Svara på den här recensionen",
+    "reply": "Svar",
+    "loadingReviews": "Läser in recensioner...",
+    "showMoreReviews": "Visa fler recensioner",
+    "helpfulCount": "{{count}} köpare tyckte att den här recensionen var hjälpsam",
+    "helpful": "Hjälpsam",
+    "shareTitle": "Dela",
+    "copied": "Kopierad!",
+    "copyLink": "Kopiera länk",
+    "updatedOn": "Uppdaterad",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "E-post"
+  },
+  "cart": {
+    "title": "Kundvagn",
+    "empty": "Din varukorg är tom",
+    "emptySub": "Lägg till några produkter för att komma igång",
+    "continueShopping": "Fortsätt handla",
+    "loading": "Laddar din varukorg...",
+    "orderSummary": "Ordersammanfattning",
+    "subtotal": "Delsumma",
+    "shipping": "Frakt",
+    "total": "Total",
+    "checkout": "Gå till kassan",
+    "remove": "Ta bort",
+    "outOfStock": "Slut i lager",
+    "lowStock": "Endast {{count}} kvar",
+    "notifyRestock": "Meddela när det finns i lager igen",
+    "cancelReminder": "Avbryt påminnelse",
+    "soldBy": "Säljs av",
+    "standard": "Standard",
+    "express": "Uttrycka",
+    "item": "punkt",
+    "items": "föremål",
+    "qty": "Antal"
+  },
+  "auth": {
+    "login": {
+      "title": "Inloggning",
+      "email": "E-postadress",
+      "password": "Lösenord",
+      "showPassword": "Visa lösenord",
+      "hidePassword": "Dölj lösenord",
+      "forgotPassword": "Glömt lösenordet?",
+      "submit": "Logga in",
+      "noAccount": "Har du inget konto?",
+      "signUp": "Registrera dig"
+    },
+    "signup": {
+      "title": "Skapa konto",
+      "username": "Användarnamn",
+      "email": "E-postadress",
+      "password": "Lösenord",
+      "confirmPassword": "Bekräfta lösenord",
+      "submit": "Skapa konto",
+      "hasAccount": "Har du redan ett konto?",
+      "login": "Inloggning"
+    },
+    "logout": "Utloggning",
+    "profile": "Min profil",
+    "orders": "Mina beställningar",
+    "becomeSeller": "Bli säljare",
+    "sellerDashboard": "Säljarens instrumentpanel"
+  },
+  "orders": {
+    "title": "Mina beställningar",
+    "empty": "Inga beställningar ännu",
+    "emptySub": "Din orderhistorik kommer att visas här",
+    "startShopping": "Börja handla",
+    "loading": "Läser in beställningar...",
+    "orderId": "Order #{{id}}",
+    "placedOn": "Placerad på",
+    "total": "Total",
+    "viewDetails": "Visa detaljer",
+    "status": {
+      "Processing": "Bearbetning",
+      "Confirmed": "Bekräftad",
+      "Shipped": "Skickat",
+      "Delivered": "Levererad",
+      "Sold": "Såld",
+      "Cancelled": "Avbruten",
+      "Rejected": "Avvisad"
+    },
+    "detail": {
+      "back": "Tillbaka till beställningar",
+      "shippingAddress": "Leveransadress",
+      "orderItems": "Beställningsartiklar",
+      "summary": "Ordersammanfattning",
+      "subtotal": "Delsumma",
+      "shipping": "Frakt",
+      "total": "Total",
+      "soldBy": "Säljs av",
+      "standard": "Standardfrakt",
+      "express": "Expressfrakt",
+      "cancelOrder": "Avbryt beställning",
+      "returnOrder": "Begär retur"
+    }
+  },
+  "wishlist": {
+    "title": "Min önskelista",
+    "empty": "Din önskelista är tom",
+    "emptySub": "Spara produkter du älskar till senare",
+    "discover": "Upptäck produkter",
+    "remove": "Ta bort",
+    "addToCart": "Lägg till i varukorgen",
+    "added": "Tillagd i önskelistan",
+    "removed": "Borttagen från önskelistan",
+    "loginRequired": "Vänligen logga in för att använda din önskelista"
+  },
+  "search": {
+    "placeholder": "Sök efter produkter...",
+    "results": "Sökresultat för",
+    "noResults": "Inga produkter hittades för",
+    "tryDifferent": "Prova en annan sökterm eller bläddra bland kategorier",
+    "loading": "Sökande..."
+  },
+  "categories": {
+    "title": "Kategorier",
+    "all": "Alla kategorier",
+    "loading": "Laddar kategorier...",
+    "browseBy": "Bläddra efter kategori"
+  },
+  "checkout": {
+    "title": "Kassa",
+    "selectAddress": "Välj en leveransadress",
+    "addAddress": "Lägg till ny adress",
+    "shippingMethod": "Leveransmetod",
+    "standard": "Standardfrakt",
+    "express": "Expressfrakt",
+    "placeOrder": "Lägg beställning",
+    "processing": "Bearbetar...",
+    "success": "Beställningen är genomförd!",
+    "subtotal": "Delsumma",
+    "shipping": "Frakt",
+    "total": "Total"
+  },
+  "address": {
+    "title": "Adressbok",
+    "add": "Lägg till ny adress",
+    "edit": "Redigera adress",
+    "delete": "Ta bort adress",
+    "default": "Standard",
+    "setDefault": "Ange som standard",
+    "save": "Spara adress",
+    "noAddresses": "Inga adresser sparade ännu"
+  },
+  "seller": {
+    "dashboard": "Instrumentpanel",
+    "products": "Produkter",
+    "orders": "Order",
+    "revenue": "Inkomst",
+    "messages": "Meddelanden",
+    "settings": "Butiksinställningar",
+    "addProduct": "Lägg till produkt",
+    "newOrders": "Nya beställningar",
+    "analytics": "Analys",
+    "subscription": "Prenumeration",
+    "payouts": "Utbetalningar",
+    "returns": "Returer",
+    "itemsSold": "Sålda varor",
+    "storeStatus": "Butiksstatus",
+    "recentProducts": "Senaste produkter",
+    "noProductsYet": "Inga produkter ännu. Lägg till din första produkt för att komma igång.",
+    "dashboardTitle": "{{name}}s instrumentpanel"
+  },
+  "common": {
+    "loading": "Belastning...",
+    "error": "Något gick fel",
+    "retry": "Försök igen",
+    "save": "Spara",
+    "cancel": "Avboka",
+    "delete": "Radera",
+    "edit": "Redigera",
+    "close": "Nära",
+    "confirm": "Bekräfta",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "search": "Söka",
+    "filter": "Filtrera",
+    "clear": "Rensa",
+    "viewAll": "Visa alla",
+    "showMore": "Visa mer",
+    "showLess": "Visa mindre",
+    "addToCart": "Lägg till i varukorgen",
+    "buyNow": "Köp nu",
+    "shareProduct": "Dela produkt",
+    "currency": "€"
+  }
+}

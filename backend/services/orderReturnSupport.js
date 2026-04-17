@@ -57,8 +57,16 @@ export function normalizeReturnRequest(row, mediaRows = []) {
 		BuyerTrackingNumber: pickCol(row, 'BuyerTrackingNumber'),
 		BuyerTrackingUrl: pickCol(row, 'BuyerTrackingUrl'),
 		BuyerShippedAt: pickCol(row, 'BuyerShippedAt'),
+		ProofUrl: pickCol(row, 'ProofUrl'),
+		ProofUploadedAt: pickCol(row, 'ProofUploadedAt'),
+		ExchangeTrackingNumber: pickCol(row, 'ExchangeTrackingNumber'),
+		ExchangeTrackingUrl: pickCol(row, 'ExchangeTrackingUrl'),
+		ExchangeShippedAt: pickCol(row, 'ExchangeShippedAt'),
+		ExchangeDeliveredAt: pickCol(row, 'ExchangeDeliveredAt'),
 		CreatedAt: pickCol(row, 'CreatedAt'),
 		ResolvedAt: pickCol(row, 'ResolvedAt'),
+		CommissionAmount: pickCol(row, 'CommissionAmount'),
+		CommissionRate: pickCol(row, 'CommissionRate'),
 		Media,
 	};
 }

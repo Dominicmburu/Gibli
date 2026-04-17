@@ -4,15 +4,20 @@ import { motion } from 'framer-motion';
 import { Grid3X3, ChevronRight } from 'lucide-react';
 import api from '../../../api/axios';
 import CategorySearchBar from './CategorySearchBar';
+import { useLanguage } from '../../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 const CategorySideBar = () => {
-	const [categories, setCategories] = useState([]);
+	const [categories, setCategories] = useState([]);       // raw from API (English)
+	const [displayed, setDisplayed] = useState([]);          // translated for current language
 	const [activeCategory, setActiveCategory] = useState(null);
 
 	const navigate = useNavigate();
 	const location = useLocation();
+	const { language, translateTexts } = useLanguage();
+	const { t } = useTranslation();
 
-	// Fetch categories
+	// Fetch categories once on mount
 	useEffect(() => {
 		let mounted = true;
 		const fetchCategories = async () => {
@@ -25,37 +30,43 @@ const CategorySideBar = () => {
 			}
 		};
 		fetchCategories();
-		return () => {
-			mounted = false;
-		};
+		return () => { mounted = false; };
 	}, []);
+
+	// Re-translate whenever language or raw categories change
+	useEffect(() => {
+		if (!categories.length) return;
+
+		let cancelled = false;
+		const translate = async () => {
+			const names = categories.map((c) => c.CategoryName?.trim() || '');
+			const translated = await translateTexts(names, language);
+			if (!cancelled) {
+				setDisplayed(
+					categories.map((c, i) => ({ ...c, DisplayName: translated[i] || c.CategoryName }))
+				);
+			}
+		};
+		translate();
+		return () => { cancelled = true; };
+	}, [categories, language, translateTexts]);
 
 	// Sync activeCategory after categories load or when pathname changes
 	useEffect(() => {
 		if (!categories.length) return;
-
 		const match = location.pathname.match(/\/category\/([^/]+)/);
-		if (match) {
-			setActiveCategory(String(match[1]));
-			return;
-		}
-
-		setActiveCategory(null);
+		setActiveCategory(match ? String(match[1]) : null);
 	}, [location.pathname, categories]);
 
 	const handleCategoryClick = (CategoryId) => {
 		const catIdStr = String(CategoryId);
 		const match = location.pathname.match(/\/category\/([^/]+)/);
 		const current = match ? String(match[1]) : null;
-
-		if (current === catIdStr) {
-			setActiveCategory(catIdStr);
-			return;
-		}
-
 		setActiveCategory(catIdStr);
-		navigate(`/category/${catIdStr}`);
+		if (current !== catIdStr) navigate(`/category/${catIdStr}`);
 	};
+
+	const items = displayed.length ? displayed : categories.map((c) => ({ ...c, DisplayName: c.CategoryName }));
 
 	return (
 		<div className='h-full bg-white'>
@@ -66,8 +77,8 @@ const CategorySideBar = () => {
 						<Grid3X3 className='w-5 h-5 text-white' />
 					</div>
 					<div>
-						<h2 className='font-bold text-gray-900 text-lg'>Categories</h2>
-						<p className='text-xs text-gray-500'>Browse by category</p>
+						<h2 className='font-bold text-gray-900 text-lg'>{t('categories.title')}</h2>
+						<p className='text-xs text-gray-500'>{t('categories.browseBy')}</p>
 					</div>
 				</div>
 			</div>
@@ -75,7 +86,7 @@ const CategorySideBar = () => {
 			{/* Search Bar */}
 			<div className='p-3 lg:p-4'>
 				<CategorySearchBar
-					categories={categories}
+					categories={items}
 					onCategorySelect={handleCategoryClick}
 					placeholder='Search categories...'
 				/>
@@ -84,7 +95,7 @@ const CategorySideBar = () => {
 			{/* Categories List */}
 			<div className='px-2 lg:px-3 pb-6'>
 				<ul className='space-y-1'>
-					{categories.map((cat, index) => {
+					{items.map((cat, index) => {
 						const catId = String(cat.CategoryId);
 						const isActive = activeCategory !== null && catId === activeCategory;
 
@@ -108,7 +119,7 @@ const CategorySideBar = () => {
 											isActive ? 'text-white' : 'text-gray-700 group-hover:text-primary-600'
 										}`}
 									>
-										{cat.CategoryName?.trim()}
+										{cat.DisplayName?.trim()}
 									</span>
 
 									<ChevronRight

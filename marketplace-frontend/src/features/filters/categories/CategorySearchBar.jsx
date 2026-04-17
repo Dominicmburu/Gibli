@@ -15,7 +15,9 @@ const CategorySearchBar = ({ categories, onCategorySelect, placeholder = 'Search
 			return;
 		}
 
-		const filtered = categories.filter((cat) => cat.CategoryName.toLowerCase().includes(searchTerm.toLowerCase()));
+		const filtered = categories.filter((cat) =>
+			(cat.DisplayName || cat.CategoryName).toLowerCase().includes(searchTerm.toLowerCase())
+		);
 
 		setFilteredCategories(filtered);
 		setShowDropdown(true);
@@ -81,7 +83,7 @@ const CategorySearchBar = ({ categories, onCategorySelect, placeholder = 'Search
 									className='px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0'
 								>
 									<div className='flex items-center justify-between'>
-										<span className='font-medium'>{cat.CategoryName}</span>
+										<span className='font-medium'>{cat.DisplayName || cat.CategoryName}</span>
 										<span className='text-xs text-gray-400'>Category</span>
 									</div>
 								</li>

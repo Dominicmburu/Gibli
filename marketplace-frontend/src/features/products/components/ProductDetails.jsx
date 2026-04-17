@@ -9,6 +9,8 @@ import Suggestions from './Suggestions';
 import AddToWishList from '../../wishlist/components/AddToWishlist';
 import { useAuth } from '../../../utils/useAuth';
 import toast from 'react-hot-toast';
+import { useLanguage } from '../../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 import { Truck, Zap, Package, ArrowLeft, Share2, X, Copy, Check, Star, ThumbsUp, MessageCircle } from 'lucide-react';
 import ChatModal from '../../chat/ChatModal';
@@ -88,7 +90,7 @@ const ShareModal = ({ isOpen, onClose, product }) => {
 			>
 				{/* Header */}
 				<div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
-					<h2 className='text-base font-semibold text-gray-800'>Share</h2>
+					<h2 className='text-base font-semibold text-gray-800'>{t('productDetails.shareTitle')}</h2>
 					<button
 						onClick={onClose}
 						className='p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors'
@@ -143,7 +145,7 @@ const ShareModal = ({ isOpen, onClose, product }) => {
 							)}
 						</div>
 						<span className='text-xs text-gray-600 font-medium'>
-							{copied ? 'Copied!' : 'Copy Link'}
+							{copied ? t('productDetails.copied') : t('productDetails.copyLink')}
 						</span>
 					</button>
 				</div>
@@ -179,6 +181,8 @@ const renderStars = (value, size = 16) => (
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 const ProductDetails = () => {
 	const [productDetails, setProductDetails] = useState(null);
+	const [translatedName, setTranslatedName] = useState('');
+	const [translatedDescription, setTranslatedDescription] = useState('');
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [shareOpen, setShareOpen] = useState(false);
@@ -196,6 +200,8 @@ const ProductDetails = () => {
 	const reviewLoadRef = useRef(null);
 	const { id } = useParams();
 
+	const { language, translateTexts } = useLanguage();
+	const { t } = useTranslation();
 	const { userInfo, isLoggedIn } = useAuth();
 	const currentUserId = userInfo?.id ?? null;
 	// Anyone logged in may vote except the seller of this product (that seller can still vote on other sellers' listings).
@@ -226,6 +232,8 @@ const ProductDetails = () => {
 				const response = await api.get(`/products/product/details/${id}`);
 				setProductDetails(response.data);
 				setSelectedImage(response.data.ProductImages?.[0]?.ImageUrl);
+				setTranslatedName(response.data.ProductName);
+				setTranslatedDescription(response.data.Description);
 			} catch (error) {
 				console.error('Error fetching product details:', error);
 			} finally {
@@ -235,6 +243,22 @@ const ProductDetails = () => {
 
 		fetchProductDetails();
 	}, [id]);
+
+	// Translate name + description when language or product changes
+	useEffect(() => {
+		if (!productDetails) return;
+		if (language === 'en') {
+			setTranslatedName(productDetails.ProductName);
+			setTranslatedDescription(productDetails.Description);
+			return;
+		}
+		translateTexts([productDetails.ProductName, productDetails.Description || ''], language).then(
+			([name, desc]) => {
+				setTranslatedName(name);
+				setTranslatedDescription(desc);
+			}
+		);
+	}, [language, productDetails, translateTexts]);
 
 	const fetchReviews = async ({ reset = false } = {}) => {
 		try {
@@ -331,7 +355,7 @@ const ProductDetails = () => {
 			<div className='min-h-screen flex items-center justify-center'>
 				<div className='text-center'>
 					<div className='animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-primary-500 mx-auto'></div>
-					<p className='mt-4 text-gray-600 text-sm sm:text-base'>Loading product details...</p>
+					<p className='mt-4 text-gray-600 text-sm sm:text-base'>{t('productDetails.loading')}</p>
 				</div>
 			</div>
 		);
@@ -370,12 +394,12 @@ const ProductDetails = () => {
 					className='flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors'
 				>
 					<ArrowLeft size={20} />
-					<span className='text-sm font-medium'>Back to products</span>
+					<span className='text-sm font-medium'>{t('productDetails.backToProducts')}</span>
 				</button>
 			</div>
 
 			{/* Main Content */}
-			<div className='flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8'>
+			<div className='flex-1 max-w-7xl mx-auto w-full px-2 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8'>
 				<div className='bg-white rounded-lg shadow-md overflow-hidden'>
 					<div className='flex flex-col lg:flex-row gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8'>
 
@@ -417,7 +441,7 @@ const ProductDetails = () => {
 							<div className='flex items-start gap-2'>
 								{/* Product name fills remaining space */}
 								<h1 className='flex-1 text-xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight'>
-									{productDetails.ProductName}
+									{translatedName}
 								</h1>
 
 								{/* Wish + Share buttons — same size, same style, same row */}
@@ -443,16 +467,16 @@ const ProductDetails = () => {
 									<Package className='w-5 h-5 text-gray-600' />
 									<span className='text-sm sm:text-base text-gray-700'>
 										<span className='font-semibold text-primary-500'>{productDetails.InStock}</span>{' '}
-										units in stock
+										{t('productDetails.unitsInStock')}
 									</span>
 								</div>
 							</div>
 
 							{/* Description */}
 							<div>
-								<h3 className='text-base sm:text-lg font-semibold text-gray-900 mb-2'>Description</h3>
+								<h3 className='text-base sm:text-lg font-semibold text-gray-900 mb-2'>{t('productDetails.description')}</h3>
 								<p className='text-sm sm:text-base text-gray-600 leading-relaxed'>
-									{productDetails.Description}
+									{translatedDescription}
 								</p>
 							</div>
 
@@ -468,7 +492,7 @@ const ProductDetails = () => {
 											{Number(reviewSummary.AverageRating || 0).toFixed(1)}
 										</span>
 										<span className='text-sm text-gray-600 underline'>
-											({reviewSummary.TotalReviews || 0} Customer reviews)
+											({reviewSummary.TotalReviews || 0} {t('productDetails.customerReviews')})
 										</span>
 									</div>
 								</button>
@@ -476,12 +500,12 @@ const ProductDetails = () => {
 
 							{/* Shipping */}
 							<div className='space-y-3'>
-								<h3 className='text-base sm:text-lg font-semibold text-gray-900'>Shipping Options</h3>
+								<h3 className='text-base sm:text-lg font-semibold text-gray-900'>{t('productDetails.shippingOptions')}</h3>
 								<div className='grid grid-cols-2 gap-3'>
 									<div className='flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200'>
 										<Truck className='w-4 h-4 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0' />
 										<div className='min-w-0'>
-											<p className='text-xs sm:text-sm font-semibold text-gray-900'>Standard</p>
+											<p className='text-xs sm:text-sm font-semibold text-gray-900'>{t('productDetails.standard')}</p>
 											<p className='text-sm sm:text-base font-bold text-blue-600'>
 												€{productDetails.ShippingPrice}
 											</p>
@@ -490,7 +514,7 @@ const ProductDetails = () => {
 									<div className='flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-purple-50 rounded-lg border border-purple-200'>
 										<Zap className='w-4 h-4 sm:w-6 sm:h-6 text-purple-600 flex-shrink-0' />
 										<div className='min-w-0'>
-											<p className='text-xs sm:text-sm font-semibold text-gray-900'>Express</p>
+											<p className='text-xs sm:text-sm font-semibold text-gray-900'>{t('productDetails.express')}</p>
 											<p className='text-sm sm:text-base font-bold text-purple-600'>
 												€{productDetails.ExpressShippingPrice}
 											</p>
@@ -502,15 +526,15 @@ const ProductDetails = () => {
 							{/* Seller */}
 							<div className='p-4 sm:p-5 bg-gray-50 rounded-lg border border-gray-200'>
 								<h3 className='text-sm sm:text-base font-semibold text-gray-900 mb-2 sm:mb-3'>
-									Seller Information
+									{t('productDetails.sellerInfo')}
 								</h3>
 								<div className='space-y-1.5 sm:space-y-2'>
 									<p className='text-sm sm:text-base'>
-										<span className='text-gray-600'>Business:</span>{' '}
+										<span className='text-gray-600'>{t('productDetails.business')}</span>{' '}
 										<span className='font-semibold text-primary-500'>{productDetails.BusinessName}</span>
 									</p>
 									<p className='text-sm sm:text-base'>
-										<span className='text-gray-600'>Location:</span>{' '}
+										<span className='text-gray-600'>{t('productDetails.location')}</span>{' '}
 										<span className='font-semibold text-primary-500'>{productDetails.Country}</span>
 									</p>
 								</div>
@@ -520,7 +544,7 @@ const ProductDetails = () => {
 										className='mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-xl transition-colors'
 									>
 										<MessageCircle size={16} />
-										Chat Seller
+										{t('productDetails.chatSeller')}
 									</button>
 								)}
 							</div>
@@ -544,7 +568,7 @@ const ProductDetails = () => {
 										<span className='text-4xl text-gray-500'> / 5</span>
 									</p>
 									<div className='mt-2'>{renderStars(Math.round(Number(reviewSummary.AverageRating || 0)), 24)}</div>
-									<p className='text-sm text-gray-500 mt-2'>({reviewSummary.TotalReviews || 0} Ratings)</p>
+									<p className='text-sm text-gray-500 mt-2'>({reviewSummary.TotalReviews || 0} {t('productDetails.ratings')})</p>
 								</div>
 
 								<div className='space-y-2'>
@@ -571,7 +595,7 @@ const ProductDetails = () => {
 								onClick={() => setReviewFilter('all')}
 								className={`px-3 py-1.5 rounded-full text-sm border ${reviewFilter === 'all' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-300'}`}
 							>
-								All Reviews ({reviewSummary.TotalReviews || 0})
+								{t('productDetails.allReviews')} ({reviewSummary.TotalReviews || 0})
 							</button>
 							<button
 								type='button'
@@ -581,33 +605,33 @@ const ProductDetails = () => {
 								}}
 								className={`px-3 py-1.5 rounded-full text-sm border ${reviewFilter === 'latest' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-300'}`}
 							>
-								Latest
+								{t('productDetails.latest')}
 							</button>
 							<button
 								type='button'
 								onClick={() => setReviewFilter('content')}
 								className={`px-3 py-1.5 rounded-full text-sm border ${reviewFilter === 'content' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-300'}`}
 							>
-								With Content ({reviewSummary.WithContentCount || 0})
+								{t('productDetails.withContent')} ({reviewSummary.WithContentCount || 0})
 							</button>
 							<button
 								type='button'
 								onClick={() => setReviewFilter('photos')}
 								className={`px-3 py-1.5 rounded-full text-sm border ${reviewFilter === 'photos' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-300'}`}
 							>
-								With Photos ({reviewSummary.WithPhotosCount || 0})
+								{t('productDetails.withPhotos')} ({reviewSummary.WithPhotosCount || 0})
 							</button>
 							<select
 								value={reviewStarFilter}
 								onChange={(event) => setReviewStarFilter(event.target.value)}
 								className='px-3 py-1.5 rounded-full text-sm border border-gray-300 bg-white'
 							>
-								<option value=''>All Stars</option>
-								<option value='5'>5 Stars ({starCounts[5]})</option>
-								<option value='4'>4 Stars ({starCounts[4]})</option>
-								<option value='3'>3 Stars ({starCounts[3]})</option>
-								<option value='2'>2 Stars ({starCounts[2]})</option>
-								<option value='1'>1 Star ({starCounts[1]})</option>
+								<option value=''>{t('productDetails.allStars')}</option>
+								<option value='5'>{t('productDetails.stars', { count: 5 })} ({starCounts[5]})</option>
+								<option value='4'>{t('productDetails.stars', { count: 4 })} ({starCounts[4]})</option>
+								<option value='3'>{t('productDetails.stars', { count: 3 })} ({starCounts[3]})</option>
+								<option value='2'>{t('productDetails.stars', { count: 2 })} ({starCounts[2]})</option>
+								<option value='1'>{t('productDetails.oneStar')} ({starCounts[1]})</option>
 							</select>
 						</div>
 
@@ -654,17 +678,17 @@ const ProductDetails = () => {
 												className={`text-xs px-2.5 py-1.5 rounded-full border flex items-center gap-1 ${review.IsHelpfulByCurrentUser ? 'bg-primary-50 border-primary-300 text-primary-600' : 'bg-white border-gray-300 text-gray-600'}`}
 											>
 												<ThumbsUp size={14} />
-												Helpful
+												{t('productDetails.helpful')}
 											</button>
 										)}
 										<p className='text-xs text-gray-500'>
-											{review.HelpfulCount || 0} buyers found this review helpful
+											{review.HelpfulCount || 0} {t('productDetails.helpfulCount', { count: review.HelpfulCount || 0 })}
 										</p>
 									</div>
 
 									{review.SellerResponse && (
 										<div className='mt-3 bg-gray-50 border border-gray-200 rounded-md p-3 text-left'>
-											<p className='text-xs font-semibold text-gray-700 mb-1'>Seller response</p>
+											<p className='text-xs font-semibold text-gray-700 mb-1'>{t('productDetails.sellerResponse')}</p>
 											<p className='text-sm text-gray-700'>{review.SellerResponse}</p>
 										</div>
 									)}
@@ -677,7 +701,7 @@ const ProductDetails = () => {
 												onChange={(event) =>
 													setSellerReplyDraft((prev) => ({ ...prev, [review.ReviewId]: event.target.value }))
 												}
-												placeholder='Respond to this review'
+												placeholder={t('productDetails.respondToReview')}
 												className='flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm'
 											/>
 											<button
@@ -685,7 +709,7 @@ const ProductDetails = () => {
 												onClick={() => submitSellerReply(review.ReviewId)}
 												className='px-3 py-2 text-sm rounded-md bg-primary-500 text-white'
 											>
-												Reply
+												{t('productDetails.reply')}
 											</button>
 										</div>
 									)}
@@ -693,7 +717,7 @@ const ProductDetails = () => {
 							))}
 
 							{reviewLoading && (
-								<p className='text-sm text-gray-500 text-center py-2'>Loading reviews...</p>
+								<p className='text-sm text-gray-500 text-center py-2'>{t('productDetails.loadingReviews')}</p>
 							)}
 
 							{!isMobile && reviewHasMore && (
@@ -706,7 +730,7 @@ const ProductDetails = () => {
 									onClick={() => fetchReviews()}
 									className='w-full border border-gray-300 rounded-md py-2 text-sm text-gray-700 bg-white'
 								>
-									Show more reviews
+									{t('productDetails.showMoreReviews')}
 								</button>
 							)}
 						</div>

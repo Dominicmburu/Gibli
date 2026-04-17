@@ -6,8 +6,26 @@
  * Gold: #FFCC00 (official EU gold)
  */
 
+html,
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure pages stretch to fill the viewport on mobile */
+@media (max-width: 767px) {
+  .page-wrapper {
+    min-height: 100dvh;
+  }
 }
 
 @theme {

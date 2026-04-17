@@ -109,7 +109,7 @@ export default function HeroCarousel() {
 
 			{/* Content */}
 			<div className='absolute inset-0 flex items-center'>
-				<div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full'>
+				<div className='max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 w-full'>
 					<AnimatePresence mode='wait'>
 						<motion.div
 							key={current}

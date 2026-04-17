@@ -400,7 +400,7 @@ const OrderDetail = () => {
 		<>
 			<NavBar />
 			<div className='min-h-screen bg-gray-50'>
-				<div className='max-w-4xl mx-auto px-4 sm:px-6 py-8'>
+				<div className='max-w-4xl mx-auto px-2 sm:px-6 py-8'>
 					{/* Back button */}
 					<button
 						onClick={() => navigate('/orders')}
@@ -934,7 +934,7 @@ const OrderDetail = () => {
 								</div>
 							</div>
 							<div>
-								<label className='block text-sm font-medium text-gray-700 mb-1'>Reason <span className='text-xs text-gray-400 font-normal'>(optional)</span></label>
+								<label className='block text-sm font-medium text-gray-700 mb-1'>Reason</label>
 								<textarea value={returnReason} onChange={(e) => setReturnReason(e.target.value)} placeholder='Describe the issue (e.g. damaged, wrong item, not as described)...' rows={4} className='w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none' />
 							</div>
 							<div>

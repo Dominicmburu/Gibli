@@ -3,6 +3,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import DbHelper from '../db/dbHelper.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
+import { sendRestockNotificationEmail } from '../services/emailService.js';
 
 const cartRouter = express.Router();
 const db = new DbHelper();
@@ -128,6 +129,54 @@ cartRouter.delete('/remove/:id', authenticateToken, async (req, res) => {
 		res.status(200).json({ message: 'Cart item removed' });
 	} catch (err) {
 		res.status(500).json({ message: 'Failed to remove item', error: err.message });
+	}
+});
+
+// Set restock reminder for a product
+cartRouter.post('/restock-reminder/:productId', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const { productId } = req.params;
+
+		// Get user email
+		const userResult = await db.executeProcedure('GetUserById', { UserId });
+		const user = userResult.recordset?.[0];
+		if (!user) return res.status(404).json({ message: 'User not found.' });
+
+		const result = await db.executeProcedure('UpsertRestockReminder', {
+			ReminderId: uuidv4(),
+			ProductId: productId,
+			UserId,
+			Email: user.Email,
+		});
+
+		res.status(201).json({ message: 'You will be notified when this product is back in stock.', data: result.recordset?.[0] });
+	} catch (err) {
+		res.status(500).json({ message: 'Failed to set reminder', error: err.message });
+	}
+});
+
+// Cancel restock reminder
+cartRouter.delete('/restock-reminder/:productId', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const { productId } = req.params;
+		await db.executeProcedure('DeleteRestockReminder', { ProductId: productId, UserId });
+		res.status(200).json({ message: 'Restock reminder cancelled.' });
+	} catch (err) {
+		res.status(500).json({ message: 'Failed to cancel reminder', error: err.message });
+	}
+});
+
+// Check if user has a restock reminder for a product
+cartRouter.get('/restock-reminder/:productId', authenticateToken, async (req, res) => {
+	try {
+		const UserId = req.user.id;
+		const { productId } = req.params;
+		const result = await db.executeProcedure('GetUserRestockReminder', { ProductId: productId, UserId });
+		res.status(200).json({ hasReminder: (result.recordset?.length ?? 0) > 0 });
+	} catch (err) {
+		res.status(500).json({ message: 'Failed to check reminder', error: err.message });
 	}
 });
 

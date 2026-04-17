@@ -206,7 +206,7 @@ const FinalizeCheckout = () => {
 		<div className='min-h-screen flex flex-col bg-gray-50'>
 			<NavBar />
 
-			<main className='flex-1 max-w-5xl mx-auto w-full px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 pb-32 sm:pb-36 lg:pb-40'>
+			<main className='flex-1 max-w-5xl mx-auto w-full px-2 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 pb-32 sm:pb-36 lg:pb-40'>
 				{/* Page Header */}
 				<div className='mb-4 sm:mb-6'>
 					<h1 className='text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3'>
@@ -573,7 +573,7 @@ const FinalizeCheckout = () => {
 			{/* Sticky Total + Checkout Button - ALL SCREEN SIZES */}
 			{cartItems.length > 0 && (
 				<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40'>
-					<div className='max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4'>
+					<div className='max-w-5xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4'>
 						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4'>
 							{/* Total */}
 							<div>

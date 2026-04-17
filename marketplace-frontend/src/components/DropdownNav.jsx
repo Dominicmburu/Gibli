@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useAuth } from '../utils/useAuth';
 
@@ -8,12 +9,13 @@ const DropdownNav = ({ showBecomeSeller = false }) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const { isLoggedIn, tokenExpired, userInfo } = useAuth();
 	const navigate = useNavigate();
+	const { t } = useTranslation();
 
 	const menuItems = [
-		{ label: 'Wishlist', path: '/wishlist' },
-		{ label: 'Address Book', path: '/address-book' },
-		{ label: 'Orders', path: '/orders' },
-		{ label: 'Become a Seller', path: '/become-seller' },
+		{ label: t('nav.myWishlist'),      path: '/wishlist' },
+		{ label: t('address.title'),        path: '/address-book' },
+		{ label: t('auth.orders'),          path: '/orders' },
+		{ label: t('auth.becomeSeller'),    path: '/become-seller', sellerOnly: true },
 	];
 
 	const handleClick = (path) => {
@@ -34,7 +36,7 @@ const DropdownNav = ({ showBecomeSeller = false }) => {
 					<User size={18} className='text-primary-600' />
 				</div>
 				<span className='text-sm font-medium hidden lg:inline'>
-					{isLoggedIn && userInfo ? `Hi, ${userInfo.name}` : 'Account'}
+					{isLoggedIn && userInfo ? `Hi, ${userInfo.name}` : t('auth.login.title')}
 				</span>
 				<ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
 			</button>
@@ -54,10 +56,7 @@ const DropdownNav = ({ showBecomeSeller = false }) => {
 				)}
 				<ul className='py-2'>
 					{menuItems
-						.filter((item) => {
-							if (item.label === 'Become a Seller') return showBecomeSeller;
-							return true;
-						})
+						.filter((item) => !item.sellerOnly || showBecomeSeller)
 						.map((item) => (
 							<li key={item.path}>
 								<button

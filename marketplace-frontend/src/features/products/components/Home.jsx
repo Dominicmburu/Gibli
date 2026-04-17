@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Filter } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Footer from '../../../components/Footer';
 import Navbar from '../../../components/NavBar';
 import ProductList from './ProductList';
@@ -8,13 +9,14 @@ import CategorySideBar from '../../filters/categories/CategorySideBar';
 
 const Home = () => {
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const { t } = useTranslation();
 
 	const toggleSidebar = () => {
 		setIsSidebarOpen(!isSidebarOpen);
 	};
 
 	return (
-		<div className='min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-primary-50/30'>
+		<div className='min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-primary-50/30 w-full'>
 			<Navbar />
 
 			{/* Mobile/Tablet: Floating Filter Button (hidden on desktop) */}
@@ -24,7 +26,7 @@ const Home = () => {
 				aria-label='Toggle filters'
 			>
 				<Filter size={20} className='sm:w-5 sm:h-5' />
-				<span className='font-semibold text-sm sm:text-base'>Categories</span>
+				<span className='font-semibold text-sm sm:text-base'>{t('home.filterButton')}</span>
 			</button>
 
 			{/* Mobile/Tablet: Overlay */}
@@ -52,7 +54,7 @@ const Home = () => {
 				>
 					{/* Mobile/Tablet: Close Button Header */}
 					<div className='lg:hidden flex justify-between items-center p-4 border-b border-gray-100 sticky top-0 bg-white/95 backdrop-blur-sm z-10'>
-						<h2 className='text-base sm:text-lg font-bold text-gray-800'>Browse Categories</h2>
+						<h2 className='text-base sm:text-lg font-bold text-gray-800'>{t('home.browseCategories')}</h2>
 						<button
 							onClick={toggleSidebar}
 							className='p-2 hover:bg-gray-100 rounded-xl transition-colors'
@@ -69,7 +71,7 @@ const Home = () => {
 				</aside>
 
 				{/* Main Content Area - Enhanced spacing and styling */}
-				<main className='flex-1 mt-4 sm:mt-6 lg:mt-8 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12'>
+				<main className='flex-1 w-full min-w-0 mt-4 sm:mt-6 lg:mt-8 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12'>
 					{/* Hero Carousel Section */}
 					<section className='mb-8 sm:mb-10 lg:mb-14'>
 						<HeroCarousel />

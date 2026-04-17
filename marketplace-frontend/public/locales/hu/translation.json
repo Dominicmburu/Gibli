@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Majdnem ott!",
+      "message": "Eladói fiókja beállítva – válasszon egy csomagot, és fejezze be a fizetést a legjobb jutalékráta feloldásához.",
+      "cta": "Fizetés befejezése"
+    },
+    "myStore": "Saját boltom",
+    "searchPlaceholder": "Termékek keresése...",
+    "home": "Otthon",
+    "myWishlist": "Kívánságlistám",
+    "browseCategories": "Kategóriák böngészése",
+    "categories": "Kategóriák"
+  },
+  "footer": {
+    "tagline": "Megbízható európai piactere minőségi termékek felfedezéséhez és értékesítéséhez. Könnyedén és átláthatóan köti össze a vevőket és az eladókat Európa-szerte.",
+    "shipping": {
+      "title": "Optimalizált szállítás",
+      "subtitle": "Legjobb árak gyors szállításért"
+    },
+    "payment": {
+      "title": "Biztonságos fizetés",
+      "subtitle": "100%-ban védett"
+    },
+    "returns": {
+      "title": "Könnyű visszaküldés",
+      "subtitle": "30 napos szabályzat"
+    },
+    "support": {
+      "title": "24/7-es ügyfélszolgálat",
+      "subtitle": "Dedikált segítség"
+    },
+    "quickLinks": "Gyorslinkek",
+    "links": {
+      "home": "Otthon",
+      "about": "Rólunk",
+      "contact": "Kapcsolat",
+      "faq": "GYIK",
+      "shipping": "Szállítási információk",
+      "returns": "Visszaküldési szabályzat"
+    },
+    "getInTouch": "Kapcsolatfelvétel",
+    "emailUs": "Írjon nekünk e-mailt",
+    "callUs": "Hívjon minket",
+    "location": "Elhelyezkedés",
+    "locationValue": "Európai Unió",
+    "copyright": "© {{year}} GibLi. Minden jog fenntartva.",
+    "privacyPolicy": "Adatvédelmi irányelvek",
+    "termsOfService": "Szolgáltatási feltételek",
+    "designedBy": "Gondosan tervezte"
+  },
+  "home": {
+    "filterButton": "Kategóriák",
+    "browseCategories": "Kategóriák böngészése"
+  },
+  "productList": {
+    "title": "Kiemelt termékek",
+    "subtitle": "Fedezzen fel minőségi termékeket megbízható európai eladóktól",
+    "loading": "Csodálatos termékek betöltése...",
+    "available": "{{count}} Elérhető termékek",
+    "newArrivals": "Naponta új érkezők"
+  },
+  "productCard": {
+    "onlyLeft": "Már csak {{count}} maradt!",
+    "new": "ÚJ",
+    "outOfStock": "Nincs raktáron",
+    "quickView": "Gyorsnézet"
+  },
+  "productDetails": {
+    "loading": "Termékadatok betöltése...",
+    "backToProducts": "Vissza a termékekhez",
+    "description": "Leírás",
+    "shippingOptions": "Szállítási lehetőségek",
+    "standard": "Standard",
+    "express": "Expressz",
+    "unitsInStock": "raktáron lévő egységek",
+    "sellerInfo": "Eladó adatai",
+    "business": "Üzleti:",
+    "location": "Elhelyezkedés:",
+    "chatSeller": "Csevegő eladó",
+    "customerReviews": "Vásárlói vélemények",
+    "ratings": "Értékelések",
+    "allReviews": "Minden vélemény",
+    "latest": "Legújabb",
+    "withContent": "Tartalommal",
+    "withPhotos": "Fotókkal",
+    "allStars": "Minden csillag",
+    "stars": "{{count}} Csillagok",
+    "oneStar": "1 csillag",
+    "sellerResponse": "Eladó válasza",
+    "respondToReview": "Válasz erre az értékelésre",
+    "reply": "Válasz",
+    "loadingReviews": "Vélemények betöltése...",
+    "showMoreReviews": "További értékelések megjelenítése",
+    "helpfulCount": "{{count}} vásárló hasznosnak találta ezt az értékelést",
+    "helpful": "Hasznos",
+    "shareTitle": "Részesedés",
+    "copied": "Másolva!",
+    "copyLink": "Link másolása",
+    "updatedOn": "Frissítve",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "Email"
+  },
+  "cart": {
+    "title": "Bevásárlókocsi",
+    "empty": "A kosarad üres",
+    "emptySub": "Adjon hozzá néhány terméket a kezdéshez",
+    "continueShopping": "Vásárlás folytatása",
+    "loading": "A kosár betöltése...",
+    "orderSummary": "Rendelési összefoglaló",
+    "subtotal": "Részösszeg",
+    "shipping": "Szállítás",
+    "total": "Teljes",
+    "checkout": "Tovább a pénztárhoz",
+    "remove": "Eltávolítás",
+    "outOfStock": "Nincs raktáron",
+    "lowStock": "Már csak {{count}} maradt",
+    "notifyRestock": "Értesítsen, ha újra raktáron lesz",
+    "cancelReminder": "Emlékeztető törlése",
+    "soldBy": "Eladó",
+    "standard": "Standard",
+    "express": "Expressz",
+    "item": "tétel",
+    "items": "tételek",
+    "qty": "Mennyiség"
+  },
+  "auth": {
+    "login": {
+      "title": "Bejelentkezés",
+      "email": "E-mail cím",
+      "password": "Jelszó",
+      "showPassword": "Jelszó megjelenítése",
+      "hidePassword": "Jelszó elrejtése",
+      "forgotPassword": "Elfelejtett jelszó?",
+      "submit": "Bejelentkezés",
+      "noAccount": "Nincs fiókod?",
+      "signUp": "Regisztráció"
+    },
+    "signup": {
+      "title": "Fiók létrehozása",
+      "username": "Felhasználónév",
+      "email": "E-mail cím",
+      "password": "Jelszó",
+      "confirmPassword": "Jelszó megerősítése",
+      "submit": "Fiók létrehozása",
+      "hasAccount": "Már van fiókja?",
+      "login": "Bejelentkezés"
+    },
+    "logout": "Kijelentkezés",
+    "profile": "Profilom",
+    "orders": "Rendeléseim",
+    "becomeSeller": "Legyen eladó",
+    "sellerDashboard": "Eladói irányítópult"
+  },
+  "orders": {
+    "title": "Rendeléseim",
+    "empty": "Még nincsenek megrendelések",
+    "emptySub": "A rendelési előzményeid itt jelennek meg",
+    "startShopping": "Vásárlás megkezdése",
+    "loading": "Rendelések betöltése...",
+    "orderId": "Rendelés #{{id}}",
+    "placedOn": "Elhelyezve",
+    "total": "Teljes",
+    "viewDetails": "Részletek megtekintése",
+    "status": {
+      "Processing": "Feldolgozás",
+      "Confirmed": "Megerősített",
+      "Shipped": "Szállítva",
+      "Delivered": "Kiszállítva",
+      "Sold": "Eladott",
+      "Cancelled": "Lemondva",
+      "Rejected": "Elutasítva"
+    },
+    "detail": {
+      "back": "Vissza a rendelésekhez",
+      "shippingAddress": "Szállítási cím",
+      "orderItems": "Rendelt tételek",
+      "summary": "Rendelési összefoglaló",
+      "subtotal": "Részösszeg",
+      "shipping": "Szállítás",
+      "total": "Teljes",
+      "soldBy": "Eladó",
+      "standard": "Normál szállítás",
+      "express": "Expressz szállítás",
+      "cancelOrder": "Rendelés törlése",
+      "returnOrder": "Visszaküldés kérése"
+    }
+  },
+  "wishlist": {
+    "title": "Kívánságlistám",
+    "empty": "A kívánságlistád üres",
+    "emptySub": "Mentsd el a kedvenc termékeidet későbbre",
+    "discover": "Termékek felfedezése",
+    "remove": "Eltávolítás",
+    "addToCart": "Kosárba",
+    "added": "Hozzáadva a kívánságlistához",
+    "removed": "Eltávolítva a kívánságlistáról",
+    "loginRequired": "Kérjük, jelentkezzen be a kívánságlista használatához"
+  },
+  "search": {
+    "placeholder": "Termékek keresése...",
+    "results": "Keresési eredmények a következőre:",
+    "noResults": "Nincsenek termékek a következőhöz:",
+    "tryDifferent": "Próbáljon ki egy másik keresési kifejezést, vagy böngésszen a kategóriák között",
+    "loading": "Keresés..."
+  },
+  "categories": {
+    "title": "Kategóriák",
+    "all": "Minden kategória",
+    "loading": "Kategóriák betöltése...",
+    "browseBy": "Böngészés kategória szerint"
+  },
+  "checkout": {
+    "title": "Pénztár",
+    "selectAddress": "Válasszon szállítási címet",
+    "addAddress": "Új cím hozzáadása",
+    "shippingMethod": "Szállítási mód",
+    "standard": "Normál szállítás",
+    "express": "Expressz szállítás",
+    "placeOrder": "Rendelés leadása",
+    "processing": "Feldolgozás...",
+    "success": "Rendelés sikeresen leadva!",
+    "subtotal": "Részösszeg",
+    "shipping": "Szállítás",
+    "total": "Teljes"
+  },
+  "address": {
+    "title": "Címjegyzék",
+    "add": "Új cím hozzáadása",
+    "edit": "Cím szerkesztése",
+    "delete": "Cím törlése",
+    "default": "Alapértelmezett",
+    "setDefault": "Beállítás alapértelmezettként",
+    "save": "Cím mentése",
+    "noAddresses": "Még nincsenek mentett címek"
+  },
+  "seller": {
+    "dashboard": "Műszerfal",
+    "products": "Termékek",
+    "orders": "Rendelések",
+    "revenue": "Bevétel",
+    "messages": "Üzenetek",
+    "settings": "Áruház beállításai",
+    "addProduct": "Termék hozzáadása",
+    "newOrders": "Új megrendelések",
+    "analytics": "Analitika",
+    "subscription": "Előfizetés",
+    "payouts": "Kifizetések",
+    "returns": "Visszaküldések",
+    "itemsSold": "Eladott termékek",
+    "storeStatus": "Bolt állapota",
+    "recentProducts": "Legutóbbi termékek",
+    "noProductsYet": "Még nincsenek termékek. Adja hozzá az első termékét a kezdéshez.",
+    "dashboardTitle": "{{name}} irányítópultja"
+  },
+  "common": {
+    "loading": "Terhelés...",
+    "error": "Valami rosszul sült el",
+    "retry": "Próbáld újra",
+    "save": "Megtakarítás",
+    "cancel": "Mégsem",
+    "delete": "Töröl",
+    "edit": "Szerkesztés",
+    "close": "Közeli",
+    "confirm": "Megerősítés",
+    "back": "Vissza",
+    "next": "Következő",
+    "search": "Keresés",
+    "filter": "Szűrő",
+    "clear": "Világos",
+    "viewAll": "Összes megtekintése",
+    "showMore": "Mutass többet",
+    "showLess": "Kevesebb megjelenítése",
+    "addToCart": "Kosárba",
+    "buyNow": "Vásároljon most",
+    "shareProduct": "Termék megosztása",
+    "currency": "€"
+  }
+}

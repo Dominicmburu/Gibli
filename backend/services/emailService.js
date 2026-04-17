@@ -882,6 +882,73 @@ export async function sendSellerOrderNotificationEmail(
 	}
 }
 
+export async function sendRestockNotificationEmail(buyerEmail, buyerName, productName, productId, frontendUrl) {
+	const productUrl = `${frontendUrl}/product/${productId}`;
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:600px;">
+	  <div style="background:linear-gradient(135deg,#0057B8,#0096C7);padding:24px 32px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:22px;">Good news — it's back in stock!</h2>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+	    <p>Hi <strong>${buyerName || 'there'}</strong>,</p>
+	    <p>You asked us to let you know when <strong>${productName}</strong> was back in stock. It's available again now!</p>
+	    <div style="text-align:center;margin:28px 0;">
+	      <a href="${productUrl}" style="background:#0057B8;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">
+	        View Product
+	      </a>
+	    </div>
+	    <p style="color:#6b7280;font-size:13px;">Hurry — stock may be limited. If you no longer need it, you can ignore this email.</p>
+	    <p style="color:#6b7280;font-size:13px;margin-top:24px;">The Gibli Team</p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: `✅ "${productName}" is back in stock!`,
+			html,
+		});
+		if (error) { console.error('❌ Error sending restock notification email:', error); return; }
+		console.log(`✅ Restock notification sent to ${buyerEmail}:`, data);
+	} catch (error) {
+		console.error('❌ Error sending restock notification email:', error);
+	}
+}
+
+export async function sendAdminAlertEmail(subject, bodyLines) {
+	const rows = bodyLines.map((line) =>
+		`<tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:13px;">${line}</td></tr>`
+	).join('');
+
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:680px;">
+	  <div style="background:#B91C1C;padding:20px 28px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:20px;">⚠️ Gibli Admin Alert</h2>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:24px 28px;">
+	    <p style="margin:0 0 16px;"><strong>${subject}</strong></p>
+	    <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:8px;overflow:hidden;">
+	      ${rows}
+	    </table>
+	    <p style="color:#6b7280;font-size:12px;margin-top:20px;">Sent automatically by the Gibli cron system — ${new Date().toUTCString()}</p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: 'dominic@antprotocol.eu',
+			subject: `⚠️ [Gibli Alert] ${subject}`,
+			html,
+		});
+		if (error) { console.error('❌ Error sending admin alert email:', error); return; }
+		console.log('✅ Admin alert email sent:', data);
+	} catch (error) {
+		console.error('❌ Error sending admin alert email:', error);
+	}
+}
+
 export async function sendNewReviewEmail(sellerEmail, sellerName, productName, buyerName, rating) {
 	const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
 	const htmlContent = `

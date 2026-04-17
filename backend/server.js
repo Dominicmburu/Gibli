@@ -17,6 +17,7 @@ import reviewRouter from './routes/reviewRoutes.js';
 import returnRouter from './routes/returnRoutes.js';
 import messageRouter from './routes/messageRoutes.js';
 import subscriptionRouter from './routes/subscriptionRoutes.js';
+import translateRouter from './routes/translateRoute.js';
 import { initCronJobs } from './services/cronService.js';
 import { ensureOrderReturnSchema } from './services/orderReturnSupport.js';
 
@@ -57,6 +58,7 @@ app.use('/subscriptions', subscriptionRouter);
 app.use('/reviews', reviewRouter);
 app.use('/returns', returnRouter);
 app.use('/messages', messageRouter);
+app.use('/translate', translateRouter);
 
 // Initialise return schema (tables, columns, constraints) once at startup
 ensureOrderReturnSchema().catch((err) =>

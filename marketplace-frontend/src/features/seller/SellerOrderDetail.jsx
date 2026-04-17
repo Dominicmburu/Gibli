@@ -44,14 +44,6 @@ const SellerOrderDetail = () => {
 	const [updatingStatus, setUpdatingStatus] = useState(false);
 	const [rejectionModal, setRejectionModal] = useState({ open: false, reason: '' });
 	const [trackingModal, setTrackingModal] = useState({ open: false, trackingNumber: '', trackingUrl: '' });
-	const [returnApproveModal, setReturnApproveModal] = useState({
-		open: false,
-		instructions: '',
-		resolutionType: 'physical_return',
-	});
-	const [returnRejectModal, setReturnRejectModal] = useState({ open: false, reason: '' });
-	const [resolvingReturn, setResolvingReturn] = useState(false);
-	const [markingRefunded, setMarkingRefunded] = useState(false);
 
 	const reloadOrder = async () => {
 		const response = await api.get(`/orders/${orderId}`);
@@ -161,65 +153,6 @@ const SellerOrderDetail = () => {
 	const daysDelivered = order.DeliveryStatus === 'Delivered' ? daysSince(deliveredAnchor) : 0;
 	const daysRemaining = Math.max(0, 14 - daysDelivered);
 	const canMarkSold = order.DeliveryStatus === 'Delivered' && daysDelivered >= 14 && !['ReturnRequested', 'ReturnApproved'].includes(order.RefundStatus);
-	const ret = order.ReturnRequest;
-
-	const submitReturnApprove = async () => {
-		const instr = returnApproveModal.instructions.trim();
-		if (instr.length < 15) {
-			toast.error('Add clear return instructions for the buyer (at least 15 characters).');
-			return;
-		}
-		if (!ret?.ReturnRequestId) return;
-		setResolvingReturn(true);
-		try {
-			await api.patch(`/returns/${ret.ReturnRequestId}`, {
-				decision: 'approve',
-				sellerInstructions: instr,
-				resolutionType: returnApproveModal.resolutionType,
-			});
-			toast.success('Return approved. The buyer will see your instructions.');
-			setReturnApproveModal({ open: false, instructions: '', resolutionType: 'physical_return' });
-			await reloadOrder();
-		} catch (err) {
-			toast.error(err.response?.data?.message || 'Failed to approve return.');
-		} finally {
-			setResolvingReturn(false);
-		}
-	};
-
-	const submitReturnReject = async () => {
-		const reason = returnRejectModal.reason.trim();
-		if (reason.length < 10) {
-			toast.error('Explain why you are rejecting (at least 10 characters).');
-			return;
-		}
-		if (!ret?.ReturnRequestId) return;
-		setResolvingReturn(true);
-		try {
-			await api.patch(`/returns/${ret.ReturnRequestId}`, { decision: 'reject', sellerRejectionReason: reason });
-			toast.success('Return request rejected.');
-			setReturnRejectModal({ open: false, reason: '' });
-			await reloadOrder();
-		} catch (err) {
-			toast.error(err.response?.data?.message || 'Failed to reject return.');
-		} finally {
-			setResolvingReturn(false);
-		}
-	};
-
-	const submitMarkRefunded = async () => {
-		if (!ret?.ReturnRequestId) return;
-		setMarkingRefunded(true);
-		try {
-			await api.post(`/returns/${ret.ReturnRequestId}/mark-refunded`);
-			toast.success('Order marked as refunded.');
-			await reloadOrder();
-		} catch (err) {
-			toast.error(err.response?.data?.message || 'Could not update refund status.');
-		} finally {
-			setMarkingRefunded(false);
-		}
-	};
 
 	const renderActions = () => {
 		if (isTerminal || order.DeliveryStatus === 'Sold' || ['ReturnRequested', 'ReturnApproved'].includes(order.RefundStatus)) return null;
@@ -301,7 +234,7 @@ const SellerOrderDetail = () => {
 			<NavBar />
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					{/* Back button */}
 					<button
 						onClick={() => navigate('/my-orders')}
@@ -328,12 +261,6 @@ const SellerOrderDetail = () => {
 									<StatusIcon size={16} />
 									{statusInfo.label}
 								</div>
-								{order.RefundStatus === 'ReturnRequested' && (
-									<div className='flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-200'>
-										<RotateCcw size={14} />
-										Return requested — open below
-									</div>
-								)}
 							</div>
 						</div>
 
@@ -397,92 +324,37 @@ const SellerOrderDetail = () => {
 						{/* Status Actions */}
 						{renderActions()}
 
-						{/* Return / refund request (seller) — above tracking so it is always easy to find */}
-						{order.IsSeller && ret && (
-							<div
-								className={`rounded-2xl border p-5 sm:p-6 mb-4 text-left ${
-									ret.Status === 'Pending'
-										? 'bg-amber-50 border-amber-200'
-										: ret.Status === 'Approved'
-											? 'bg-green-50 border-green-200'
-											: 'bg-red-50 border-red-200'
-								}`}
-							>
-								<div className='flex flex-wrap items-center gap-2 mb-3'>
-									<RotateCcw size={20} className='text-amber-700' />
-									<h3 className='font-semibold text-gray-900'>Return / refund request</h3>
-									<span className='text-xs font-semibold px-2 py-0.5 rounded-full bg-white/80 border border-gray-200'>
-										{order.RefundStatus === 'Refunded' ? 'Refunded' : ret.Status}
-									</span>
+
+						{/* Return / refund info — read-only, actions handled in Returns page */}
+						{order.ReturnRequest && (
+							<div className='rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6 mb-4'>
+								<div className='flex items-center justify-between gap-3 mb-3 flex-wrap'>
+									<div className='flex items-center gap-2'>
+										<RotateCcw size={18} className='text-amber-700' />
+										<h3 className='font-semibold text-gray-900'>Return request</h3>
+										<span className='text-xs font-semibold px-2 py-0.5 rounded-full bg-white border border-amber-200 text-amber-800'>
+											{order.ReturnRequest.Status}
+										</span>
+									</div>
+									<button
+										onClick={() => navigate(`/my-returns/${order.ReturnRequest.ReturnRequestId}`)}
+										className='text-xs font-semibold text-amber-700 hover:text-amber-900 underline'
+									>
+										Manage in Returns →
+									</button>
 								</div>
-								<div className='text-left w-full mb-3'>
-									<p className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'>Buyer reason</p>
-									<p className='text-sm text-gray-800 whitespace-pre-wrap'>{ret.Reason}</p>
-								</div>
-								{Array.isArray(ret.Media) && ret.Media.length > 0 && (
-									<div className='flex flex-wrap gap-2 mb-4 justify-start'>
-										{ret.Media.map((m) =>
+								<p className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'>Buyer's reason</p>
+								<p className='text-sm text-gray-800 whitespace-pre-wrap'>{order.ReturnRequest.Reason}</p>
+								{Array.isArray(order.ReturnRequest.Media) && order.ReturnRequest.Media.length > 0 && (
+									<div className='flex flex-wrap gap-2 mt-3'>
+										{order.ReturnRequest.Media.map((m) =>
 											m.MediaType === 'video' ? (
-												<video key={m.MediaId} src={m.MediaUrl} controls className='w-28 h-28 rounded-lg object-cover border border-gray-200' />
+												<video key={m.MediaId} src={m.MediaUrl} controls className='w-24 h-24 rounded-lg object-cover border border-amber-200' />
 											) : (
-												<img key={m.MediaId} src={m.MediaUrl} alt='' className='w-28 h-28 rounded-lg object-cover border border-gray-200' />
+												<img key={m.MediaId} src={m.MediaUrl} alt='Evidence' className='w-24 h-24 rounded-lg object-cover border border-amber-200' />
 											)
 										)}
 									</div>
-								)}
-								{ret.Status === 'Pending' && (
-									<div className='flex flex-wrap gap-2 pt-2 border-t border-amber-200'>
-										<button
-											type='button'
-											onClick={() => setReturnApproveModal({ open: true, instructions: '', resolutionType: 'physical_return' })}
-											disabled={resolvingReturn}
-											className='flex-1 min-w-[140px] py-2.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50'
-										>
-											Approve return
-										</button>
-										<button
-											type='button'
-											onClick={() => setReturnRejectModal({ open: true, reason: '' })}
-											disabled={resolvingReturn}
-											className='flex-1 min-w-[140px] py-2.5 text-sm font-medium text-red-700 bg-white border border-red-200 hover:bg-red-50 rounded-xl disabled:opacity-50'
-										>
-											Reject
-										</button>
-									</div>
-								)}
-							{ret.Status === 'Approved' && ret.ResolutionType && (
-								<p className='text-sm text-gray-800 mb-2 text-left'>
-									<span className='font-medium'>Resolution: </span>
-									{ret.ResolutionType === 'refund_keep_product'
-										? 'Refund / replacement — buyer keeps the product'
-										: 'Physical return'}
-								</p>
-							)}
-							{ret.Status === 'Approved' && ret.SellerInstructions && (
-								<div className='mt-2 text-sm text-green-900 text-left'>
-									<p className='text-xs font-semibold uppercase text-green-800 mb-1'>Your instructions to the buyer</p>
-									<p className='whitespace-pre-wrap'>{ret.SellerInstructions}</p>
-								</div>
-							)}
-								{ret.Status === 'Rejected' && ret.SellerRejectionReason && (
-									<div className='text-sm text-red-800 mt-2 text-left'>
-										<p className='text-xs font-semibold text-red-800 mb-1'>Your rejection note</p>
-										<p className='whitespace-pre-wrap'>{ret.SellerRejectionReason}</p>
-									</div>
-								)}
-								{ret.Status === 'Approved' && order.RefundStatus !== 'Refunded' && (
-									<button
-										type='button'
-										onClick={submitMarkRefunded}
-										disabled={markingRefunded}
-										className='mt-4 w-full py-2.5 text-sm font-medium text-purple-800 bg-purple-100 border border-purple-200 hover:bg-purple-200 rounded-xl disabled:opacity-50'
-									>
-										{markingRefunded
-										? 'Updating…'
-										: ret.ResolutionType === 'refund_keep_product'
-											? 'Confirm refund / remedy completed'
-											: 'Mark return & refund completed'}
-									</button>
 								)}
 							</div>
 						)}
@@ -745,127 +617,6 @@ const SellerOrderDetail = () => {
 				</div>
 			)}
 
-			{returnApproveModal.open && (
-				<div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
-					<div
-						className='absolute inset-0 bg-black/50 backdrop-blur-sm'
-						onClick={() => !resolvingReturn && setReturnApproveModal({ open: false, instructions: '', resolutionType: 'physical_return' })}
-					/>
-					<div className='relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto'>
-						<div className='flex items-center gap-3'>
-							<div className='w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center'>
-								<CheckCircle size={20} className='text-green-600' />
-							</div>
-							<div>
-								<h3 className='font-bold text-gray-900'>Approve return / refund</h3>
-								<p className='text-sm text-gray-500'>Choose how you will resolve this, then add clear instructions for the buyer.</p>
-							</div>
-						</div>
-						<div className='space-y-2 text-left'>
-							<p className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Resolution type</p>
-							<label className={`flex gap-3 p-3 rounded-xl border cursor-pointer ${returnApproveModal.resolutionType === 'physical_return' ? 'border-green-400 bg-green-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-								<input
-									type='radio'
-									name='resolutionType'
-									checked={returnApproveModal.resolutionType === 'physical_return'}
-									onChange={() => setReturnApproveModal((prev) => ({ ...prev, resolutionType: 'physical_return' }))}
-									className='mt-1'
-								/>
-								<div>
-									<p className='text-sm font-semibold text-gray-900'>Physical return</p>
-									<p className='text-xs text-gray-600 mt-0.5'>Buyer ships the item back. Explain address, carrier, and refund timing after you receive it.</p>
-								</div>
-							</label>
-							<label className={`flex gap-3 p-3 rounded-xl border cursor-pointer ${returnApproveModal.resolutionType === 'refund_keep_product' ? 'border-green-400 bg-green-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-								<input
-									type='radio'
-									name='resolutionType'
-									checked={returnApproveModal.resolutionType === 'refund_keep_product'}
-									onChange={() => setReturnApproveModal((prev) => ({ ...prev, resolutionType: 'refund_keep_product' }))}
-									className='mt-1'
-								/>
-								<div>
-									<p className='text-sm font-semibold text-gray-900'>Refund / replacement — buyer keeps the product</p>
-									<p className='text-xs text-gray-600 mt-0.5'>Refund the payment and/or send a better or replacement item. The buyer keeps what they have. Explain timelines and next steps.</p>
-								</div>
-							</label>
-						</div>
-						<textarea
-							rows={5}
-							value={returnApproveModal.instructions}
-							onChange={(e) => setReturnApproveModal((prev) => ({ ...prev, instructions: e.target.value }))}
-							placeholder={
-								returnApproveModal.resolutionType === 'physical_return'
-									? 'e.g. Please ship to [address] with tracked mail. We refund within 5 business days of receipt.'
-									: 'e.g. We will refund €X to your original payment within 3 days and ship a replacement by [date] / upgraded model details…'
-							}
-							disabled={resolvingReturn}
-							className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50'
-						/>
-						<div className='flex gap-3'>
-							<button
-								type='button'
-								onClick={() => setReturnApproveModal({ open: false, instructions: '', resolutionType: 'physical_return' })}
-								disabled={resolvingReturn}
-								className='flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50'
-							>
-								Cancel
-							</button>
-							<button
-								type='button'
-								onClick={submitReturnApprove}
-								disabled={resolvingReturn}
-								className='flex-1 py-2.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50'
-							>
-								{resolvingReturn ? 'Saving…' : 'Send to buyer'}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{returnRejectModal.open && (
-				<div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
-					<div className='absolute inset-0 bg-black/50 backdrop-blur-sm' onClick={() => !resolvingReturn && setReturnRejectModal({ open: false, reason: '' })} />
-					<div className='relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4'>
-						<div className='flex items-center gap-3'>
-							<div className='w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center'>
-								<ThumbsDown size={20} className='text-red-600' />
-							</div>
-							<div>
-								<h3 className='font-bold text-gray-900'>Reject return request</h3>
-								<p className='text-sm text-gray-500'>Explain why the evidence or claim is not sufficient.</p>
-							</div>
-						</div>
-						<textarea
-							rows={4}
-							value={returnRejectModal.reason}
-							onChange={(e) => setReturnRejectModal((prev) => ({ ...prev, reason: e.target.value }))}
-							placeholder='e.g. Photos do not show the damage described…'
-							disabled={resolvingReturn}
-							className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50'
-						/>
-						<div className='flex gap-3'>
-							<button
-								type='button'
-								onClick={() => setReturnRejectModal({ open: false, reason: '' })}
-								disabled={resolvingReturn}
-								className='flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50'
-							>
-								Cancel
-							</button>
-							<button
-								type='button'
-								onClick={submitReturnReject}
-								disabled={resolvingReturn}
-								className='flex-1 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50'
-							>
-								{resolvingReturn ? 'Saving…' : 'Reject request'}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
 		</>
 	);
 };

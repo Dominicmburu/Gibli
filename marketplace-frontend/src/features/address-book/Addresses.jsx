@@ -8,6 +8,7 @@ import SmartAddressField from '../../components/SmartAddressField';
 import { useAddressAutocomplete } from '../../hooks/useAddressAutocomplete';
 import { MapPin, Plus, Edit2, Trash2, X, User, Phone, Home, Globe, Loader2, CheckCircle, Hash, Mail as PostalIcon } from 'lucide-react';
 import { EU_UK_COUNTRIES } from '../../utils/euCountries';
+import { validatePostalCode, postalHint } from '../../utils/postalCodeValidation';
 import toast from 'react-hot-toast';
 
 const Addresses = () => {
@@ -137,9 +138,14 @@ const Addresses = () => {
 		if (!FullName) newErrors.FullName = 'Full name is required';
 		if (!StreetName) newErrors.StreetName = 'Street name is required';
 		if (!HouseNumber) newErrors.HouseNumber = 'House number is required';
-		if (!PostalCode) newErrors.PostalCode = 'Postal code is required';
-		if (!City) newErrors.City = 'City is required';
 		if (!Country) newErrors.Country = 'Country is required';
+		if (!PostalCode) {
+			newErrors.PostalCode = 'Postal code is required';
+		} else if (Country) {
+			const { valid, hint } = validatePostalCode(Country, PostalCode);
+			if (!valid) newErrors.PostalCode = `Invalid format for ${Country}. Expected: ${hint}`;
+		}
+		if (!City) newErrors.City = 'City is required';
 
 		if (Object.keys(newErrors).length > 0) {
 			setErrors(newErrors);
@@ -188,7 +194,7 @@ const Addresses = () => {
 		<div className='min-h-screen bg-gray-50 flex flex-col'>
 			<NavBar />
 
-			<main className='flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8'>
+			<main className='flex-1 max-w-5xl mx-auto w-full px-2 sm:px-6 lg:px-8 py-6 sm:py-8'>
 				{/* Page Header */}
 				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8'>
 					<div>
@@ -476,9 +482,11 @@ const Addresses = () => {
 											icon={<Hash size={16} className='text-gray-400' />}
 											error={errors.PostalCode}
 										/>
-										{errors.PostalCode && (
-											<p className='text-xs text-red-500 mt-1'>{errors.PostalCode}</p>
-										)}
+										{errors.PostalCode ? (
+										<p className='text-xs text-red-500 mt-1'>{errors.PostalCode}</p>
+									) : formData.Country && postalHint(formData.Country) ? (
+										<p className='text-xs text-gray-400 mt-1'>{postalHint(formData.Country)}</p>
+									) : null}
 									</div>
 									<div>
 										<label className='block text-sm font-medium text-gray-700 mb-1.5'>

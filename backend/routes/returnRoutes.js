@@ -1,6 +1,5 @@
 import express from 'express';
 import mssql from 'mssql';
-import Stripe from 'stripe';
 import { v4 as uuidv4 } from 'uuid';
 import upload from '../middlewares/multerSetup.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
@@ -22,7 +21,6 @@ import {
 
 const returnRouter = express.Router();
 const db = new DbHelper();
-const stripe = new Stripe(process.env.SK_TEST);
 
 const MAX_IMAGES = 3;
 const MAX_VIDEOS = 1;
@@ -74,7 +72,6 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 		if (!['Delivered', 'Sold'].includes(deliveryStatus)) {
 			return res.status(400).json({ success: false, message: 'Returns are only available after delivery.' });
 		}
-		// Check RefundStatus — not DeliveryStatus — for active return
 		if (['ReturnRequested', 'ReturnApproved'].includes(refundStatus)) {
 			return res.status(400).json({ success: false, message: 'This order already has an active return.' });
 		}
@@ -90,7 +87,7 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 			return res.status(400).json({ success: false, message: 'A return has already been approved or completed for this order.' });
 		}
 		if (refundStatus === 'PartialRefunded') {
-			return res.status(400).json({ success: false, message: 'A partial refund has already been issued for this order. No further returns can be submitted.' });
+			return res.status(400).json({ success: false, message: 'A partial refund has already been issued for this order.' });
 		}
 
 		const mediaPayload = await buildReturnMediaPayload(files);
@@ -116,13 +113,11 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 					.execute('InsertReturnMedia');
 			}
 
-			// Insert return items if buyer specified which items
 			let parsedReturnItems = [];
 			try {
 				parsedReturnItems = JSON.parse(req.body?.returnItems || '[]');
 			} catch { parsedReturnItems = []; }
 
-			// Validate every submitted OrderItemId actually belongs to this order
 			if (parsedReturnItems.length > 0) {
 				const validItemsResult = await transaction.request()
 					.input('OrderId', orderId)
@@ -164,7 +159,6 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 		}
 
 		// Notify seller (fire-and-forget)
-		const bundle = await fetchLatestReturnRequest(orderId);
 		;(async () => {
 			try {
 				const sellerResult = await db.executeProcedure('GetReturnRequestWithOrder', { ReturnRequestId: returnRequestId });
@@ -183,6 +177,7 @@ returnRouter.post('/orders/:orderId', authenticateToken, upload.any(), async (re
 			}
 		})();
 
+		const bundle = await fetchLatestReturnRequest(orderId);
 		return res.status(201).json({ success: true, message: 'Return request submitted.', data: bundle });
 	} catch (error) {
 		console.error('Return request failed:', error);
@@ -216,7 +211,7 @@ returnRouter.patch('/:returnRequestId', authenticateToken, async (req, res) => {
 	try {
 		const sellerId = req.user.id;
 		const { returnRequestId } = req.params;
-		const { decision, sellerInstructions, sellerRejectionReason, resolutionType } = req.body || {};
+		const { decision, sellerInstructions, sellerRejectionReason, resolutionType, partialRefundAmount } = req.body || {};
 		if (!['approve', 'reject'].includes(decision)) {
 			return res.status(400).json({ success: false, message: 'decision must be approve or reject.' });
 		}
@@ -238,23 +233,50 @@ returnRouter.patch('/:returnRequestId', authenticateToken, async (req, res) => {
 
 		if (decision === 'approve') {
 			const instr = (sellerInstructions || '').trim();
-			if (instr.length < 15) {
+			if (resolutionType === 'physical_return' && instr.length < 15) {
 				return res.status(400).json({
 					success: false,
 					message: 'Please explain how the buyer should return the item (at least 15 characters).',
 				});
 			}
+
+			// Validate partial refund amount
+			let parsedPartialAmount = null;
+			if (resolutionType === 'partial_refund') {
+				parsedPartialAmount = Number(partialRefundAmount);
+				if (!parsedPartialAmount || parsedPartialAmount <= 0) {
+					return res.status(400).json({ success: false, message: 'A valid partial refund amount is required.' });
+				}
+				const orderTotal = Number(pickCol(row, 'TotalAmount') || 0);
+				if (parsedPartialAmount > orderTotal) {
+					return res.status(400).json({ success: false, message: `Amount cannot exceed order total of €${orderTotal.toFixed(2)}.` });
+				}
+			}
+
+			// Build instructions text
+			let instrText = instr;
+			if (resolutionType === 'refund_without_return' && !instr) {
+				instrText = 'You do not need to return the item. The seller will transfer the refund to you directly.';
+			}
+			if (resolutionType === 'exchange' && !instr) {
+				instrText = 'A replacement item will be shipped to you. No need to return the original.';
+			}
+			if (resolutionType === 'partial_refund' && !instr) {
+				instrText = `The seller will transfer €${parsedPartialAmount?.toFixed(2) || '0.00'} to you directly. You may keep the item.`;
+			}
+
 			await db.executeProcedure('ApproveReturnRequest', {
 				ReturnRequestId: returnRequestId,
-				SellerInstructions: instr,
+				SellerInstructions: instrText,
 				OrderId: oid,
 				ResolutionType: resolutionType || 'physical_return',
+				PartialRefundAmount: parsedPartialAmount,
 			});
 
 			// Notify buyer (fire-and-forget)
 			;(async () => {
 				try {
-					await sendReturnApprovedEmail(buyerEmail, buyerName, oid, instr);
+					await sendReturnApprovedEmail(buyerEmail, buyerName, oid, instrText);
 				} catch (emailErr) {
 					console.error('Failed to send return approved email:', emailErr.message);
 				}
@@ -270,7 +292,6 @@ returnRouter.patch('/:returnRequestId', authenticateToken, async (req, res) => {
 				OrderId: oid,
 			});
 
-			// Notify buyer (fire-and-forget)
 			;(async () => {
 				try {
 					await sendReturnRejectedEmail(buyerEmail, buyerName, oid, rej);
@@ -289,105 +310,158 @@ returnRouter.patch('/:returnRequestId', authenticateToken, async (req, res) => {
 });
 
 /**
- * Seller: confirm item received — triggers automatic Stripe refund and closes the return.
- * The seller never touches money; Gibli processes the refund directly.
+ * Seller: upload proof of manual bank transfer.
+ * Used for physical_return (item received, money sent), refund_without_return, and partial_refund.
+ * Closes the return and marks the order as Sold. No Stripe involved.
  */
-returnRouter.post('/:returnRequestId/mark-refunded', authenticateToken, async (req, res) => {
+returnRouter.post('/:returnRequestId/upload-proof', authenticateToken, upload.single('proof'), async (req, res) => {
 	try {
 		const sellerId = req.user.id;
 		const { returnRequestId } = req.params;
 
 		const rowResult = await db.executeProcedure('GetReturnRequestWithOrder', { ReturnRequestId: returnRequestId });
 		const row = rowResult.recordset?.[0];
-		const mrSeller = String(row?.SellerId ?? row?.sellerid ?? '').toLowerCase();
-		const mrStatus = row?.Status ?? row?.status;
-		const mrOid = row?.OrderId ?? row?.orderid;
+		const rowSeller = String(row?.SellerId ?? row?.sellerid ?? '').toLowerCase();
 
-		if (!row || mrSeller !== String(sellerId).toLowerCase()) {
+		if (!row || rowSeller !== String(sellerId).toLowerCase()) {
 			return res.status(404).json({ success: false, message: 'Return request not found.' });
 		}
-		if (mrStatus !== 'Approved') {
-			return res.status(400).json({ success: false, message: 'Only approved returns can be marked as refunded.' });
+		if (pickCol(row, 'Status') !== 'Approved') {
+			return res.status(400).json({ success: false, message: 'Only approved returns can have proof uploaded.' });
 		}
-
-		// Fetch return items first — needed for both Stripe amount calc and stock restoration
 		const resolutionType = pickCol(row, 'ResolutionType');
-		const paymentIntentId = pickCol(row, 'PaymentIntentId');
-		const itemsResult = await db.executeProcedure('GetReturnItems', { ReturnRequestId: returnRequestId });
-		const returnItems = itemsResult.recordset || [];
-
-		// Issue Stripe refund — skip for exchange (buyer gets replacement, not money back)
-		// Always specify amount explicitly — this refunds only the product+shipping total,
-		// NOT the processing fee (which is non-refundable, same as a booking fee).
-		const orderTotal = Number(pickCol(row, 'TotalAmount') || 0);
-		let actualRefundAmount = orderTotal; // track the real amount for the email
-
-		if (paymentIntentId && resolutionType !== 'exchange') {
-			try {
-				let refundAmountCents = Math.round(orderTotal * 100);
-
-				// If specific items were returned, refund only their sub-total
-				if (returnItems.length > 0) {
-					const partialTotal = returnItems.reduce((sum, ri) => {
-						const qty = ri.ReturnQuantity ?? ri.returnquantity ?? 1;
-						const price = Number(ri.UnitPrice ?? ri.unitprice ?? 0);
-						return sum + qty * price;
-					}, 0);
-					if (partialTotal > 0 && partialTotal < orderTotal) {
-						refundAmountCents = Math.round(partialTotal * 100);
-						actualRefundAmount = partialTotal; // use real partial amount in email
-					}
-				}
-
-				await stripe.refunds.create({
-					payment_intent: paymentIntentId,
-					amount: refundAmountCents,
-				}, { idempotencyKey: `refund-${returnRequestId}` });
-			} catch (stripeErr) {
-				console.error('Stripe refund failed:', stripeErr.message);
-				return res.status(500).json({ success: false, message: 'Failed to process refund via Stripe. Please try again.' });
-			}
+		if (resolutionType === 'exchange') {
+			return res.status(400).json({ success: false, message: 'Exchange returns use the exchange delivery flow, not proof upload.' });
+		}
+		if (!req.file) {
+			return res.status(400).json({ success: false, message: 'Please upload a proof image of the bank transfer.' });
 		}
 
-		// Update DB: mark order as Refunded
-		await db.executeProcedure('MarkOrderRefunded', { OrderId: mrOid });
+		// Upload proof image to S3
+		const proofUrl = await uploadToS3(req.file.buffer, req.file.originalname, req.file.mimetype, 'return-proofs');
 
-		// Restore stock — only for physical returns (buyer is sending item back)
-		// refund_without_return = buyer keeps the item, no stock change
-		if (resolutionType !== 'refund_without_return') {
-			if (returnItems.length > 0) {
-				// Partial return — restore only the quantities actually returned
-				for (const ri of returnItems) {
-					const productId = ri.ProductId ?? ri.productid;
-					const qty = Number(ri.ReturnQuantity ?? ri.returnquantity ?? 1);
-					await db.executeProcedure('RestoreSpecificItemStock', { ProductId: productId, Quantity: qty });
-				}
-			} else {
-				// No specific items logged — full order return, restore all
-				await db.executeProcedure('RestoreOrderItemStock', { OrderId: mrOid });
-			}
-		}
+		// Mark return as complete in DB (stock restored for physical returns inside the proc)
+		await db.executeProcedure('MarkReturnProofUploaded', {
+			ReturnRequestId: returnRequestId,
+			ProofUrl: proofUrl,
+			ResolutionType: resolutionType,
+		});
 
-		// Notify buyer with the actual refund amount (not blindly the order total)
+		// Notify buyer (fire-and-forget)
 		;(async () => {
 			try {
 				const buyerEmail = pickCol(row, 'BuyerEmail');
-				const buyerName = pickCol(row, 'BuyerName');
-				await sendRefundProcessedEmail(buyerEmail, buyerName, mrOid, actualRefundAmount);
+				const buyerName  = pickCol(row, 'BuyerName');
+				const oid        = pickCol(row, 'OrderId');
+				const amount     = Number(pickCol(row, 'PartialRefundAmount') || pickCol(row, 'TotalAmount') || 0);
+				await sendRefundProcessedEmail(buyerEmail, buyerName, oid, amount);
 			} catch (emailErr) {
-				console.error('Failed to send refund processed email:', emailErr.message);
+				console.error('Failed to send refund proof email:', emailErr.message);
 			}
 		})();
 
-		const bundle = await fetchLatestReturnRequest(mrOid);
-		return res.status(200).json({ success: true, message: 'Refund processed successfully.', data: bundle });
+		const bundle = await fetchLatestReturnRequest(pickCol(row, 'OrderId'));
+		return res.status(200).json({ success: true, message: 'Proof uploaded. Return complete — order is now Sold.', data: bundle });
 	} catch (error) {
-		console.error('Mark refunded failed:', error);
-		return res.status(500).json({ success: false, message: 'Failed to process refund.' });
+		console.error('Upload proof failed:', error);
+		return res.status(500).json({ success: false, message: error.message || 'Failed to upload proof.' });
 	}
 });
 
-/** Seller: full detail for a single return request (items + media + order info) */
+/** Seller: set / update exchange shipment tracking */
+returnRouter.patch('/:returnRequestId/exchange-tracking', authenticateToken, async (req, res) => {
+	try {
+		const sellerId = req.user.id;
+		const { returnRequestId } = req.params;
+		const { trackingNumber, trackingUrl } = req.body || {};
+
+		if (!trackingNumber?.trim()) {
+			return res.status(400).json({ success: false, message: 'Tracking number is required.' });
+		}
+
+		const rowResult = await db.executeProcedure('GetReturnRequestWithOrder', { ReturnRequestId: returnRequestId });
+		const row = rowResult.recordset?.[0];
+		if (!row || String(row.SellerId ?? row.sellerid ?? '').toLowerCase() !== String(sellerId).toLowerCase()) {
+			return res.status(404).json({ success: false, message: 'Return request not found.' });
+		}
+		if (pickCol(row, 'Status') !== 'Approved') {
+			return res.status(400).json({ success: false, message: 'Tracking can only be set on approved returns.' });
+		}
+		if (pickCol(row, 'ResolutionType') !== 'exchange') {
+			return res.status(400).json({ success: false, message: 'This endpoint is only for exchange returns.' });
+		}
+
+		await db.executeProcedure('UpdateExchangeTracking', {
+			ReturnRequestId: returnRequestId,
+			ExchangeTrackingNumber: trackingNumber.trim(),
+			ExchangeTrackingUrl: trackingUrl?.trim() || null,
+		});
+
+		const bundle = await fetchLatestReturnRequest(pickCol(row, 'OrderId'));
+		return res.status(200).json({ success: true, message: 'Exchange tracking saved.', data: bundle });
+	} catch (error) {
+		console.error('Update exchange tracking failed:', error);
+		return res.status(500).json({ success: false, message: 'Failed to save exchange tracking.' });
+	}
+});
+
+/** Seller: mark exchange item as shipped */
+returnRouter.post('/:returnRequestId/exchange-shipped', authenticateToken, async (req, res) => {
+	try {
+		const sellerId = req.user.id;
+		const { returnRequestId } = req.params;
+
+		const rowResult = await db.executeProcedure('GetReturnRequestWithOrder', { ReturnRequestId: returnRequestId });
+		const row = rowResult.recordset?.[0];
+		if (!row || String(row.SellerId ?? row.sellerid ?? '').toLowerCase() !== String(sellerId).toLowerCase()) {
+			return res.status(404).json({ success: false, message: 'Return request not found.' });
+		}
+		if (pickCol(row, 'Status') !== 'Approved' || pickCol(row, 'ResolutionType') !== 'exchange') {
+			return res.status(400).json({ success: false, message: 'Only approved exchange returns can be marked shipped.' });
+		}
+		if (!pickCol(row, 'ExchangeTrackingNumber')) {
+			return res.status(400).json({ success: false, message: 'Please enter a tracking number before marking as shipped.' });
+		}
+
+		await db.executeProcedure('MarkExchangeShipped', { ReturnRequestId: returnRequestId });
+
+		const bundle = await fetchLatestReturnRequest(pickCol(row, 'OrderId'));
+		return res.status(200).json({ success: true, message: 'Exchange marked as shipped.', data: bundle });
+	} catch (error) {
+		console.error('Mark exchange shipped failed:', error);
+		return res.status(500).json({ success: false, message: 'Failed to mark exchange as shipped.' });
+	}
+});
+
+/** Seller: mark exchange item as delivered — closes return, order → Sold */
+returnRouter.post('/:returnRequestId/exchange-delivered', authenticateToken, async (req, res) => {
+	try {
+		const sellerId = req.user.id;
+		const { returnRequestId } = req.params;
+
+		const rowResult = await db.executeProcedure('GetReturnRequestWithOrder', { ReturnRequestId: returnRequestId });
+		const row = rowResult.recordset?.[0];
+		if (!row || String(row.SellerId ?? row.sellerid ?? '').toLowerCase() !== String(sellerId).toLowerCase()) {
+			return res.status(404).json({ success: false, message: 'Return request not found.' });
+		}
+		if (pickCol(row, 'ResolutionType') !== 'exchange') {
+			return res.status(400).json({ success: false, message: 'Only exchange returns can be marked delivered.' });
+		}
+		if (!pickCol(row, 'ExchangeShippedAt')) {
+			return res.status(400).json({ success: false, message: 'Mark the exchange as shipped first.' });
+		}
+
+		await db.executeProcedure('MarkExchangeDelivered', { ReturnRequestId: returnRequestId });
+
+		const bundle = await fetchLatestReturnRequest(pickCol(row, 'OrderId'));
+		return res.status(200).json({ success: true, message: 'Exchange delivered. Order is now Sold.', data: bundle });
+	} catch (error) {
+		console.error('Mark exchange delivered failed:', error);
+		return res.status(500).json({ success: false, message: 'Failed to mark exchange as delivered.' });
+	}
+});
+
+/** Seller: full detail for a single return request */
 returnRouter.get('/:returnRequestId/detail', authenticateToken, async (req, res) => {
 	try {
 		const sellerId = req.user.id;
@@ -428,6 +502,12 @@ returnRouter.get('/:returnRequestId/detail', authenticateToken, async (req, res)
 			BuyerTrackingNumber: pickCol(row, 'BuyerTrackingNumber'),
 			BuyerTrackingUrl: pickCol(row, 'BuyerTrackingUrl'),
 			BuyerShippedAt: pickCol(row, 'BuyerShippedAt'),
+			ProofUrl: pickCol(row, 'ProofUrl'),
+			ProofUploadedAt: pickCol(row, 'ProofUploadedAt'),
+			ExchangeTrackingNumber: pickCol(row, 'ExchangeTrackingNumber'),
+			ExchangeTrackingUrl: pickCol(row, 'ExchangeTrackingUrl'),
+			ExchangeShippedAt: pickCol(row, 'ExchangeShippedAt'),
+			ExchangeDeliveredAt: pickCol(row, 'ExchangeDeliveredAt'),
 			SellerBusinessName: pickCol(row, 'SellerBusinessName'),
 			SellerEmail: pickCol(row, 'SellerEmail'),
 			Media: (mediaResult.recordset || []).map((m) => ({
@@ -454,7 +534,7 @@ returnRouter.get('/:returnRequestId/detail', authenticateToken, async (req, res)
 	}
 });
 
-/** Seller: summary list of all return requests across their orders */
+/** Seller: summary list of all return requests */
 returnRouter.get('/seller', authenticateToken, async (req, res) => {
 	try {
 		const sellerId = req.user.id;
@@ -466,7 +546,7 @@ returnRouter.get('/seller', authenticateToken, async (req, res) => {
 	}
 });
 
-/** Buyer: submit return shipment tracking */
+/** Buyer: submit return shipment tracking (physical_return flow) */
 returnRouter.patch('/:returnRequestId/buyer-tracking', authenticateToken, async (req, res) => {
 	try {
 		const buyerId = req.user.id;
@@ -522,83 +602,6 @@ returnRouter.patch('/:returnRequestId/buyer-tracking', authenticateToken, async 
 	} catch (error) {
 		console.error('Update buyer tracking failed:', error);
 		return res.status(500).json({ success: false, message: 'Failed to save tracking information.' });
-	}
-});
-
-/**
- * Seller: offer a partial refund — buyer keeps the item, seller refunds a set amount.
- * Validates, fires Stripe partial refund immediately, closes the return request.
- */
-returnRouter.post('/:returnRequestId/partial-refund', authenticateToken, async (req, res) => {
-	try {
-		const sellerId = req.user.id;
-		const { returnRequestId } = req.params;
-		const { amount, sellerNote } = req.body || {};
-
-		const parsedAmount = Number(amount);
-		if (!parsedAmount || parsedAmount <= 0) {
-			return res.status(400).json({ success: false, message: 'A valid refund amount is required.' });
-		}
-
-		const rowResult = await db.executeProcedure('GetReturnRequestWithOrder', { ReturnRequestId: returnRequestId });
-		const row = rowResult.recordset?.[0];
-		const rowSeller = String(row?.SellerId ?? row?.sellerid ?? '').toLowerCase();
-
-		if (!row || rowSeller !== String(sellerId).toLowerCase()) {
-			return res.status(404).json({ success: false, message: 'Return request not found.' });
-		}
-
-		const st = pickCol(row, 'Status');
-		if (st !== 'Pending') {
-			return res.status(400).json({ success: false, message: 'This return request has already been resolved.' });
-		}
-
-		const orderTotal = Number(pickCol(row, 'TotalAmount') || 0);
-		if (parsedAmount > orderTotal) {
-			return res.status(400).json({ success: false, message: `Refund amount cannot exceed the order total of €${orderTotal.toFixed(2)}.` });
-		}
-
-		const oid = pickCol(row, 'OrderId');
-		const buyerEmail = pickCol(row, 'BuyerEmail');
-		const buyerName = pickCol(row, 'BuyerName');
-		const paymentIntentId = pickCol(row, 'PaymentIntentId');
-		const note = (sellerNote || '').trim() || null;
-
-		// Issue Stripe partial refund
-		if (paymentIntentId) {
-			try {
-				await stripe.refunds.create({
-					payment_intent: paymentIntentId,
-					amount: Math.round(parsedAmount * 100), // Stripe expects cents
-				}, { idempotencyKey: `partial-${returnRequestId}` });
-			} catch (stripeErr) {
-				console.error('Stripe partial refund failed:', stripeErr.message);
-				return res.status(500).json({ success: false, message: 'Failed to process refund via Stripe. Please try again.' });
-			}
-		}
-
-		// Update DB
-		await db.executeProcedure('ProcessPartialRefund', {
-			ReturnRequestId: returnRequestId,
-			OrderId: oid,
-			Amount: parsedAmount,
-			SellerNote: note,
-		});
-
-		// Notify buyer (fire-and-forget)
-		;(async () => {
-			try {
-				await sendPartialRefundAgreedEmail(buyerEmail, buyerName, oid, parsedAmount, note);
-			} catch (emailErr) {
-				console.error('Failed to send partial refund email:', emailErr.message);
-			}
-		})();
-
-		const bundle = await fetchLatestReturnRequest(oid);
-		return res.status(200).json({ success: true, message: `Partial refund of €${parsedAmount.toFixed(2)} processed.`, data: bundle });
-	} catch (error) {
-		console.error('Partial refund failed:', error);
-		return res.status(500).json({ success: false, message: error.message || 'Failed to process partial refund.' });
 	}
 });
 

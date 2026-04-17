@@ -6,6 +6,7 @@ import {
 	sendSubscriptionExpiredEmail,
 	sendOrderAutoCancelledEmail,
 	sendRefundProcessedEmail,
+	sendAdminAlertEmail,
 } from './emailService.js';
 
 const db = new DbHelper();
@@ -175,4 +176,84 @@ export function initCronJobs() {
 	});
 
 	console.log('[CRON] Return auto-approval cron initialised (daily at 09:00).');
+
+	// ──────────────────────────────────────────────────────────────
+	// DAILY at 02:00 — Payment reconciliation
+	// Compares Stripe successful payments (last 48 hours) against
+	// orders in the DB. Any payment with no matching order is logged
+	// as a warning so it can be resolved manually.
+	// ──────────────────────────────────────────────────────────────
+	cron.schedule('0 2 * * *', async () => {
+		console.log('[CRON] Running payment reconciliation check...');
+		try {
+			// Fetch all successful Stripe checkout sessions from the last 48 hours
+			const since = Math.floor(Date.now() / 1000) - 48 * 60 * 60;
+			const sessions = await stripe.checkout.sessions.list({
+				limit: 100,
+				created: { gte: since },
+			});
+
+			const mismatches = [];
+
+			for (const session of sessions.data) {
+				// Only check paid one-time payments (not subscriptions)
+				if (session.mode !== 'payment') continue;
+				if (session.payment_status !== 'paid') continue;
+
+				const draftId = session.metadata?.checkoutDraftId;
+				if (!draftId) continue;
+
+				// GetCheckoutDraft only returns rows where IsUsed = 0
+				// So if a row IS found → draft not marked used → order was never created
+				const result = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
+				const draft = result?.recordset?.[0];
+
+				if (draft) {
+					const line = `Session: ${session.id} | DraftId: ${draftId} | Amount: €${(session.amount_total / 100).toFixed(2)} | Customer: ${session.customer_details?.email || 'unknown'}`;
+					mismatches.push(line);
+					console.error(`[RECONCILIATION] ⚠️ Paid but no order: ${line}`);
+				}
+			}
+
+			if (mismatches.length === 0) {
+				console.log('[CRON] Reconciliation complete — all payments matched.');
+				await sendAdminAlertEmail(
+					'Daily reconciliation passed — all payments matched',
+					[`Checked ${sessions.data.length} Stripe sessions. No issues found.`]
+				);
+			} else {
+				console.error(`[CRON] Reconciliation found ${mismatches.length} unmatched payment(s).`);
+				await sendAdminAlertEmail(
+					`${mismatches.length} payment(s) have no matching order — manual review required`,
+					mismatches
+				);
+			}
+		} catch (err) {
+			console.error('[CRON] Error in reconciliation job:', err);
+			await sendAdminAlertEmail(
+				'Reconciliation cron FAILED — could not run check',
+				[err.message || 'Unknown error']
+			);
+		}
+	});
+
+	console.log('[CRON] Payment reconciliation cron initialised (daily at 02:00).');
+
+	// ──────────────────────────────────────────────────────────────
+	// DAILY at 03:00 — Chat auto-deletion (29-day rule)
+	// Physically removes conversations and their messages where the
+	// last message (or creation date) is older than 29 days.
+	// ──────────────────────────────────────────────────────────────
+	cron.schedule('0 3 * * *', async () => {
+		console.log('[CRON] Running chat auto-delete (29-day rule)...');
+		try {
+			const result = await db.executeProcedure('AutoDeleteOldConversations', {});
+			const count = result.recordset?.[0]?.DeletedCount ?? 0;
+			console.log(`[CRON] Chat auto-delete complete: ${count} conversation(s) removed.`);
+		} catch (err) {
+			console.error('[CRON] Chat auto-delete failed:', err.message);
+		}
+	});
+
+	console.log('[CRON] Chat auto-delete cron initialised (daily at 03:00).');
 }

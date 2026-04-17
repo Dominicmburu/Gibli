@@ -41,12 +41,19 @@ import ResendVerification from './features/auth/components/ResendVerification';
 import { CartProvider } from './context/CartContext';
 import { useAuth } from './utils/useAuth';
 import RoleSelectionModal from './features/onboarding/RoleSelectionModal';
+// import GateLogin from './features/auth/components/GateLogin'; // EU blue full-screen login gate — re-enable when needed
 import SellerOnboardingPlans from './features/onboarding/SellerOnboardingPlans';
 import PrivacyPolicy from './features/legal/PrivacyPolicy';
 import TermsOfService from './features/legal/TermsOfService';
 
 function App() {
 	const { isLoggedIn, hasSelectedRole, loading } = useAuth();
+
+
+	// Full-screen login gate — uncomment to enforce login before accessing any page
+	// if (!loading && !isLoggedIn) {
+	// 	return <GateLogin />;
+	// }
 
 	return (
 		<>

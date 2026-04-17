@@ -4,11 +4,15 @@ import './index.css';
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import 'keen-slider/keen-slider.min.css';
+import { LanguageProvider } from './context/LanguageContext';
+import './i18n/index.js';
 
 createRoot(document.getElementById('root')).render(
 	// <StrictMode>
-	<BrowserRouter>
-		<App />
-	</BrowserRouter>
+	<LanguageProvider>
+		<BrowserRouter>
+			<App />
+		</BrowserRouter>
+	</LanguageProvider>
 	//  </StrictMode>
 );

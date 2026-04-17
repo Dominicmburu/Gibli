@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Melkein perillä!",
+      "message": "Myyjätilisi on määritetty – valitse suunnitelma ja suorita maksu saadaksesi parhaan palkkiosi.",
+      "cta": "Suorita maksu loppuun"
+    },
+    "myStore": "Oma kauppa",
+    "searchPlaceholder": "Hae tuotteita...",
+    "home": "Kotiin",
+    "myWishlist": "Toivelistani",
+    "browseCategories": "Selaa luokkia",
+    "categories": "Luokat"
+  },
+  "footer": {
+    "tagline": "Luotettu eurooppalainen markkinapaikkasi laadukkaiden tuotteiden löytämiseen ja myymiseen. Yhdistää ostajat ja myyjät kaikkialla Euroopassa helposti ja läpinäkyvästi.",
+    "shipping": {
+      "title": "Optimoitu toimitus",
+      "subtitle": "Parhaat hinnat nopeaan toimitukseen"
+    },
+    "payment": {
+      "title": "Turvallinen maksu",
+      "subtitle": "100 % suojattu"
+    },
+    "returns": {
+      "title": "Helppo palautus",
+      "subtitle": "30 päivän käytäntö"
+    },
+    "support": {
+      "title": "24/7-tuki",
+      "subtitle": "Omistettu apu"
+    },
+    "quickLinks": "Pikalinkit",
+    "links": {
+      "home": "Kotiin",
+      "about": "Tietoa meistä",
+      "contact": "Ota yhteyttä",
+      "faq": "Usein kysytyt kysymykset",
+      "shipping": "Toimitustiedot",
+      "returns": "Palautuskäytäntö"
+    },
+    "getInTouch": "Ota yhteyttä",
+    "emailUs": "Lähetä meille sähköpostia",
+    "callUs": "Soita meille",
+    "location": "Sijainti",
+    "locationValue": "Euroopan unioni",
+    "copyright": "© {{year}} GibLi. Kaikki oikeudet pidätetään.",
+    "privacyPolicy": "Tietosuojakäytäntö",
+    "termsOfService": "Palveluehdot",
+    "designedBy": "Huolella suunniteltu"
+  },
+  "home": {
+    "filterButton": "Luokat",
+    "browseCategories": "Selaa luokkia"
+  },
+  "productList": {
+    "title": "Esittelyssä olevat tuotteet",
+    "subtitle": "Löydä laadukkaita tuotteita luotettavilta eurooppalaisilta myyjiltä",
+    "loading": "Ladataan upeita tuotteita...",
+    "available": "Saatavilla olevat tuotteet",
+    "newArrivals": "Uusia tulokkaita päivittäin"
+  },
+  "productCard": {
+    "onlyLeft": "Vain {{count}} jäljellä!",
+    "new": "UUSI",
+    "outOfStock": "Loppu varastosta",
+    "quickView": "Pikakatselu"
+  },
+  "productDetails": {
+    "loading": "Tuotetietoja ladataan...",
+    "backToProducts": "Takaisin tuotteisiin",
+    "description": "Kuvaus",
+    "shippingOptions": "Toimitusvaihtoehdot",
+    "standard": "Standardi",
+    "express": "Ilmaista",
+    "unitsInStock": "yksikköä varastossa",
+    "sellerInfo": "Myyjän tiedot",
+    "business": "Liiketoiminta:",
+    "location": "Sijainti:",
+    "chatSeller": "Chat-myyjä",
+    "customerReviews": "Asiakasarvostelut",
+    "ratings": "Arviot",
+    "allReviews": "Kaikki arvostelut",
+    "latest": "Uusin",
+    "withContent": "Sisällön kanssa",
+    "withPhotos": "Kuvien kanssa",
+    "allStars": "Kaikki tähdet",
+    "stars": "{{count}} Tähdet",
+    "oneStar": "1 tähti",
+    "sellerResponse": "Myyjän vastaus",
+    "respondToReview": "Vastaa tähän arvosteluun",
+    "reply": "Vastata",
+    "loadingReviews": "Ladataan arvosteluja...",
+    "showMoreReviews": "Näytä lisää arvosteluja",
+    "helpfulCount": "{{count}} ostajaa piti tätä arvostelua hyödyllisenä",
+    "helpful": "Hyödyllinen",
+    "shareTitle": "Jakaa",
+    "copied": "Kopioitu!",
+    "copyLink": "Kopioi linkki",
+    "updatedOn": "Päivitetty",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "Tekstiviesti",
+    "email": "Sähköposti"
+  },
+  "cart": {
+    "title": "Ostoskori",
+    "empty": "Ostoskorisi on tyhjä",
+    "emptySub": "Lisää tuotteita aloittaaksesi",
+    "continueShopping": "Jatka ostoksia",
+    "loading": "Ostoskoria ladataan...",
+    "orderSummary": "Tilauksen yhteenveto",
+    "subtotal": "Välisumma",
+    "shipping": "Toimitus",
+    "total": "Kokonais",
+    "checkout": "Siirry kassalle",
+    "remove": "Poistaa",
+    "outOfStock": "Loppu varastosta",
+    "lowStock": "Vain {{count}} jäljellä",
+    "notifyRestock": "Ilmoita, kun tuotetta on taas varastossa",
+    "cancelReminder": "Peruuta muistutus",
+    "soldBy": "Myyjä",
+    "standard": "Standardi",
+    "express": "Ilmaista",
+    "item": "esine",
+    "items": "esineet",
+    "qty": "Määrä"
+  },
+  "auth": {
+    "login": {
+      "title": "Kirjaudu sisään",
+      "email": "Sähköpostiosoite",
+      "password": "Salasana",
+      "showPassword": "Näytä salasana",
+      "hidePassword": "Piilota salasana",
+      "forgotPassword": "Unohditko salasanasi?",
+      "submit": "Kirjaudu sisään",
+      "noAccount": "Eikö sinulla ole tiliä?",
+      "signUp": "Rekisteröidy"
+    },
+    "signup": {
+      "title": "Luo tili",
+      "username": "Käyttäjätunnus",
+      "email": "Sähköpostiosoite",
+      "password": "Salasana",
+      "confirmPassword": "Vahvista salasana",
+      "submit": "Luo tili",
+      "hasAccount": "Onko sinulla jo tili?",
+      "login": "Kirjaudu sisään"
+    },
+    "logout": "Kirjaudu ulos",
+    "profile": "Profiilini",
+    "orders": "Tilaukseni",
+    "becomeSeller": "Ryhdy myyjäksi",
+    "sellerDashboard": "Myyjän kojelauta"
+  },
+  "orders": {
+    "title": "Tilaukseni",
+    "empty": "Ei vielä tilauksia",
+    "emptySub": "Tilaushistoriasi näkyy täällä",
+    "startShopping": "Aloita ostokset",
+    "loading": "Tilauksia ladataan...",
+    "orderId": "Tilausnumero {{id}}",
+    "placedOn": "Sijoitettu",
+    "total": "Kokonais",
+    "viewDetails": "Näytä tiedot",
+    "status": {
+      "Processing": "Käsittely",
+      "Confirmed": "Vahvistettu",
+      "Shipped": "Lähetetty",
+      "Delivered": "Toimitettu",
+      "Sold": "Myyty",
+      "Cancelled": "Peruutettu",
+      "Rejected": "Hylätty"
+    },
+    "detail": {
+      "back": "Takaisin tilauksiin",
+      "shippingAddress": "Toimitusosoite",
+      "orderItems": "Tilaustuotteet",
+      "summary": "Tilauksen yhteenveto",
+      "subtotal": "Välisumma",
+      "shipping": "Toimitus",
+      "total": "Kokonais",
+      "soldBy": "Myyjä",
+      "standard": "Normaali toimitus",
+      "express": "Pikatoimitus",
+      "cancelOrder": "Peruuta tilaus",
+      "returnOrder": "Pyydä palautusta"
+    }
+  },
+  "wishlist": {
+    "title": "Toivelistani",
+    "empty": "Toivelistasi on tyhjä",
+    "emptySub": "Tallenna suosikkituotteesi myöhempää käyttöä varten",
+    "discover": "Tutustu tuotteisiin",
+    "remove": "Poistaa",
+    "addToCart": "Lisää ostoskoriin",
+    "added": "Lisätty toivelistalle",
+    "removed": "Poistettu toivelistalta",
+    "loginRequired": "Kirjaudu sisään käyttääksesi toivelistaasi"
+  },
+  "search": {
+    "placeholder": "Hae tuotteita...",
+    "results": "Hakutulokset haulle",
+    "noResults": "Ei tuotteita haulle",
+    "tryDifferent": "Kokeile eri hakusanaa tai selaa luokkia",
+    "loading": "Haetaan..."
+  },
+  "categories": {
+    "title": "Luokat",
+    "all": "Kaikki kategoriat",
+    "loading": "Ladataan luokkia...",
+    "browseBy": "Selaa kategoriittain"
+  },
+  "checkout": {
+    "title": "Kassalle",
+    "selectAddress": "Valitse toimitusosoite",
+    "addAddress": "Lisää uusi osoite",
+    "shippingMethod": "Toimitustapa",
+    "standard": "Normaali toimitus",
+    "express": "Pikatoimitus",
+    "placeOrder": "Tee tilaus",
+    "processing": "Käsitellään...",
+    "success": "Tilaus tehty onnistuneesti!",
+    "subtotal": "Välisumma",
+    "shipping": "Toimitus",
+    "total": "Kokonais"
+  },
+  "address": {
+    "title": "Osoitekirja",
+    "add": "Lisää uusi osoite",
+    "edit": "Muokkaa osoitetta",
+    "delete": "Poista osoite",
+    "default": "Oletus",
+    "setDefault": "Aseta oletukseksi",
+    "save": "Tallenna osoite",
+    "noAddresses": "Ei tallennettuja osoitteita"
+  },
+  "seller": {
+    "dashboard": "Kojelauta",
+    "products": "Tuotteet",
+    "orders": "Tilaukset",
+    "revenue": "Tulot",
+    "messages": "Viestit",
+    "settings": "Kaupan asetukset",
+    "addProduct": "Lisää tuote",
+    "newOrders": "Uudet tilaukset",
+    "analytics": "Analytiikka",
+    "subscription": "Tilaus",
+    "payouts": "Maksut",
+    "returns": "Palautukset",
+    "itemsSold": "Myydyt tuotteet",
+    "storeStatus": "Kaupan tila",
+    "recentProducts": "Viimeisimmät tuotteet",
+    "noProductsYet": "Ei vielä tuotteita. Lisää ensimmäinen tuotteesi aloittaaksesi.",
+    "dashboardTitle": "{{name}}n kojelauta"
+  },
+  "common": {
+    "loading": "Ladataan...",
+    "error": "Jokin meni pieleen",
+    "retry": "Yritä uudelleen",
+    "save": "Tallentaa",
+    "cancel": "Peruuttaa",
+    "delete": "Poistaa",
+    "edit": "Muokata",
+    "close": "Lähellä",
+    "confirm": "Vahvistaa",
+    "back": "Takaisin",
+    "next": "Seuraava",
+    "search": "Haku",
+    "filter": "Suodattaa",
+    "clear": "Tyhjennä",
+    "viewAll": "Näytä kaikki",
+    "showMore": "Näytä lisää",
+    "showLess": "Näytä vähemmän",
+    "addToCart": "Lisää ostoskoriin",
+    "buyNow": "Osta nyt",
+    "shareProduct": "Jaa tuote",
+    "currency": "€"
+  }
+}

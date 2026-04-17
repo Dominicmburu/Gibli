@@ -3,16 +3,22 @@ import { motion } from 'framer-motion';
 import { Package, TrendingUp, Sparkles } from 'lucide-react';
 import api from '../../../api/axios';
 import ProductCard from './ProductCard';
+import { useLanguage } from '../../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 const ProductList = () => {
+	const [rawProducts, setRawProducts] = useState([]);
 	const [products, setProducts] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const { language, translateTexts } = useLanguage();
+	const { t } = useTranslation();
 
 	useEffect(() => {
 		const fetchProducts = async () => {
 			try {
 				const response = await api.get('/products/all');
 				console.log(response.data);
+				setRawProducts(response.data);
 				setProducts(response.data);
 			} catch (error) {
 				console.error(error);
@@ -22,6 +28,19 @@ const ProductList = () => {
 		};
 		fetchProducts();
 	}, []);
+
+	// Translate product names when language changes
+	useEffect(() => {
+		if (!rawProducts.length) return;
+		if (language === 'en') {
+			setProducts(rawProducts);
+			return;
+		}
+		const names = rawProducts.map((p) => p.ProductName);
+		translateTexts(names, language).then((translated) => {
+			setProducts(rawProducts.map((p, i) => ({ ...p, ProductName: translated[i] })));
+		});
+	}, [language, rawProducts, translateTexts]);
 
 	useEffect(() => {
 		if (!loading && products.length > 0) {
@@ -66,10 +85,10 @@ const ProductList = () => {
 					</div>
 					<div>
 						<h2 className='text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900'>
-							Featured Products
+							{t('productList.title')}
 						</h2>
 						<p className='text-sm sm:text-base text-gray-500 mt-1'>
-							Discover quality products from trusted European sellers
+							{t('productList.subtitle')}
 						</p>
 					</div>
 				</div>
@@ -88,7 +107,7 @@ const ProductList = () => {
 						<div className='w-16 h-16 border-4 border-primary-200 rounded-full'></div>
 						<div className='w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin'></div>
 					</div>
-					<p className='mt-6 text-gray-600 font-medium'>Loading amazing products...</p>
+					<p className='mt-6 text-gray-600 font-medium'>{t('productList.loading')}</p>
 					<div className='flex gap-1 mt-3'>
 						<span className='w-2 h-2 bg-primary-400 rounded-full animate-bounce' style={{ animationDelay: '0ms' }}></span>
 						<span className='w-2 h-2 bg-primary-500 rounded-full animate-bounce' style={{ animationDelay: '150ms' }}></span>
@@ -101,11 +120,11 @@ const ProductList = () => {
 					<div className='flex items-center justify-between mb-6'>
 						<div className='flex items-center gap-2 bg-primary-50 text-primary-700 px-4 py-2 rounded-full'>
 							<TrendingUp size={16} />
-							<span className='text-sm font-medium'>{products.length} Products Available</span>
+							<span className='text-sm font-medium'>{t('productList.available', { count: products.length })}</span>
 						</div>
 						<div className='hidden sm:flex items-center gap-2 text-secondary-600'>
 							<Sparkles size={16} />
-							<span className='text-sm font-medium'>New arrivals daily</span>
+							<span className='text-sm font-medium'>{t('productList.newArrivals')}</span>
 						</div>
 					</div>
 

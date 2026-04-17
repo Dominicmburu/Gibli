@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "¡Casi llegamos!",
+      "message": "Tu cuenta de vendedor ya está configurada: elige un plan y completa el pago para desbloquear la mejor tasa de comisión.",
+      "cta": "Pago completo"
+    },
+    "myStore": "Mi tienda",
+    "searchPlaceholder": "Buscar productos...",
+    "home": "Hogar",
+    "myWishlist": "Mi lista de deseos",
+    "browseCategories": "Explorar categorías",
+    "categories": "Categorías"
+  },
+  "footer": {
+    "tagline": "Tu mercado europeo de confianza para descubrir y vender productos de calidad. Conectamos a compradores y vendedores de toda Europa con facilidad y transparencia.",
+    "shipping": {
+      "title": "Envío optimizado",
+      "subtitle": "Las mejores tarifas para entrega rápida"
+    },
+    "payment": {
+      "title": "Pago seguro",
+      "subtitle": "100% protegido"
+    },
+    "returns": {
+      "title": "Devoluciones fáciles",
+      "subtitle": "Política de 30 días"
+    },
+    "support": {
+      "title": "Soporte 24/7",
+      "subtitle": "Ayuda especializada"
+    },
+    "quickLinks": "Enlaces rápidos",
+    "links": {
+      "home": "Hogar",
+      "about": "Sobre nosotros",
+      "contact": "Contáctanos",
+      "faq": "Preguntas frecuentes",
+      "shipping": "Información de envío",
+      "returns": "Política de devoluciones"
+    },
+    "getInTouch": "Ponte en contacto",
+    "emailUs": "Envíanos un correo electrónico",
+    "callUs": "Llámenos",
+    "location": "Ubicación",
+    "locationValue": "unión Europea",
+    "copyright": "© {{year}} GibLi. Todos los derechos reservados.",
+    "privacyPolicy": "política de privacidad",
+    "termsOfService": "Condiciones de servicio",
+    "designedBy": "Diseñado con esmero por"
+  },
+  "home": {
+    "filterButton": "Categorías",
+    "browseCategories": "Explorar categorías"
+  },
+  "productList": {
+    "title": "Productos destacados",
+    "subtitle": "Descubre productos de calidad de vendedores europeos de confianza.",
+    "loading": "Cargando productos increíbles...",
+    "available": "Productos disponibles",
+    "newArrivals": "Novedades diarias"
+  },
+  "productCard": {
+    "onlyLeft": "¡Solo queda {{count}}!",
+    "new": "NUEVO",
+    "outOfStock": "Agotado",
+    "quickView": "Vista rápida"
+  },
+  "productDetails": {
+    "loading": "Cargando detalles del producto...",
+    "backToProducts": "Volver a los productos",
+    "description": "Descripción",
+    "shippingOptions": "Opciones de envío",
+    "standard": "Estándar",
+    "express": "Expresar",
+    "unitsInStock": "unidades en stock",
+    "sellerInfo": "Información del vendedor",
+    "business": "Negocio:",
+    "location": "Ubicación:",
+    "chatSeller": "Chatea con el vendedor",
+    "customerReviews": "Reseñas de clientes",
+    "ratings": "Calificaciones",
+    "allReviews": "Todas las reseñas",
+    "latest": "El último",
+    "withContent": "Con contenido",
+    "withPhotos": "Con fotos",
+    "allStars": "Todas las estrellas",
+    "stars": "{{count}} Estrellas",
+    "oneStar": "1 estrella",
+    "sellerResponse": "Respuesta del vendedor",
+    "respondToReview": "Responda a esta reseña",
+    "reply": "Responder",
+    "loadingReviews": "Cargando reseñas...",
+    "showMoreReviews": "Mostrar más reseñas",
+    "helpfulCount": "A los compradores de {{count}} les resultó útil esta reseña.",
+    "helpful": "Útil",
+    "shareTitle": "Compartir",
+    "copied": "¡Copiado!",
+    "copyLink": "Copiar enlace",
+    "updatedOn": "Actualizado",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "Correo electrónico"
+  },
+  "cart": {
+    "title": "Carro de la compra",
+    "empty": "Tu carrito está vacío",
+    "emptySub": "Agrega algunos productos para comenzar.",
+    "continueShopping": "Continuar comprando",
+    "loading": "Cargando su carrito...",
+    "orderSummary": "Resumen del pedido",
+    "subtotal": "Total parcial",
+    "shipping": "Envío",
+    "total": "Total",
+    "checkout": "Pasar por la caja",
+    "remove": "Eliminar",
+    "outOfStock": "Agotado",
+    "lowStock": "Solo queda {{count}}",
+    "notifyRestock": "Avísame cuando vuelva a estar disponible.",
+    "cancelReminder": "Cancelar recordatorio",
+    "soldBy": "Vendido por",
+    "standard": "Estándar",
+    "express": "Expresar",
+    "item": "artículo",
+    "items": "elementos",
+    "qty": "Cantidad"
+  },
+  "auth": {
+    "login": {
+      "title": "Acceso",
+      "email": "Dirección de correo electrónico",
+      "password": "Contraseña",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña",
+      "forgotPassword": "¿Has olvidado tu contraseña?",
+      "submit": "Iniciar sesión",
+      "noAccount": "¿No tienes una cuenta?",
+      "signUp": "Inscribirse"
+    },
+    "signup": {
+      "title": "Crear una cuenta",
+      "username": "Nombre de usuario",
+      "email": "Dirección de correo electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "confirmar Contraseña",
+      "submit": "Crear una cuenta",
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "login": "Acceso"
+    },
+    "logout": "Cerrar sesión",
+    "profile": "Mi perfil",
+    "orders": "Mis pedidos",
+    "becomeSeller": "Conviértete en vendedor",
+    "sellerDashboard": "Panel de control del vendedor"
+  },
+  "orders": {
+    "title": "Mis pedidos",
+    "empty": "Aún no hay pedidos.",
+    "emptySub": "Tu historial de pedidos aparecerá aquí.",
+    "startShopping": "Empieza a comprar",
+    "loading": "Cargando pedidos...",
+    "orderId": "Número de pedido: {{id}}",
+    "placedOn": "Colocado en",
+    "total": "Total",
+    "viewDetails": "Ver detalles",
+    "status": {
+      "Processing": "Tratamiento",
+      "Confirmed": "Confirmado",
+      "Shipped": "Enviado",
+      "Delivered": "Entregado",
+      "Sold": "Vendido",
+      "Cancelled": "Cancelado",
+      "Rejected": "Rechazado"
+    },
+    "detail": {
+      "back": "Volver a los pedidos",
+      "shippingAddress": "Dirección de envío",
+      "orderItems": "Artículos del pedido",
+      "summary": "Resumen del pedido",
+      "subtotal": "Total parcial",
+      "shipping": "Envío",
+      "total": "Total",
+      "soldBy": "Vendido por",
+      "standard": "Envío estándar",
+      "express": "Envío exprés",
+      "cancelOrder": "Cancelar pedido",
+      "returnOrder": "Solicitar devolución"
+    }
+  },
+  "wishlist": {
+    "title": "Mi lista de deseos",
+    "empty": "Tu lista de deseos está vacía.",
+    "emptySub": "Guarda los productos que te gusten para más tarde.",
+    "discover": "Descubre productos",
+    "remove": "Eliminar",
+    "addToCart": "añadir a la cesta",
+    "added": "Añadido a la lista de deseos",
+    "removed": "Eliminado de la lista de deseos",
+    "loginRequired": "Inicia sesión para usar tu lista de deseos."
+  },
+  "search": {
+    "placeholder": "Buscar productos...",
+    "results": "Resultados de búsqueda para",
+    "noResults": "No se encontraron productos para",
+    "tryDifferent": "Prueba con un término de búsqueda diferente o explora las categorías.",
+    "loading": "Búsqueda..."
+  },
+  "categories": {
+    "title": "Categorías",
+    "all": "Todas las categorías",
+    "loading": "Cargando categorías...",
+    "browseBy": "Explorar por categoría"
+  },
+  "checkout": {
+    "title": "Verificar",
+    "selectAddress": "Seleccione una dirección de envío",
+    "addAddress": "Agregar nueva dirección",
+    "shippingMethod": "Método de envío",
+    "standard": "Envío estándar",
+    "express": "Envío exprés",
+    "placeOrder": "Realizar pedido",
+    "processing": "Tratamiento...",
+    "success": "¡Pedido realizado con éxito!",
+    "subtotal": "Total parcial",
+    "shipping": "Envío",
+    "total": "Total"
+  },
+  "address": {
+    "title": "Libreta de direcciones",
+    "add": "Agregar nueva dirección",
+    "edit": "Editar dirección",
+    "delete": "Eliminar dirección",
+    "default": "Por defecto",
+    "setDefault": "Establecer como predeterminado",
+    "save": "Guardar dirección",
+    "noAddresses": "Aún no se han guardado direcciones."
+  },
+  "seller": {
+    "dashboard": "Panel",
+    "products": "Productos",
+    "orders": "Órdenes",
+    "revenue": "Ganancia",
+    "messages": "Mensajes",
+    "settings": "Configuración de la tienda",
+    "addProduct": "Agregar producto",
+    "newOrders": "Nuevos pedidos",
+    "analytics": "Analítica",
+    "subscription": "Suscripción",
+    "payouts": "Pagos",
+    "returns": "Devoluciones",
+    "itemsSold": "Artículos vendidos",
+    "storeStatus": "Estado de la tienda",
+    "recentProducts": "Productos recientes",
+    "noProductsYet": "No hay productos todavía. Agrega tu primer producto para comenzar.",
+    "dashboardTitle": "Panel de {{name}}"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Algo salió mal",
+    "retry": "Intentar otra vez",
+    "save": "Ahorrar",
+    "cancel": "Cancelar",
+    "delete": "Borrar",
+    "edit": "Editar",
+    "close": "Cerca",
+    "confirm": "Confirmar",
+    "back": "Atrás",
+    "next": "Próximo",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "clear": "Claro",
+    "viewAll": "Ver todo",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos",
+    "addToCart": "añadir a la cesta",
+    "buyNow": "Comprar ahora",
+    "shareProduct": "Compartir producto",
+    "currency": "€"
+  }
+}

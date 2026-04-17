@@ -136,7 +136,7 @@ const SellerReturns = () => {
 			<NavBar />
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 
 					{/* Header */}
 					<div className='flex items-center gap-3 mb-4'>

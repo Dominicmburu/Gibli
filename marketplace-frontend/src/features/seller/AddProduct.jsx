@@ -152,7 +152,7 @@ const AddProduct = () => {
 			<NavBar />
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					<div className='max-w-3xl mx-auto bg-white shadow-sm border border-gray-100 rounded-2xl p-6'>
 						<h2 className='text-2xl font-bold text-gray-900 mb-6'>Add a New Product</h2>
 

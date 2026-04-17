@@ -390,7 +390,7 @@ const SellerSubscription = () => {
 			<div className='flex bg-gray-50 min-h-screen'>
 				<SellerSidebar />
 
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					{/* Page header */}
 					<div className='flex items-center gap-3 mb-6'>
 						<div className='w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center'>

@@ -3,6 +3,7 @@ import upload from '../middlewares/multerSetup.js';
 import { uploadToS3, deleteMultipleFromS3 } from '../services/s3UploadService.js';
 import { v4 as uuidv4 } from 'uuid';
 import sql from 'mssql';
+import { sendRestockNotificationEmail } from '../services/emailService.js';
 import DbHelper from '../db/dbHelper.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
 
@@ -86,6 +87,12 @@ sellerRouter.patch('/update/product/:id', authenticateToken, async (req, res) =>
 		}
 
 		const { ProductName, CategoryId, SubCategoryId, Price, Description, InStock, ShippingPrice, ExpressShippingPrice, LowStockThreshold } = req.body;
+
+		// Capture previous stock before update to detect restock
+		const prevProduct = foundProduct.recordset[0];
+		const wasOutOfStock = prevProduct.InStock <= 0;
+		const newStock = parseInt(InStock);
+
 		const result = await db.executeProcedure('UpdateProduct', {
 			ProductId: id,
 			ProductName,
@@ -93,7 +100,7 @@ sellerRouter.patch('/update/product/:id', authenticateToken, async (req, res) =>
 			SubCategoryId,
 			Price: parseFloat(Price),
 			Description,
-			InStock: parseInt(InStock),
+			InStock: newStock,
 			ShippingPrice: parseFloat(ShippingPrice),
 			ExpressShippingPrice: parseFloat(ExpressShippingPrice),
 			LowStockThreshold: LowStockThreshold != null ? parseInt(LowStockThreshold) : null,
@@ -101,6 +108,30 @@ sellerRouter.patch('/update/product/:id', authenticateToken, async (req, res) =>
 
 		const updated = result.recordset?.[0];
 		res.status(200).json({ success: true, message: `Product updated successfully`, data: updated });
+
+		// Fire restock notifications if product was out of stock and now has stock (fire-and-forget)
+		if (wasOutOfStock && newStock > 0) {
+			(async () => {
+				try {
+					const remindersResult = await db.executeProcedure('GetRestockRemindersByProduct', { ProductId: id });
+					const reminders = remindersResult.recordset || [];
+					if (reminders.length === 0) return;
+
+					const productName = ProductName || prevProduct.ProductName;
+					const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+					for (const r of reminders) {
+						await sendRestockNotificationEmail(r.Email, r.Username, productName, id, frontendUrl);
+					}
+
+					// Clear all reminders for this product now that buyers are notified
+					await db.executeProcedure('DeleteRestockRemindersByProduct', { ProductId: id });
+					console.log(`[RESTOCK] Notified ${reminders.length} buyer(s) for product ${id}`);
+				} catch (err) {
+					console.error('[RESTOCK] Failed to send restock notifications:', err.message);
+				}
+			})();
+		}
 	} catch (error) {
 		console.error('Product update failed:', error);
 		res.status(500).json({ message: `Something went wrong: ${error.message}` });

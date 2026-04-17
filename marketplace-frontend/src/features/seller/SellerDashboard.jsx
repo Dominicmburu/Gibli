@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Package, ShoppingBag, Euro, CheckCircle, CreditCard, TrendingUp } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
@@ -25,6 +26,7 @@ function getTimeRemaining(endDateStr) {
 const SellerDashboard = () => {
 	const { userInfo, isLoggedIn, tokenExpired } = useAuth();
 	const navigate = useNavigate();
+	const { t } = useTranslation();
 
 	const [stats, setStats] = useState({
 		totalProducts: 0,
@@ -92,7 +94,7 @@ const SellerDashboard = () => {
 
 	const statCards = [
 		{
-			label: 'Products',
+			label: t('seller.products'),
 			tourId: 'stat-products',
 			value: stats.totalProducts,
 			icon: <Package className='text-primary-500 w-5 h-5' />,
@@ -101,7 +103,7 @@ const SellerDashboard = () => {
 			clickable: true,
 		},
 		{
-			label: 'Items Sold',
+			label: t('seller.itemsSold'),
 			tourId: 'stat-items-sold',
 			value: stats.totalSold,
 			icon: <ShoppingBag className='text-blue-500 w-5 h-5' />,
@@ -110,7 +112,7 @@ const SellerDashboard = () => {
 			clickable: true,
 		},
 		{
-			label: 'Revenue',
+			label: t('seller.revenue'),
 			tourId: 'stat-revenue',
 			value: `€${stats.totalRevenue.toFixed(2)}`,
 			icon: <TrendingUp className='text-green-500 w-5 h-5' />,
@@ -119,7 +121,7 @@ const SellerDashboard = () => {
 			clickable: true,
 		},
 		{
-			label: 'Store Status',
+			label: t('seller.storeStatus'),
 			tourId: 'stat-store-status',
 			value: stats.isVerified ? 'Snoozed' : 'Active',
 			valueClass: stats.isVerified ? 'text-amber-500' : 'text-green-600',
@@ -129,7 +131,7 @@ const SellerDashboard = () => {
 			onClick: () => navigate('/store-settings'),
 		},
 		{
-			label: 'Subscription',
+			label: t('seller.subscription'),
 			tourId: 'stat-subscription',
 			value: subscription && subscription.PlanCode !== 'free'
 				? (getTimeRemaining(subscription.CurrentPeriodEnd) || subscription.PlanName)
@@ -148,9 +150,9 @@ const SellerDashboard = () => {
 			<div className='flex bg-gray-50 min-h-screen'>
 				<SellerSidebar />
 
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					<h2 className='text-2xl font-bold mb-6 text-gray-900'>
-						{userInfo?.name ? `${userInfo.name}'s Dashboard` : 'Seller Dashboard'}
+						{userInfo?.name ? t('seller.dashboardTitle', { name: userInfo.name }) : t('seller.dashboard')}
 					</h2>
 
 					{loading ? (
@@ -198,13 +200,13 @@ const SellerDashboard = () => {
 							{/* Recent Products */}
 							<div data-tour='recent-products'>
 								<div className='flex items-center justify-between mb-4'>
-									<h3 className='text-lg font-bold text-gray-900'>Recent Products</h3>
+									<h3 className='text-lg font-bold text-gray-900'>{t('seller.recentProducts')}</h3>
 									{recentProducts.length > 0 && (
 										<button
 											onClick={() => navigate('/my-products')}
 											className='text-sm text-primary-500 hover:text-primary-600 font-medium'
 										>
-											View All
+											{t('common.viewAll')}
 										</button>
 									)}
 								</div>
@@ -213,13 +215,13 @@ const SellerDashboard = () => {
 									<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center'>
 										<Package size={40} className='mx-auto text-gray-300 mb-3' />
 										<p className='text-gray-500 text-sm mb-4'>
-											No products yet. Add your first product to get started.
+											{t('seller.noProductsYet')}
 										</p>
 										<button
 											onClick={() => navigate('/new-product')}
 											className='bg-primary-500 hover:bg-primary-600 text-white font-medium px-5 py-2 rounded-lg transition-colors text-sm'
 										>
-											Add Product
+											{t('seller.addProduct')}
 										</button>
 									</div>
 								) : (

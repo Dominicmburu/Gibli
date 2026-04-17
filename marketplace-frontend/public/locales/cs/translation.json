@@ -1,0 +1,281 @@
+{
+  "nav": {
+    "sellerBanner": {
+      "title": "Téměř tam!",
+      "message": "Váš účet prodejce je nastaven – vyberte si tarif a dokončete platbu, abyste získali nejlepší provizi.",
+      "cta": "Dokončit platbu"
+    },
+    "myStore": "Můj obchod",
+    "searchPlaceholder": "Hledat produkty...",
+    "home": "Domov",
+    "myWishlist": "Moje přání",
+    "browseCategories": "Procházet kategorie",
+    "categories": "Kategorie"
+  },
+  "footer": {
+    "tagline": "Vaše důvěryhodné evropské tržiště pro objevování a prodej kvalitních produktů. Spojujeme kupující a prodávající po celé Evropě s lehkostí a transparentností.",
+    "shipping": {
+      "title": "Optimalizovaná doprava",
+      "subtitle": "Nejlepší ceny pro rychlé dodání"
+    },
+    "payment": {
+      "title": "Bezpečná platba",
+      "subtitle": "100% chráněno"
+    },
+    "returns": {
+      "title": "Snadné vrácení",
+      "subtitle": "30denní pojistka"
+    },
+    "support": {
+      "title": "Podpora 24/7",
+      "subtitle": "Vyhrazená pomoc"
+    },
+    "quickLinks": "Rychlé odkazy",
+    "links": {
+      "home": "Domov",
+      "about": "O nás",
+      "contact": "Kontaktujte nás",
+      "faq": "Často kladené otázky",
+      "shipping": "Informace o dopravě",
+      "returns": "Zásady vrácení zboží"
+    },
+    "getInTouch": "Kontaktujte nás",
+    "emailUs": "Napište nám",
+    "callUs": "Zavolejte nám",
+    "location": "Umístění",
+    "locationValue": "Evropská unie",
+    "copyright": "© {{year}} GibLi. Všechna práva vyhrazena.",
+    "privacyPolicy": "Zásady ochrany osobních údajů",
+    "termsOfService": "Podmínky služby",
+    "designedBy": "Navrženo s péčí"
+  },
+  "home": {
+    "filterButton": "Kategorie",
+    "browseCategories": "Procházet kategorie"
+  },
+  "productList": {
+    "title": "Doporučené produkty",
+    "subtitle": "Objevte kvalitní produkty od důvěryhodných evropských prodejců",
+    "loading": "Načítání úžasných produktů...",
+    "available": "{{count}} Dostupné produkty",
+    "newArrivals": "Denně noví příchozí"
+  },
+  "productCard": {
+    "onlyLeft": "Zbývá už jen {{count}}!",
+    "new": "NOVÝ",
+    "outOfStock": "Není skladem",
+    "quickView": "Rychlý náhled"
+  },
+  "productDetails": {
+    "loading": "Načítání podrobností o produktu...",
+    "backToProducts": "Zpět k produktům",
+    "description": "Popis",
+    "shippingOptions": "Možnosti dopravy",
+    "standard": "Norma",
+    "express": "Vyjádřit",
+    "unitsInStock": "kusů skladem",
+    "sellerInfo": "Informace o prodejci",
+    "business": "Obchod:",
+    "location": "Umístění:",
+    "chatSeller": "Prodejce v chatu",
+    "customerReviews": "Recenze zákazníků",
+    "ratings": "Hodnocení",
+    "allReviews": "Všechny recenze",
+    "latest": "Nejnovější",
+    "withContent": "S obsahem",
+    "withPhotos": "S fotografiemi",
+    "allStars": "Všechny hvězdy",
+    "stars": "{{count}} Hvězdy",
+    "oneStar": "1 hvězdička",
+    "sellerResponse": "Odpověď prodejce",
+    "respondToReview": "Odpovědět na tuto recenzi",
+    "reply": "Odpověď",
+    "loadingReviews": "Načítání recenzí...",
+    "showMoreReviews": "Zobrazit více recenzí",
+    "helpfulCount": "Kupujícím {{count}} se tato recenze zdála užitečná",
+    "helpful": "Užitečný",
+    "shareTitle": "Podíl",
+    "copied": "Zkopírováno!",
+    "copyLink": "Kopírovat odkaz",
+    "updatedOn": "Aktualizováno",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "email": "E-mail"
+  },
+  "cart": {
+    "title": "Nákupní vozík",
+    "empty": "Váš košík je prázdný",
+    "emptySub": "Přidejte nějaké produkty a začněte",
+    "continueShopping": "Pokračovat v nakupování",
+    "loading": "Načítání košíku...",
+    "orderSummary": "Souhrn objednávky",
+    "subtotal": "Mezisoučet",
+    "shipping": "Doprava",
+    "total": "Celkový",
+    "checkout": "Pokračovat k pokladně",
+    "remove": "Odstranit",
+    "outOfStock": "Není skladem",
+    "lowStock": "Zbývá už jen {{count}}",
+    "notifyRestock": "Upozornit, až bude opět skladem",
+    "cancelReminder": "Zrušit připomenutí",
+    "soldBy": "Prodáno společností",
+    "standard": "Norma",
+    "express": "Vyjádřit",
+    "item": "položka",
+    "items": "položky",
+    "qty": "Množství"
+  },
+  "auth": {
+    "login": {
+      "title": "Přihlášení",
+      "email": "E-mailová adresa",
+      "password": "Heslo",
+      "showPassword": "Zobrazit heslo",
+      "hidePassword": "Skrýt heslo",
+      "forgotPassword": "Zapomněli jste heslo?",
+      "submit": "Přihlásit se",
+      "noAccount": "Nemáte účet?",
+      "signUp": "Registrovat se"
+    },
+    "signup": {
+      "title": "Vytvořit účet",
+      "username": "Uživatelské jméno",
+      "email": "E-mailová adresa",
+      "password": "Heslo",
+      "confirmPassword": "Potvrzení hesla",
+      "submit": "Vytvořit účet",
+      "hasAccount": "Už máte účet?",
+      "login": "Přihlášení"
+    },
+    "logout": "Odhlásit se",
+    "profile": "Můj profil",
+    "orders": "Moje objednávky",
+    "becomeSeller": "Staňte se prodejcem",
+    "sellerDashboard": "Dashboard prodejce"
+  },
+  "orders": {
+    "title": "Moje objednávky",
+    "empty": "Zatím žádné objednávky",
+    "emptySub": "Zde se zobrazí historie vašich objednávek",
+    "startShopping": "Začněte nakupovat",
+    "loading": "Načítání objednávek...",
+    "orderId": "Objednávka č. {{id}}",
+    "placedOn": "Umístěno na",
+    "total": "Celkový",
+    "viewDetails": "Zobrazit podrobnosti",
+    "status": {
+      "Processing": "Zpracování",
+      "Confirmed": "Potvrzeno",
+      "Shipped": "Odesláno",
+      "Delivered": "Doručeno",
+      "Sold": "Prodáno",
+      "Cancelled": "Zrušeno",
+      "Rejected": "Odmítnuto"
+    },
+    "detail": {
+      "back": "Zpět k objednávkám",
+      "shippingAddress": "Dodací adresa",
+      "orderItems": "Položky objednávky",
+      "summary": "Souhrn objednávky",
+      "subtotal": "Mezisoučet",
+      "shipping": "Doprava",
+      "total": "Celkový",
+      "soldBy": "Prodáno společností",
+      "standard": "Standardní doprava",
+      "express": "Expresní doprava",
+      "cancelOrder": "Zrušit objednávku",
+      "returnOrder": "Žádost o vrácení"
+    }
+  },
+  "wishlist": {
+    "title": "Moje přání",
+    "empty": "Váš seznam přání je prázdný",
+    "emptySub": "Uložte si produkty, které máte rádi, na později",
+    "discover": "Objevte produkty",
+    "remove": "Odstranit",
+    "addToCart": "Přidat do košíku",
+    "added": "Přidáno do seznamu přání",
+    "removed": "Odstraněno ze seznamu přání",
+    "loginRequired": "Pro použití seznamu přání se prosím přihlaste."
+  },
+  "search": {
+    "placeholder": "Hledat produkty...",
+    "results": "Výsledky vyhledávání pro",
+    "noResults": "Nebyly nalezeny žádné produkty pro",
+    "tryDifferent": "Zkuste jiný hledaný výraz nebo procházejte kategorie",
+    "loading": "Hledání..."
+  },
+  "categories": {
+    "title": "Kategorie",
+    "all": "Všechny kategorie",
+    "loading": "Načítání kategorií...",
+    "browseBy": "Procházet podle kategorie"
+  },
+  "checkout": {
+    "title": "Pokladna",
+    "selectAddress": "Vyberte dodací adresu",
+    "addAddress": "Přidat novou adresu",
+    "shippingMethod": "Způsob dopravy",
+    "standard": "Standardní doprava",
+    "express": "Expresní doprava",
+    "placeOrder": "Odeslat objednávku",
+    "processing": "Zpracování...",
+    "success": "Objednávka byla úspěšně odeslána!",
+    "subtotal": "Mezisoučet",
+    "shipping": "Doprava",
+    "total": "Celkový"
+  },
+  "address": {
+    "title": "Adresář",
+    "add": "Přidat novou adresu",
+    "edit": "Upravit adresu",
+    "delete": "Smazat adresu",
+    "default": "Výchozí",
+    "setDefault": "Nastavit jako výchozí",
+    "save": "Uložit adresu",
+    "noAddresses": "Zatím nejsou uloženy žádné adresy"
+  },
+  "seller": {
+    "dashboard": "Dashboard",
+    "products": "Produkty",
+    "orders": "Objednávky",
+    "revenue": "Příjmy",
+    "messages": "Zprávy",
+    "settings": "Nastavení obchodu",
+    "addProduct": "Přidat produkt",
+    "newOrders": "Nové objednávky",
+    "analytics": "Analytika",
+    "subscription": "Předplatné",
+    "payouts": "Výplaty",
+    "returns": "Vrácení zboží",
+    "itemsSold": "Prodané položky",
+    "storeStatus": "Stav obchodu",
+    "recentProducts": "Nedávné produkty",
+    "noProductsYet": "Zatím žádné produkty. Přidejte svůj první produkt pro začátek.",
+    "dashboardTitle": "Přehled {{name}}"
+  },
+  "common": {
+    "loading": "Načítání...",
+    "error": "Něco se pokazilo",
+    "retry": "Zkuste to znovu",
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "delete": "Vymazat",
+    "edit": "Upravit",
+    "close": "Blízko",
+    "confirm": "Potvrdit",
+    "back": "Zadní",
+    "next": "Další",
+    "search": "Vyhledávání",
+    "filter": "Filtr",
+    "clear": "Jasný",
+    "viewAll": "Zobrazit vše",
+    "showMore": "Zobrazit více",
+    "showLess": "Zobrazit méně",
+    "addToCart": "Přidat do košíku",
+    "buyNow": "Koupit nyní",
+    "shareProduct": "Sdílet produkt",
+    "currency": "€"
+  }
+}

@@ -73,7 +73,7 @@ const OrdersPage = () => {
 		<>
 			<NavBar />
 			<div className='min-h-screen bg-gray-50'>
-				<div className='max-w-5xl mx-auto px-4 sm:px-6 py-8'>
+				<div className='max-w-5xl mx-auto px-2 sm:px-6 py-8'>
 					{/* Header */}
 					<div className='flex items-center gap-3 mb-8'>
 						<div className='w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center'>

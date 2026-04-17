@@ -277,7 +277,7 @@ const SellerProducts = () => {
 			<NavBar />
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					{/* Header */}
 					<div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6'>
 						<div className='flex items-center gap-3'>

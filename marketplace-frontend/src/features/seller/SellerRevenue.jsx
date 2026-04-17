@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
 	Euro, Loader2, TrendingUp, Filter, X, Percent, ChevronRight,
-	Wallet, CheckCircle, Clock,
+	Wallet, CheckCircle, Clock, RotateCcw, AlertCircle, Ban,
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import SellerSidebar from './SellerSidebar';
@@ -11,6 +11,7 @@ import api from '../../api/axios';
 const TABS = [
 	{ id: 'revenue', label: 'Revenue' },
 	{ id: 'payouts', label: 'Payouts' },
+	{ id: 'returns', label: 'Sales Returns' },
 ];
 
 const STATUS_OPTIONS = [
@@ -25,6 +26,7 @@ const SellerRevenue = () => {
 	const [activeTab, setActiveTab]           = useState('revenue');
 	const [soldOrders, setSoldOrders]         = useState([]);
 	const [payouts, setPayouts]               = useState([]);
+	const [returns, setReturns]               = useState([]);
 	const [loading, setLoading]               = useState(true);
 	const [error, setError]                   = useState(null);
 	const [commissionRate, setCommissionRate] = useState(0.05);
@@ -36,13 +38,17 @@ const SellerRevenue = () => {
 	// Payouts-only filter
 	const [statusFilter, setStatusFilter] = useState('all');
 
+	// Returns-only filter
+	const [returnStatusFilter, setReturnStatusFilter] = useState('all');
+
 	useEffect(() => {
 		const fetchAll = async () => {
 			try {
-				const [ordersRes, subRes, payoutsRes] = await Promise.allSettled([
+				const [ordersRes, subRes, payoutsRes, returnsRes] = await Promise.allSettled([
 					api.post('/orders/received'),
 					api.get('/subscriptions/my-subscription'),
 					api.get('/orders/payouts'),
+					api.get('/returns/seller'),
 				]);
 
 				if (ordersRes.status === 'fulfilled') {
@@ -60,6 +66,10 @@ const SellerRevenue = () => {
 
 				if (payoutsRes.status === 'fulfilled') {
 					setPayouts(payoutsRes.value.data?.data || []);
+				}
+
+				if (returnsRes.status === 'fulfilled') {
+					setReturns(returnsRes.value.data?.data || []);
 				}
 			} catch (err) {
 				console.error('Error fetching revenue:', err);
@@ -100,15 +110,43 @@ const SellerRevenue = () => {
 	const totalPaid        = payouts.filter((p) => p.Status === 'Paid').reduce((s, p) => s + Number(p.Amount), 0);
 	const filteredPayTotal = filteredPayouts.reduce((s, p) => s + Number(p.Amount), 0);
 
+	// ── Returns tab data ──────────────────────────────────────────────
+	const RETURN_STATUS_OPTIONS = [
+		{ value: 'all',      label: 'All'      },
+		{ value: 'Pending',  label: 'Pending'  },
+		{ value: 'Approved', label: 'Approved' },
+		{ value: 'Rejected', label: 'Rejected' },
+		{ value: 'Refunded', label: 'Refunded' },
+	];
+
+	const filteredReturns = useMemo(() => {
+		return returns.filter((r) => {
+			if (returnStatusFilter !== 'all' && r.ReturnStatus !== returnStatusFilter) return false;
+			const d = new Date(r.CreatedAt);
+			if (dateFrom && d < new Date(dateFrom)) return false;
+			if (dateTo   && d > new Date(new Date(dateTo).setHours(23, 59, 59))) return false;
+			return true;
+		});
+	}, [returns, returnStatusFilter, dateFrom, dateTo]);
+
+	const totalRefunded = returns
+		.filter((r) => r.ReturnStatus === 'Refunded' || r.ReturnStatus === 'Approved')
+		.reduce((s, r) => s + Number(r.RefundAmount || 0), 0);
+	const pendingReturnsCount   = returns.filter((r) => r.ReturnStatus === 'Pending').length;
+	const approvedReturnsCount  = returns.filter((r) => r.ReturnStatus === 'Approved' || r.ReturnStatus === 'Refunded').length;
+
 	// ── Shared ────────────────────────────────────────────────────────
-	const hasFilters = dateFrom || dateTo || (activeTab === 'payouts' && statusFilter !== 'all');
-	const clearFilters = () => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); };
+	const hasFilters = dateFrom || dateTo
+		|| (activeTab === 'payouts' && statusFilter !== 'all')
+		|| (activeTab === 'returns' && returnStatusFilter !== 'all');
+	const clearFilters = () => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setReturnStatusFilter('all'); };
 
 	const handleTabChange = (tab) => {
 		setActiveTab(tab);
 		setDateFrom('');
 		setDateTo('');
 		setStatusFilter('all');
+		setReturnStatusFilter('all');
 	};
 
 	return (
@@ -211,6 +249,30 @@ const SellerRevenue = () => {
 													opt.value === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
 												}`}>
 													{payouts.filter(p => p.Status === opt.value).length}
+												</span>
+											)}
+										</button>
+									))}
+								</div>
+							)}
+
+							{/* Returns status filter */}
+							{activeTab === 'returns' && (
+								<div className='flex flex-wrap bg-gray-100 rounded-xl p-1 gap-0.5'>
+									{RETURN_STATUS_OPTIONS.map((opt) => (
+										<button
+											key={opt.value}
+											onClick={() => setReturnStatusFilter(opt.value)}
+											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+												returnStatusFilter === opt.value
+													? 'bg-white text-gray-900 shadow-sm'
+													: 'text-gray-500 hover:text-gray-700'
+											}`}
+										>
+											{opt.label}
+											{opt.value !== 'all' && (
+												<span className='ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-600'>
+													{returns.filter(r => r.ReturnStatus === opt.value).length}
 												</span>
 											)}
 										</button>
@@ -327,6 +389,104 @@ const SellerRevenue = () => {
 							</div>
 						)
 					) : (
+						/* ── Returns table ───────────────────────────────────────── */
+						activeTab === 'returns' ? (
+							<>
+								{/* Returns summary cards */}
+								<div className='grid grid-cols-3 gap-3 mb-6'>
+									<div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-4'>
+										<div className='flex items-center gap-2 mb-2'>
+											<AlertCircle size={15} className='text-amber-500' />
+											<p className='text-xs font-medium text-gray-500 uppercase tracking-wide'>Pending</p>
+										</div>
+										<p className='text-2xl font-bold text-amber-600'>{pendingReturnsCount}</p>
+										<p className='text-xs text-gray-400 mt-0.5'>awaiting decision</p>
+									</div>
+									<div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-4'>
+										<div className='flex items-center gap-2 mb-2'>
+											<CheckCircle size={15} className='text-green-500' />
+											<p className='text-xs font-medium text-gray-500 uppercase tracking-wide'>Approved</p>
+										</div>
+										<p className='text-2xl font-bold text-green-600'>{approvedReturnsCount}</p>
+										<p className='text-xs text-gray-400 mt-0.5'>approved / refunded</p>
+									</div>
+									<div className='bg-white rounded-2xl border border-gray-100 shadow-sm p-4'>
+										<div className='flex items-center gap-2 mb-2'>
+											<Euro size={15} className='text-red-400' />
+											<p className='text-xs font-medium text-gray-500 uppercase tracking-wide'>Total Refunded</p>
+										</div>
+										<p className='text-2xl font-bold text-red-500'>&euro;{totalRefunded.toFixed(2)}</p>
+										<p className='text-xs text-gray-400 mt-0.5'>from {approvedReturnsCount} return{approvedReturnsCount !== 1 ? 's' : ''}</p>
+									</div>
+								</div>
+
+								{filteredReturns.length === 0 ? (
+									<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center'>
+										<RotateCcw size={48} className='mx-auto text-gray-300 mb-4' />
+										<h3 className='text-lg font-semibold text-gray-700 mb-2'>
+											{returns.length === 0 ? 'No return requests' : 'No results match your filters'}
+										</h3>
+										<p className='text-gray-500 text-sm'>
+											{returns.length === 0
+												? 'Return requests from buyers will appear here.'
+												: 'Try adjusting your filters.'}
+										</p>
+									</div>
+								) : (
+									<div className='bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto'>
+										<table className='w-full text-sm'>
+											<thead>
+												<tr className='border-b border-gray-100 bg-gray-50'>
+													<th className='text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Order</th>
+													<th className='text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Buyer</th>
+													<th className='text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Requested</th>
+													<th className='text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Status</th>
+													<th className='text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'>Refund Amount</th>
+													<th className='px-4 py-3'></th>
+												</tr>
+											</thead>
+											<tbody className='divide-y divide-gray-50'>
+												{filteredReturns.map((ret) => {
+													const statusConfig = {
+														Pending:  { label: 'Pending',  bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200',  icon: <Clock size={11} /> },
+														Approved: { label: 'Approved', bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',   icon: <CheckCircle size={11} /> },
+														Rejected: { label: 'Rejected', bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200',    icon: <Ban size={11} /> },
+														Refunded: { label: 'Refunded', bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200',  icon: <CheckCircle size={11} /> },
+													}[ret.ReturnStatus] || { label: ret.ReturnStatus, bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', icon: null };
+
+													return (
+														<tr key={ret.ReturnRequestId} className='hover:bg-gray-50 transition-colors'>
+															<td className='px-5 py-3 font-medium text-gray-900'>#{(ret.OrderId || '').slice(0, 8)}</td>
+															<td className='px-4 py-3 text-gray-600 text-sm'>{ret.BuyerName || ret.BuyerEmail || '—'}</td>
+															<td className='px-4 py-3 text-gray-500 whitespace-nowrap'>
+																{new Date(ret.CreatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+															</td>
+															<td className='px-4 py-3 text-center'>
+																<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+																	{statusConfig.icon}
+																	{statusConfig.label}
+																</span>
+															</td>
+															<td className='px-4 py-3 text-right font-semibold text-red-500'>
+																{ret.RefundAmount ? `−€${Number(ret.RefundAmount).toFixed(2)}` : '—'}
+															</td>
+															<td className='px-4 py-3'>
+																<button
+																	onClick={() => navigate(`/my-orders/${ret.OrderId}`)}
+																	className='flex items-center gap-0.5 text-primary-500 hover:text-primary-600 text-xs font-medium'
+																>
+																	View <ChevronRight size={13} />
+																</button>
+															</td>
+														</tr>
+													);
+												})}
+											</tbody>
+										</table>
+									</div>
+								)}
+							</>
+						) : (
 						/* ── Payouts table ────────────────────────────────────────── */
 						filteredPayouts.length === 0 ? (
 							<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center'>
@@ -402,6 +562,7 @@ const SellerRevenue = () => {
 								</table>
 							</div>
 						)
+					)
 					)}
 				</div>
 			</div>

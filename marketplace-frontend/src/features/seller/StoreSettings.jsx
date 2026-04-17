@@ -50,7 +50,7 @@ const StoreSettings = () => {
 			<div className='flex min-h-screen bg-gray-50'>
 				<SellerSidebar />
 
-				<div className='flex-1 p-6 overflow-y-auto'>
+				<div className='flex-1 p-2 sm:p-6 overflow-y-auto'>
 					<motion.main
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
