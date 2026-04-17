@@ -18,6 +18,7 @@ import ChatModal from '../../chat/ChatModal';
 /* ─── Share Modal ─────────────────────────────────────────────────────────── */
 const ShareModal = ({ isOpen, onClose, product }) => {
 	const [copied, setCopied] = useState(false);
+	const { t } = useTranslation();
 
 	if (!isOpen) return null;
 
