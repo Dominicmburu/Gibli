@@ -32,77 +32,38 @@ const PLAN_DETAILS = {
 		example: { sale: 200, commission: 10, net: 190 },
 	},
 	2: {
-		planCode: 'standard_yearly',
-		name: 'Standard Annual',
-		price: 100,
-		billing: '€100 / year',
-		commission: '3%',
+		planCode: 'package_1',
+		name: 'Package 1',
+		price: 1,
+		billing: '€1 / month',
+		commission: 'x%',
 		commissionDecimal: 0.03,
 		color: 'blue',
 		accentBg: 'bg-blue-50',
 		accentText: 'text-blue-700',
-		badge: 'Best Value',
-		tagline: 'A smart investment for established sellers.',
-		description:
-			'Pay once a year and immediately reduce your commission to 3%. If you sell more than €5,000 in a year, this plan pays for itself. Auto-renews annually — cancel anytime before renewal.',
-		features: [
-			'One-time annual fee of €100',
-			'Reduced 3% commission on all sales',
-			'Full access to seller dashboard',
-			'Priority support',
-			'Auto-renews annually (cancel before renewal)',
-			'Email reminders 2 weeks, 1 week & 1 day before renewal',
-		],
+		badge: 'Coming Soon',
+		tagline: 'Coming soon — stay tuned.',
+		description: 'Service 1, Service 2, Service 3, Service 4, Service 5.',
+		features: ['Service 1', 'Service 2', 'Service 3', 'Service 4', 'Service 5'],
 		example: { sale: 200, commission: 6, net: 194 },
+		comingSoon: true,
 	},
 	3: {
-		planCode: 'monthly',
-		name: 'Monthly Pro',
-		price: 10,
-		billing: '€10 / month',
-		commission: '3%',
-		commissionDecimal: 0.03,
+		planCode: 'package_2',
+		name: 'Package 2',
+		price: 2,
+		billing: '€2 / month',
+		commission: 'y%',
+		commissionDecimal: 0,
 		color: 'purple',
 		accentBg: 'bg-purple-50',
 		accentText: 'text-purple-700',
-		badge: 'Most Flexible',
-		tagline: 'Full benefits with the freedom to cancel anytime.',
-		description:
-			'Pay €10 each month and enjoy the same reduced 3% commission as the annual plan. No long-term commitment. Perfect if your sales volume varies seasonally.',
-		features: [
-			'Monthly fee of €10',
-			'Reduced 3% commission on all sales',
-			'Full access to seller dashboard',
-			'Priority support',
-			'Cancel anytime — no lock-in',
-			'Email reminders 1 week & 1 day before renewal',
-		],
-		example: { sale: 200, commission: 6, net: 194 },
-	},
-	4: {
-		planCode: 'premium_yearly',
-		name: 'Premium Annual',
-		price: 6000,
-		billing: '€6,000 / year',
-		commission: '0%',
-		commissionDecimal: 0,
-		color: 'amber',
-		accentBg: 'bg-amber-50',
-		accentText: 'text-amber-700',
-		badge: 'Zero Commission',
-		tagline: 'Keep 100% of every sale for an entire year.',
-		description:
-			'The ultimate plan for high-volume sellers. One annual fee of €6,000 and zero commission for 12 months. If you sell more than €120,000 per year, this plan saves you money.',
-		features: [
-			'One-time annual fee of €6,000',
-			'Zero (0%) commission on all sales',
-			'Keep 100% of your sale proceeds',
-			'Dedicated account support',
-			'VIP seller status',
-			'Auto-renews annually (cancel before renewal)',
-			'Email reminders 2 weeks, 1 week & 1 day before renewal',
-		],
+		badge: 'Coming Soon',
+		tagline: 'Coming soon — stay tuned.',
+		description: 'Service 1, Service 2, Service 3, Service 4, Service 5, Service 6.',
+		features: ['Service 1', 'Service 2', 'Service 3', 'Service 4', 'Service 5', 'Service 6'],
 		example: { sale: 200, commission: 0, net: 200 },
+		comingSoon: true,
 	},
 };
 
@@ -305,6 +266,13 @@ const SubscriptionDetail = () => {
 									{checkoutLoading ? <Loader2 className='animate-spin' size={18} /> : null}
 									{checkoutLoading ? 'Redirecting to Stripe...' : `Schedule Switch to ${plan.name}`}
 								</button>
+							</div>
+						) : plan.comingSoon ? (
+							<div className='text-center py-4'>
+								<div className='inline-block bg-gray-100 text-gray-500 font-semibold text-sm px-6 py-3 rounded-xl mb-3'>
+									Coming Soon
+								</div>
+								<p className='text-sm text-gray-400'>This plan is not yet available. Check back soon.</p>
 							</div>
 						) : plan.planCode === 'free' ? (
 							<div className='text-center'>

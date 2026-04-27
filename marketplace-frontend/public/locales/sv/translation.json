@@ -204,13 +204,18 @@
     "results": "Sökresultat för",
     "noResults": "Inga produkter hittades för",
     "tryDifferent": "Prova en annan sökterm eller bläddra bland kategorier",
-    "loading": "Sökande..."
+    "loading": "Sökande...",
+    "resultsFound": "{{count}} resultat hittades",
+    "emptyPrompt": "Sök produkter i navigeringsfältet"
   },
   "categories": {
     "title": "Kategorier",
     "all": "Alla kategorier",
     "loading": "Laddar kategorier...",
-    "browseBy": "Bläddra efter kategori"
+    "browseBy": "Bläddra efter kategori",
+    "searchPlaceholder": "Sök kategorier...",
+    "searchNoResults": "Inga kategorier hittades för \"{{term}}\"",
+    "categoryLabel": "Kategori"
   },
   "checkout": {
     "title": "Kassa",

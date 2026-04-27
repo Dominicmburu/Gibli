@@ -204,13 +204,18 @@
     "results": "Hakutulokset haulle",
     "noResults": "Ei tuotteita haulle",
     "tryDifferent": "Kokeile eri hakusanaa tai selaa luokkia",
-    "loading": "Haetaan..."
+    "loading": "Haetaan...",
+    "resultsFound": "{{count}} tulosta löytyi",
+    "emptyPrompt": "Hae tuotteita navigointipalkin kautta"
   },
   "categories": {
     "title": "Luokat",
     "all": "Kaikki kategoriat",
     "loading": "Ladataan luokkia...",
-    "browseBy": "Selaa kategoriittain"
+    "browseBy": "Selaa kategoriittain",
+    "searchPlaceholder": "Hae kategorioita...",
+    "searchNoResults": "Kategorioita ei löydetty haulle \"{{term}}\"",
+    "categoryLabel": "Kategoria"
   },
   "checkout": {
     "title": "Kassalle",

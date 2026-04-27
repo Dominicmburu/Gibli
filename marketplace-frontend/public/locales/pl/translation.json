@@ -204,13 +204,18 @@
     "results": "Wyniki wyszukiwania dla",
     "noResults": "Nie znaleziono produktów dla",
     "tryDifferent": "Spróbuj innego terminu wyszukiwania lub przeglądaj kategorie",
-    "loading": "Badawczy..."
+    "loading": "Badawczy...",
+    "resultsFound": "{{count}} wyników znaleziono",
+    "emptyPrompt": "Szukaj produktów w pasku nawigacyjnym"
   },
   "categories": {
     "title": "Kategorie",
     "all": "Wszystkie kategorie",
     "loading": "Ładowanie kategorii...",
-    "browseBy": "Przeglądaj według kategorii"
+    "browseBy": "Przeglądaj według kategorii",
+    "searchPlaceholder": "Szukaj kategorii...",
+    "searchNoResults": "Nie znaleziono kategorii dla \"{{term}}\"",
+    "categoryLabel": "Kategoria"
   },
   "checkout": {
     "title": "Wymeldować się",

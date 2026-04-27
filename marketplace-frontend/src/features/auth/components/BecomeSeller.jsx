@@ -20,39 +20,29 @@ const PLANS = [
 	},
 	{
 		id: 2,
-		name: 'Standard Annual',
-		price: '€100',
-		billing: 'per year',
-		commission: '3%',
+		name: 'Package 1',
+		price: '€1',
+		billing: 'per month',
+		commission: 'x%',
 		commissionLabel: 'commission per sale',
 		highlight: false,
-		features: ['Save on every sale vs. free', 'Reduced 3% commission', 'Full seller dashboard', 'Priority support'],
-		badge: 'Best Value',
+		features: ['Service 1', 'Service 2', 'Service 3', 'Service 4', 'Service 5'],
+		badge: 'Coming Soon',
 		isPaid: true,
+		comingSoon: true,
 	},
 	{
 		id: 3,
-		name: 'Monthly Pro',
-		price: '€10',
+		name: 'Package 2',
+		price: '€2',
 		billing: 'per month',
-		commission: '3%',
+		commission: 'y%',
 		commissionLabel: 'commission per sale',
-		highlight: true,
-		features: ['No annual commitment', 'Reduced 3% commission', 'Full seller dashboard', 'Cancel anytime'],
-		badge: 'Most Flexible',
-		isPaid: true,
-	},
-	{
-		id: 4,
-		name: 'Premium Annual',
-		price: '€6,000',
-		billing: 'per year',
-		commission: '0%',
-		commissionLabel: 'commission — keep 100% of sales',
 		highlight: false,
-		features: ['Zero commission on all sales', 'Maximum profit per transaction', 'Dedicated support', 'VIP seller status'],
-		badge: 'Zero Commission',
+		features: ['Service 1', 'Service 2', 'Service 3', 'Service 4', 'Service 5', 'Service 6'],
+		badge: 'Coming Soon',
 		isPaid: true,
+		comingSoon: true,
 	},
 ];
 
@@ -161,14 +151,16 @@ const BecomeSeller = () => {
 				{PLANS.map((plan) => (
 					<div
 						key={plan.id}
-						className={`relative bg-white rounded-2xl border p-5 shadow-sm transition hover:shadow-md ${
-							plan.highlight
-								? 'border-primary-400 ring-2 ring-primary-200'
-								: 'border-gray-100'
+						className={`relative bg-white rounded-2xl border p-5 shadow-sm transition ${
+							plan.comingSoon
+								? 'border-gray-100 opacity-60'
+								: plan.highlight
+								? 'border-primary-400 ring-2 ring-primary-200 hover:shadow-md'
+								: 'border-gray-100 hover:shadow-md'
 						}`}
 					>
 						{plan.badge && (
-							<span className='absolute -top-2.5 left-5 bg-primary-500 text-white text-xs font-semibold px-3 py-0.5 rounded-full'>
+							<span className={`absolute -top-2.5 left-5 text-white text-xs font-semibold px-3 py-0.5 rounded-full ${plan.comingSoon ? 'bg-gray-400' : 'bg-primary-500'}`}>
 								{plan.badge}
 							</span>
 						)}
@@ -195,12 +187,18 @@ const BecomeSeller = () => {
 								</ul>
 							</div>
 
+							{plan.comingSoon ? (
+							<span className='flex-shrink-0 mt-1 inline-block bg-gray-100 text-gray-400 text-xs font-semibold px-4 py-2 rounded-xl cursor-not-allowed'>
+								Coming Soon
+							</span>
+						) : (
 							<button
 								onClick={() => handleChoose(plan)}
 								className='flex-shrink-0 mt-1 bg-primary-50 hover:bg-primary-100 text-primary-600 font-semibold text-sm px-4 py-2 rounded-xl transition'
 							>
 								Get Started
 							</button>
+						)}
 						</div>
 					</div>
 				))}

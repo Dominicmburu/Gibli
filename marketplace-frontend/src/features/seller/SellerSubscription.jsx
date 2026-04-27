@@ -47,26 +47,20 @@ const ALL_PLANS = [
 		color: 'gray',
 	},
 	{
-		planId: 2, planCode: 'standard_yearly',
-		name: 'Standard Annual', price: 100, billing: '€100 / year',
-		commission: '3%', commissionRate: 0.03,
-		description: 'Reduced 3% commission. Renews annually.',
+		planId: 2, planCode: 'package_1',
+		name: 'Package 1', price: 1, billing: '€1 / month',
+		commission: 'x%', commissionRate: 0.03,
+		description: 'Service 1, Service 2, Service 3, Service 4, Service 5.',
 		color: 'blue',
+		comingSoon: true,
 	},
 	{
-		planId: 3, planCode: 'monthly',
-		name: 'Monthly Pro', price: 10, billing: '€10 / month',
-		commission: '3%', commissionRate: 0.03,
-		description: 'Reduced 3% commission. Cancel anytime.',
+		planId: 3, planCode: 'package_2',
+		name: 'Package 2', price: 2, billing: '€2 / month',
+		commission: 'y%', commissionRate: 0,
+		description: 'Service 1, Service 2, Service 3, Service 4, Service 5, Service 6.',
 		color: 'purple',
-		highlight: true,
-	},
-	{
-		planId: 4, planCode: 'premium_yearly',
-		name: 'Premium Annual', price: 6000, billing: '€6,000 / year',
-		commission: '0%', commissionRate: 0,
-		description: 'Zero commission for an entire year.',
-		color: 'amber',
+		comingSoon: true,
 	},
 ];
 
@@ -367,6 +361,10 @@ const SellerSubscription = () => {
 								>
 									Downgrade to Free
 								</button>
+							) : plan.comingSoon ? (
+								<div className='w-full text-center py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-semibold cursor-not-allowed'>
+									Coming Soon
+								</div>
 							) : (
 								<button
 									onClick={() => handleSwitchPlan(plan)}

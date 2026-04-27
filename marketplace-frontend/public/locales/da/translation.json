@@ -204,13 +204,18 @@
     "results": "Søgeresultater for",
     "noResults": "Ingen produkter fundet til",
     "tryDifferent": "Prøv et andet søgeord, eller gennemse kategorier",
-    "loading": "Søger..."
+    "loading": "Søger...",
+    "resultsFound": "{{count}} resultater fundet",
+    "emptyPrompt": "Søg produkter i navigationslinjen"
   },
   "categories": {
     "title": "Kategorier",
     "all": "Alle kategorier",
     "loading": "Indlæser kategorier...",
-    "browseBy": "Gennemse efter kategori"
+    "browseBy": "Gennemse efter kategori",
+    "searchPlaceholder": "Søg kategorier...",
+    "searchNoResults": "Ingen kategorier fundet for \"{{term}}\"",
+    "categoryLabel": "Kategori"
   },
   "checkout": {
     "title": "Betaling",

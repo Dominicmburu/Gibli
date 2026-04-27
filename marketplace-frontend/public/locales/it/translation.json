@@ -204,13 +204,18 @@
     "results": "Risultati della ricerca per",
     "noResults": "Nessun prodotto trovato per",
     "tryDifferent": "Prova un termine di ricerca diverso o esplora le categorie.",
-    "loading": "Ricerca in corso..."
+    "loading": "Ricerca in corso...",
+    "resultsFound": "{{count}} risultati trovati",
+    "emptyPrompt": "Cerca prodotti nella barra di navigazione"
   },
   "categories": {
     "title": "Categorie",
     "all": "Tutte le categorie",
     "loading": "Caricamento categorie in corso...",
-    "browseBy": "Sfoglia per categoria"
+    "browseBy": "Sfoglia per categoria",
+    "searchPlaceholder": "Cerca categorie...",
+    "searchNoResults": "Nessuna categoria trovata per \"{{term}}\"",
+    "categoryLabel": "Categoria"
   },
   "checkout": {
     "title": "Guardare",

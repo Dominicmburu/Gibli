@@ -204,13 +204,18 @@
     "results": "Search Results for",
     "noResults": "No products found for",
     "tryDifferent": "Try a different search term or browse categories",
-    "loading": "Searching..."
+    "loading": "Searching...",
+    "resultsFound": "{{count}} results found",
+    "emptyPrompt": "Search for products in the navbar"
   },
   "categories": {
     "title": "Categories",
     "all": "All Categories",
     "loading": "Loading categories...",
-    "browseBy": "Browse by category"
+    "browseBy": "Browse by category",
+    "searchPlaceholder": "Search categories...",
+    "searchNoResults": "No categories found for \"{{term}}\"",
+    "categoryLabel": "Category"
   },
   "checkout": {
     "title": "Checkout",

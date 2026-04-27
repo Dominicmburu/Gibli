@@ -88,7 +88,7 @@ const CategorySideBar = () => {
 				<CategorySearchBar
 					categories={items}
 					onCategorySelect={handleCategoryClick}
-					placeholder='Search categories...'
+					placeholder={t('categories.searchPlaceholder')}
 				/>
 			</div>
 

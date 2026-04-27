@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, Loader2, Menu, X } from 'lucide-react';
 
 import api from '../../../api/axios';
+import { useTranslation } from 'react-i18next';
 
 import NavBar from '../../../components/NavBar';
 import CategorySideBar from '../../filters/categories/CategorySideBar';
@@ -13,6 +14,7 @@ import Footer from '../../../components/Footer';
 const SearchResultsPage = () => {
 	const [searchParams] = useSearchParams();
 	const query = searchParams.get('q') || '';
+	const { t } = useTranslation();
 
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [results, setResults] = useState([]);
@@ -63,7 +65,7 @@ const SearchResultsPage = () => {
 				aria-label='Toggle filters'
 			>
 				<Menu size={20} className='sm:w-6 sm:h-6' />
-				<span className='font-medium text-sm sm:text-base'>Categories</span>
+				<span className='font-medium text-sm sm:text-base'>{t('categories.title')}</span>
 			</button>
 
 			{/* Mobile/Tablet: Overlay */}
@@ -90,7 +92,7 @@ const SearchResultsPage = () => {
 				>
 					{/* Mobile/Tablet: Close Button Header */}
 					<div className='lg:hidden flex justify-between items-center p-4 border-b border-gray-200 sticky top-0 bg-white z-10'>
-						<h2 className='text-base sm:text-lg font-bold text-gray-800'>Categories</h2>
+						<h2 className='text-base sm:text-lg font-bold text-gray-800'>{t('categories.title')}</h2>
 						<button
 							onClick={toggleSidebar}
 							className='p-2 hover:bg-gray-100 rounded-full transition-colors'
@@ -112,11 +114,11 @@ const SearchResultsPage = () => {
 						{/* Page Title - Responsive */}
 						<div className='mb-4 sm:mb-6'>
 							<h1 className='text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 mb-2'>
-								Search results for: <span className='text-primary-500'>"{query}"</span>
+								{t('search.results')}: <span className='text-primary-500'>"{query}"</span>
 							</h1>
 							{!isLoading && results.length > 0 && (
 								<p className='text-sm sm:text-base text-gray-600'>
-									{results.length} result{results.length !== 1 ? 's' : ''} found
+									{t('search.resultsFound', { count: results.length })}
 								</p>
 							)}
 						</div>
@@ -125,7 +127,7 @@ const SearchResultsPage = () => {
 						{isLoading && (
 							<div className='flex flex-col justify-center items-center py-16 sm:py-20'>
 								<Loader2 size={40} className='sm:w-12 sm:h-12 animate-spin text-primary-500 mb-4' />
-								<p className='text-sm sm:text-base text-gray-600'>Searching products...</p>
+								<p className='text-sm sm:text-base text-gray-600'>{t('search.loading')}</p>
 							</div>
 						)}
 
@@ -140,7 +142,7 @@ const SearchResultsPage = () => {
 						{!isLoading && !query && (
 							<div className='text-center py-16 sm:py-20'>
 								<Search size={48} className='sm:w-16 sm:h-16 mx-auto text-gray-300 mb-4' />
-								<p className='text-gray-500 text-base sm:text-lg'>Search for products in the navbar</p>
+								<p className='text-gray-500 text-base sm:text-lg'>{t('search.emptyPrompt')}</p>
 							</div>
 						)}
 
@@ -149,10 +151,10 @@ const SearchResultsPage = () => {
 							<div className='text-center py-16 sm:py-20'>
 								<Search size={48} className='sm:w-16 sm:h-16 mx-auto text-gray-300 mb-4' />
 								<p className='text-gray-600 text-base sm:text-lg font-medium mb-2'>
-									No results found for "{query}"
+									{t('search.noResults')} "{query}"
 								</p>
 								<p className='text-gray-400 text-sm sm:text-base'>
-									Try different keywords or check spelling
+									{t('search.tryDifferent')}
 								</p>
 							</div>
 						)}

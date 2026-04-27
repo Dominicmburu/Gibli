@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const CategorySearchBar = ({ categories, onCategorySelect, placeholder = 'Search categories' }) => {
+	const { t } = useTranslation();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [filteredCategories, setFilteredCategories] = useState([]);
 	const [showDropdown, setShowDropdown] = useState(false);
@@ -84,14 +86,14 @@ const CategorySearchBar = ({ categories, onCategorySelect, placeholder = 'Search
 								>
 									<div className='flex items-center justify-between'>
 										<span className='font-medium'>{cat.DisplayName || cat.CategoryName}</span>
-										<span className='text-xs text-gray-400'>Category</span>
+										<span className='text-xs text-gray-400'>{t('categories.categoryLabel')}</span>
 									</div>
 								</li>
 							))}
 						</ul>
 					) : (
 						<div className='px-4 py-3 text-sm text-gray-500 text-center'>
-							No categories found for "{searchTerm}"
+							{t('categories.searchNoResults', { term: searchTerm })}
 						</div>
 					)}
 				</div>

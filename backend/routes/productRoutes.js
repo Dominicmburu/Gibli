@@ -28,11 +28,6 @@ productRouter.get('/search', async (req, res) => {
 				message: 'Please enter a search term',
 			});
 		}
-		if (!q || q.trim().length < 2) {
-			return res.status(400).json({
-				error: 'Search term must be at least 2 characters',
-			});
-		}
 
 		let result = await db.executeProcedure('SearchProducts', { SearchTerm: q.trim() });
 

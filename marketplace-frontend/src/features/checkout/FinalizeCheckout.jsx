@@ -6,6 +6,7 @@ import NavBar from '../../components/NavBar';
 import Footer from '../../components/Footer';
 import api from '../../api/axios';
 import { useNavigate } from 'react-router-dom';
+import PaymentMethodSelector from './PaymentMethodSelector';
 
 const FinalizeCheckout = () => {
 	const [addresses, setAddresses] = useState([]);
@@ -16,6 +17,8 @@ const FinalizeCheckout = () => {
 	const [pageLoading, setPageLoading] = useState(true);
 	const [enablePerItemAddresses, setEnablePerItemAddresses] = useState(false);
 	const [addressOverrides, setAddressOverrides] = useState({});
+	const [paymentSelectorOpen, setPaymentSelectorOpen] = useState(false);
+	const [pendingDraft, setPendingDraft] = useState(null); // { draftId, totalAmount }
 	const navigate = useNavigate();
 
 	// Fetch all addresses
@@ -127,58 +130,41 @@ const FinalizeCheckout = () => {
 			toast.error('Your default address seems incomplete. Please fill all fields to ensure accuracy in delivery');
 			return;
 		}
-
 		if (cartItems.length === 0) {
 			toast.error('Your cart is empty.');
 			return;
 		}
 
-		// Build shipping addresses map
 		let shippingAddressPayload;
 		if (enablePerItemAddresses && Object.keys(addressOverrides).length > 0) {
-			// Build per-item address map
 			const perItem = {};
 			for (const item of cartItems) {
 				const itemAddr = getItemAddress(item.ProductId);
-				if (itemAddr) {
-					perItem[item.ProductId] = itemAddr;
-				}
+				if (itemAddr) perItem[item.ProductId] = itemAddr;
 			}
-			shippingAddressPayload = {
-				default: defaultAddress,
-				perItem,
-			};
+			shippingAddressPayload = { default: defaultAddress, perItem };
 		} else {
-			shippingAddressPayload = {
-				default: defaultAddress,
-				perItem: {},
-			};
+			shippingAddressPayload = { default: defaultAddress, perItem: {} };
 		}
 
 		setLoading(true);
 		try {
-			const payload = {
-				cartItems: cartItems,
+			const response = await api.post('/checkout/draft', {
+				cartItems,
 				shippingOptions: shippingSelections,
 				shippingAddress: shippingAddressPayload,
-			};
-			const response = await api.post('/checkout/draft', payload);
+			});
 
 			if (!response.data?.draftId) {
 				toast.error(response.data?.message || 'Failed to create checkout draft.');
 				return;
 			}
 
-			const { draftId } = response.data;
-
-			const sessionResponse = await api.post('/checkout/create-session', { draftId });
-
-			if (sessionResponse.data?.url) {
-				toast.success('Redirecting to secure payment...');
-				window.location.href = sessionResponse.data.url;
-			} else {
-				toast.error('Failed to initiate checkout session.');
-			}
+			setPendingDraft({
+				draftId:     response.data.draftId,
+				totalAmount: response.data.totalAmount,
+			});
+			setPaymentSelectorOpen(true);
 		} catch (err) {
 			console.error('Checkout error:', err);
 			toast.error(err.response?.data?.message || 'Checkout failed. Please try again.');
@@ -604,6 +590,17 @@ const FinalizeCheckout = () => {
 			)}
 
 			<Footer />
+
+			{/* Payment method selector — opens after draft is created */}
+			{pendingDraft && (
+				<PaymentMethodSelector
+					isOpen={paymentSelectorOpen}
+					onClose={() => setPaymentSelectorOpen(false)}
+					subtotal={pendingDraft.totalAmount}
+					draftId={pendingDraft.draftId}
+					onSuccess={() => setPaymentSelectorOpen(false)}
+				/>
+			)}
 		</div>
 	);
 };

@@ -204,13 +204,18 @@
     "results": "Keresési eredmények a következőre:",
     "noResults": "Nincsenek termékek a következőhöz:",
     "tryDifferent": "Próbáljon ki egy másik keresési kifejezést, vagy böngésszen a kategóriák között",
-    "loading": "Keresés..."
+    "loading": "Keresés...",
+    "resultsFound": "{{count}} találat",
+    "emptyPrompt": "Keressen termékeket a navigációs sávban"
   },
   "categories": {
     "title": "Kategóriák",
     "all": "Minden kategória",
     "loading": "Kategóriák betöltése...",
-    "browseBy": "Böngészés kategória szerint"
+    "browseBy": "Böngészés kategória szerint",
+    "searchPlaceholder": "Kategóriák keresése...",
+    "searchNoResults": "Nem találhatók kategóriák: \"{{term}}\"",
+    "categoryLabel": "Kategória"
   },
   "checkout": {
     "title": "Pénztár",

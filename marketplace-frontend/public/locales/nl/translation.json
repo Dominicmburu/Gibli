@@ -204,13 +204,18 @@
     "results": "Zoekresultaten voor",
     "noResults": "Geen producten gevonden voor",
     "tryDifferent": "Probeer een andere zoekterm of blader door de categorieën.",
-    "loading": "Zoeken..."
+    "loading": "Zoeken...",
+    "resultsFound": "{{count}} resultaten gevonden",
+    "emptyPrompt": "Zoek producten in de navigatiebalk"
   },
   "categories": {
     "title": "Categorieën",
     "all": "Alle categorieën",
     "loading": "Categorieën laden...",
-    "browseBy": "Bladeren op categorie"
+    "browseBy": "Bladeren op categorie",
+    "searchPlaceholder": "Categorieën zoeken...",
+    "searchNoResults": "Geen categorieën gevonden voor \"{{term}}\"",
+    "categoryLabel": "Categorie"
   },
   "checkout": {
     "title": "Afrekenen",

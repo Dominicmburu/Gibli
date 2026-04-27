@@ -1,17 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
+import api from '../api/axios';
+import { useLanguage } from '../context/LanguageContext';
 
 const SearchBar = ({ placeholder = 'Search products...' }) => {
 	const [searchTerm, setSearchTerm] = useState('');
+	const [searching, setSearching] = useState(false);
 	const navigate = useNavigate();
+	const { language } = useLanguage();
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
+		const trimmed = searchTerm.trim();
+		if (!trimmed) return;
 
-		if (searchTerm.trim().length >= 2) {
-			navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+		let query = trimmed;
+
+		if (language !== 'en') {
+			setSearching(true);
+			try {
+				const res = await api.post('/translate', { texts: [trimmed], targetLang: 'en' });
+				query = res.data.translations?.[0] || trimmed;
+			} catch {
+				// fall back to original term
+			} finally {
+				setSearching(false);
+			}
 		}
+
+		navigate(`/search?q=${encodeURIComponent(query)}`);
 	};
 
 	return (
@@ -23,8 +41,8 @@ const SearchBar = ({ placeholder = 'Search products...' }) => {
 				onChange={(e) => setSearchTerm(e.target.value)}
 				className='border border-gray-300 rounded-lg pl-3 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 w-full'
 			/>
-			<button type='submit' className='absolute right-2 top-2 text-gray-500 hover:text-primary-500'>
-				<Search size={20} />
+			<button type='submit' disabled={searching} className='absolute right-2 top-2 text-gray-500 hover:text-primary-500 disabled:opacity-50'>
+				<Search size={20} className={searching ? 'animate-pulse' : ''} />
 			</button>
 		</form>
 	);

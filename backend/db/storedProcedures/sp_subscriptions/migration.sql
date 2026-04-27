@@ -34,28 +34,20 @@ BEGIN
         'Default plan. No monthly fee. We take 5% commission on every sale you make.'
     ),
     (
-        'Standard Annual',
-        'standard_yearly',
-        100.00,
-        0.0300,
-        'yearly',
-        'One-time yearly fee of €100. Enjoy a reduced 3% commission on all your sales. Auto-renews annually.'
-    ),
-    (
-        'Monthly Pro',
-        'monthly',
-        10.00,
+        'Package 1',
+        'package_1',
+        1.00,
         0.0300,
         'monthly',
-        'Flexible monthly subscription at €10/month. Enjoy a reduced 3% commission on all your sales. Cancel anytime.'
+        'Pay €1 per month and reduce your commission to 3%. Ideal for testing the subscription experience.'
     ),
     (
-        'Premium Annual',
-        'premium_yearly',
-        6000.00,
+        'Package 2',
+        'package_2',
+        2.00,
         0.0000,
-        'yearly',
-        'Our top-tier plan. One yearly fee of €6,000. Zero commission on all sales for an entire year.'
+        'monthly',
+        'Pay €2 per month and sell with zero commission. Keep 100% of every sale.'
     );
 END
 GO

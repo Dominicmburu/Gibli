@@ -204,13 +204,18 @@
     "results": "Rezultate căutare pentru",
     "noResults": "Nu s-au găsit produse pentru",
     "tryDifferent": "Încercați un alt termen de căutare sau răsfoiți categoriile",
-    "loading": "Se caută..."
+    "loading": "Se caută...",
+    "resultsFound": "{{count}} rezultate găsite",
+    "emptyPrompt": "Caută produse în bara de navigație"
   },
   "categories": {
     "title": "Categorii",
     "all": "Toate categoriile",
     "loading": "Se încarcă categoriile...",
-    "browseBy": "Răsfoire după categorie"
+    "browseBy": "Răsfoire după categorie",
+    "searchPlaceholder": "Caută categorii...",
+    "searchNoResults": "Nu s-au găsit categorii pentru \"{{term}}\"",
+    "categoryLabel": "Categorie"
   },
   "checkout": {
     "title": "Verifică",

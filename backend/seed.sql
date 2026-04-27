@@ -13,10 +13,9 @@ SET IDENTITY_INSERT [dbo].[SubscriptionPlans] ON;
 
 MERGE [dbo].[SubscriptionPlans] AS target
 USING (VALUES
-    (1, 'Free Plan',        'free',             0.00,    0.0500, 'none',    'Default plan. No monthly fee, 5% commission per sale.', 1),
-    (2, 'Standard Annual',  'standard_yearly',  100.00,  0.0300, 'yearly',  'Annual plan with reduced 3% commission.', 1),
-    (3, 'Monthly Pro',      'monthly',          10.00,   0.0300, 'monthly', 'Monthly plan with reduced 3% commission.', 1),
-    (4, 'Premium Annual',   'premium_yearly',   6000.00, 0.0000, 'yearly',  'Enterprise plan. Zero commission on all sales.', 1)
+    (1, 'Free Plan',  'free',      0.00, 0.0500, 'none',    'Default plan. No monthly fee. We take 5% commission on every sale you make.', 1),
+    (2, 'Package 1',  'package_1', 1.00, 0.0300, 'monthly', 'Pay €1 per month and reduce your commission to 3%. Ideal for testing the subscription experience.', 1),
+    (3, 'Package 2',  'package_2', 2.00, 0.0000, 'monthly', 'Pay €2 per month and sell with zero commission. Keep 100% of every sale.', 1)
 ) AS source (PlanId, PlanName, PlanCode, Price, CommissionRate, BillingCycle, Description, IsActive)
 ON target.PlanId = source.PlanId
 WHEN MATCHED THEN UPDATE SET
@@ -32,6 +31,11 @@ WHEN NOT MATCHED THEN INSERT
 VALUES
     (source.PlanId, source.PlanName, source.PlanCode, source.Price,
      source.CommissionRate, source.BillingCycle, source.Description, source.IsActive);
+
+-- Deactivate any old plans no longer in use
+UPDATE [dbo].[SubscriptionPlans]
+SET IsActive = 0
+WHERE PlanCode IN ('standard_yearly', 'monthly', 'premium_yearly');
 
 SET IDENTITY_INSERT [dbo].[SubscriptionPlans] OFF;
 GO

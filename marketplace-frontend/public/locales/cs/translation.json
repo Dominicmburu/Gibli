@@ -204,13 +204,18 @@
     "results": "Výsledky vyhledávání pro",
     "noResults": "Nebyly nalezeny žádné produkty pro",
     "tryDifferent": "Zkuste jiný hledaný výraz nebo procházejte kategorie",
-    "loading": "Hledání..."
+    "loading": "Hledání...",
+    "resultsFound": "{{count}} výsledků nalezeno",
+    "emptyPrompt": "Hledejte produkty v navigační liště"
   },
   "categories": {
     "title": "Kategorie",
     "all": "Všechny kategorie",
     "loading": "Načítání kategorií...",
-    "browseBy": "Procházet podle kategorie"
+    "browseBy": "Procházet podle kategorie",
+    "searchPlaceholder": "Hledat kategorie...",
+    "searchNoResults": "Žádné kategorie nenalezeny pro \"{{term}}\"",
+    "categoryLabel": "Kategorie"
   },
   "checkout": {
     "title": "Pokladna",

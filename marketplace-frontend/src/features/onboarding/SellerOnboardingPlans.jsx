@@ -22,54 +22,29 @@ const PLANS = [
 	},
 	{
 		id: 2,
-		name: 'Standard Annual',
-		price: '€100',
-		billing: 'per year',
-		commission: '3%',
+		name: 'Package 1',
+		price: '€1',
+		billing: 'per month',
+		commission: 'x%',
 		commissionLabel: 'commission per sale',
 		highlight: false,
-		badge: 'Best Value',
+		badge: 'Coming Soon',
 		isPaid: true,
-		features: [
-			'Save on every sale vs. free',
-			'Reduced 3% commission',
-			'Full seller dashboard',
-			'Priority support',
-		],
+		comingSoon: true,
+		features: ['Service 1', 'Service 2', 'Service 3', 'Service 4', 'Service 5'],
 	},
 	{
 		id: 3,
-		name: 'Monthly Pro',
-		price: '€10',
+		name: 'Package 2',
+		price: '€2',
 		billing: 'per month',
-		commission: '3%',
+		commission: 'y%',
 		commissionLabel: 'commission per sale',
-		highlight: true,
-		badge: 'Most Flexible',
-		isPaid: true,
-		features: [
-			'No annual commitment',
-			'Reduced 3% commission',
-			'Full seller dashboard',
-			'Cancel anytime',
-		],
-	},
-	{
-		id: 4,
-		name: 'Premium Annual',
-		price: '€6,000',
-		billing: 'per year',
-		commission: '0%',
-		commissionLabel: 'keep 100% of every sale',
 		highlight: false,
-		badge: 'Zero Commission',
+		badge: 'Coming Soon',
 		isPaid: true,
-		features: [
-			'Zero commission on all sales',
-			'Maximum profit per transaction',
-			'Dedicated support',
-			'VIP seller status',
-		],
+		comingSoon: true,
+		features: ['Service 1', 'Service 2', 'Service 3', 'Service 4', 'Service 5', 'Service 6'],
 	},
 ];
 
@@ -110,14 +85,16 @@ const SellerOnboardingPlans = () => {
 				{PLANS.map((plan) => (
 					<div
 						key={plan.id}
-						className={`relative bg-white rounded-2xl border shadow-sm transition hover:shadow-md ${
-							plan.highlight
-								? 'border-primary-400 ring-2 ring-primary-100'
-								: 'border-gray-100'
+						className={`relative bg-white rounded-2xl border shadow-sm transition ${
+							plan.comingSoon
+								? 'border-gray-100 opacity-60'
+								: plan.highlight
+								? 'border-primary-400 ring-2 ring-primary-100 hover:shadow-md'
+								: 'border-gray-100 hover:shadow-md'
 						}`}
 					>
 						{plan.badge && (
-							<span className='absolute -top-3 left-5 bg-primary-500 text-white text-xs font-semibold px-3 py-0.5 rounded-full'>
+							<span className={`absolute -top-3 left-5 text-white text-xs font-semibold px-3 py-0.5 rounded-full ${plan.comingSoon ? 'bg-gray-400' : 'bg-primary-500'}`}>
 								{plan.badge}
 							</span>
 						)}
@@ -145,6 +122,13 @@ const SellerOnboardingPlans = () => {
 							</div>
 
 							{/* CTA */}
+							{plan.comingSoon ? (
+							<div className='flex-shrink-0 mt-1 text-center'>
+								<span className='inline-block bg-gray-100 text-gray-400 text-xs font-semibold px-4 py-2 rounded-xl cursor-not-allowed'>
+									Coming Soon
+								</span>
+							</div>
+						) : (
 							<button
 								onClick={() => handleChoose(plan)}
 								className={`flex-shrink-0 mt-1 font-semibold text-sm px-5 py-2.5 rounded-xl transition ${
@@ -155,6 +139,7 @@ const SellerOnboardingPlans = () => {
 							>
 								{plan.isPaid ? 'Subscribe' : 'Get Started'}
 							</button>
+						)}
 						</div>
 					</div>
 				))}

@@ -18,25 +18,18 @@ const subscriptionRouter = express.Router();
 // Plan metadata (kept in sync with SubscriptionPlans seed data)
 // ─────────────────────────────────────────────────────────────
 const PLAN_CONFIG = {
-	standard_yearly: {
-		name: 'Standard Annual',
-		amount: 10000,       // €100.00 in cents
-		currency: 'eur',
-		interval: 'year',
-		intervalCount: 1,
-	},
-	monthly: {
-		name: 'Monthly Pro',
-		amount: 1000,        // €10.00 in cents
+	package_1: {
+		name: 'Package 1',
+		amount: 100,         // €1.00 in cents
 		currency: 'eur',
 		interval: 'month',
 		intervalCount: 1,
 	},
-	premium_yearly: {
-		name: 'Premium Annual',
-		amount: 600000,      // €6,000.00 in cents
+	package_2: {
+		name: 'Package 2',
+		amount: 200,         // €2.00 in cents
 		currency: 'eur',
-		interval: 'year',
+		interval: 'month',
 		intervalCount: 1,
 	},
 };
