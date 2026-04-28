@@ -1,25 +1,30 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import NavBar from '../../components/NavBar';
 import Footer from '../../components/Footer';
 import api from '../../api/axios';
-import { Package, Clock, Truck, CheckCircle, XCircle, ChevronRight, ShoppingBag, Loader2, RotateCcw } from 'lucide-react';
+import { Package, Clock, Truck, CheckCircle, XCircle, ChevronRight, ShoppingBag, Loader2, RotateCcw, AlertCircle, Banknote } from 'lucide-react';
+import PaymentMethodSelector from '../checkout/PaymentMethodSelector';
 
 const statusConfig = {
-	Processing: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Processing' },
-	Confirmed: { icon: CheckCircle, color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed' },
-	Shipped: { icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Shipped' },
-	Delivered: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Delivered' },
-	Sold: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Sold' },
-	Cancelled: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Cancelled' },
-	Rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Rejected' },
+	Processing:     { icon: Clock,        color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200',  label: 'Processing' },
+	Confirmed:      { icon: CheckCircle,  color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-200', label: 'Confirmed' },
+	Shipped:        { icon: Truck,        color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   label: 'Shipped' },
+	Delivered:      { icon: CheckCircle,  color: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-200',  label: 'Delivered' },
+	Sold:           { icon: CheckCircle,  color: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-200',  label: 'Sold' },
+	Cancelled:      { icon: XCircle,      color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-200',    label: 'Cancelled' },
+	Rejected:       { icon: XCircle,      color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-200',    label: 'Rejected' },
+	AwaitingPayment:{ icon: Banknote,     color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200',   label: 'Bank Transfer Pending' },
+	PaymentFailed:  { icon: AlertCircle,  color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-200',    label: 'Payment Failed' },
 };
 
 const OrdersPage = () => {
-	const [orders, setOrders] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
-	const navigate = useNavigate();
+	const [orders, setOrders]         = useState([]);
+	const [loading, setLoading]       = useState(true);
+	const [error, setError]           = useState(null);
+	const [retryIntentId, setRetryIntentId] = useState(null); // PaymentIntentId being retried
+	const navigate                    = useNavigate();
+	const [searchParams]              = useSearchParams();
 
 	useEffect(() => {
 		const fetchOrders = async () => {
@@ -40,7 +45,19 @@ const OrdersPage = () => {
 		fetchOrders();
 	}, [navigate]);
 
+	// Open retry modal when navigating from payment-failed email link (?retry=pi_xxx)
+	useEffect(() => {
+		const retryParam = searchParams.get('retry');
+		if (retryParam) setRetryIntentId(retryParam);
+	}, [searchParams]);
+
 	const getStatusInfo = (status) => statusConfig[status] || statusConfig.Processing;
+
+	// Sum all PaymentFailed orders that share the same PaymentIntentId
+	const getRetryTotal = (intentId) =>
+		orders
+			.filter((o) => o.PaymentIntentId === intentId && o.DeliveryStatus === 'PaymentFailed')
+			.reduce((sum, o) => sum + Number(o.TotalAmount), 0);
 
 	if (loading) {
 		return (
@@ -84,6 +101,17 @@ const OrdersPage = () => {
 							<p className='text-sm text-gray-500'>{orders.length} order{orders.length !== 1 ? 's' : ''}</p>
 						</div>
 					</div>
+
+					{/* Retry payment modal */}
+					{retryIntentId && (
+						<PaymentMethodSelector
+							isOpen={true}
+							onClose={() => setRetryIntentId(null)}
+							subtotal={getRetryTotal(retryIntentId)}
+							retryPaymentIntentId={retryIntentId}
+							onSuccess={() => setRetryIntentId(null)}
+						/>
+					)}
 
 					{orders.length === 0 ? (
 						<div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center'>
@@ -154,7 +182,28 @@ const OrdersPage = () => {
 															Rate products from this order
 														</p>
 													)}
-													{/* Amount + View Details row — always on its own line */}
+													{order.DeliveryStatus === 'AwaitingPayment' && (
+														<p className='text-xs text-blue-600 mt-1 flex items-center gap-1'>
+															<Banknote size={12} />
+															Bank transfer in progress u{2014} clears in 1u{2013}3 business days
+														</p>
+													)}
+													{order.DeliveryStatus === 'PaymentFailed' && (
+														<div className='mt-2 flex items-center gap-2 flex-wrap'>
+															<p className='text-xs text-red-600 flex items-center gap-1'>
+																<AlertCircle size={12} />
+																Bank transfer failed
+															</p>
+															<button
+																onClick={() => setRetryIntentId(order.PaymentIntentId)}
+																className='text-xs bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded-lg transition-colors flex items-center gap-1'
+															>
+																<RotateCcw size={11} />
+																Retry Payment
+															</button>
+														</div>
+													)}
+													{/* Amount + View Details row â€” always on its own line */}
 													<div className='flex items-center justify-between mt-2'>
 														<p className='text-base font-bold text-gray-900'>
 															&euro;{Number(order.TotalAmount).toFixed(2)}

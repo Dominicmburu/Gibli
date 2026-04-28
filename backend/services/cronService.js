@@ -7,6 +7,7 @@ import {
 	sendOrderAutoCancelledEmail,
 	sendRefundProcessedEmail,
 	sendAdminAlertEmail,
+	sendSepaOrderExpiredEmail,
 } from './emailService.js';
 
 const db = new DbHelper();
@@ -256,4 +257,50 @@ export function initCronJobs() {
 	});
 
 	console.log('[CRON] Chat auto-delete cron initialised (daily at 03:00).');
+
+	// ──────────────────────────────────────────────────────────────
+	// DAILY at 10:00 — SEPA PaymentFailed order cleanup (30-day rule)
+	// Finds PaymentFailed orders older than 30 days where the buyer
+	// never retried. Emails the buyer, restores stock, then deletes
+	// the order. Stock is NOT released earlier — the buyer has the
+	// full 30-day window to choose a new payment method.
+	// ──────────────────────────────────────────────────────────────
+	cron.schedule('0 10 * * *', async () => {
+		console.log('[CRON] Running SEPA PaymentFailed cleanup (30-day rule)...');
+		try {
+			const result  = await db.executeProcedure('GetExpiredFailedSepaOrders', { DaysOld: 30 });
+			const expired = result.recordset || [];
+
+			if (expired.length === 0) {
+				console.log('[CRON] No expired SEPA failed orders to clean up.');
+				return;
+			}
+
+			console.log(`[CRON] Cleaning up ${expired.length} expired SEPA failed order(s).`);
+
+			for (const order of expired) {
+				try {
+					// 1. Restore stock before deleting the order
+					await db.executeProcedure('RestoreOrderItemStock', { OrderId: order.OrderId });
+
+					// 2. Mark order as Cancelled (soft-delete so audit trail is preserved)
+					await db.executeProcedure('UpdateOrderStatusDirect', {
+						OrderId:       order.OrderId,
+						DeliveryStatus: 'Cancelled',
+					});
+
+					// 3. Email buyer after everything is safely done
+					await sendSepaOrderExpiredEmail(order.BuyerEmail, order.BuyerName, order.TotalAmount);
+
+					console.log(`[CRON] SEPA cleanup: cancelled order ${order.OrderId}, emailed ${order.BuyerEmail}`);
+				} catch (orderErr) {
+					console.error(`[CRON] SEPA cleanup failed for order ${order.OrderId}:`, orderErr.message);
+				}
+			}
+		} catch (err) {
+			console.error('[CRON] SEPA PaymentFailed cleanup job failed:', err);
+		}
+	});
+
+	console.log('[CRON] SEPA PaymentFailed cleanup cron initialised (daily at 10:00).');
 }

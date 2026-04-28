@@ -9,8 +9,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // Initialize Resend with your API key
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Your verified domain email
-const FROM_EMAIL = `Gibli <noreply@gibli.eu>`;
+const FROM_EMAIL  = `Gibli <noreply@gibli.eu>`;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'dominic@antprotocol.eu';
 
 export async function sendVerificationEmail(recipient, token) {
 	const verificationLink = `${process.env.FRONTEND_URL}/verify/${token}`;
@@ -938,7 +938,7 @@ export async function sendAdminAlertEmail(subject, bodyLines) {
 	try {
 		const { data, error } = await resend.emails.send({
 			from: FROM_EMAIL,
-			to: 'dominic@antprotocol.eu',
+			to: ADMIN_EMAIL,
 			subject: `⚠️ [Gibli Alert] ${subject}`,
 			html,
 		});
@@ -946,6 +946,305 @@ export async function sendAdminAlertEmail(subject, bodyLines) {
 		console.log('✅ Admin alert email sent:', data);
 	} catch (error) {
 		console.error('❌ Error sending admin alert email:', error);
+	}
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEPA PAYMENT LIFECYCLE EMAILS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Sent immediately after SEPA checkout.session.completed (mandate created).
+ * Bank settlement takes 1–3 business days — order is AwaitingPayment.
+ */
+export async function sendSepaOrderReceivedEmail(buyerEmail, buyerName, items, total, shippingOptions) {
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:680px;margin:0 auto;">
+	  <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:28px 32px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:22px;">Order Received — Bank Transfer in Progress</h2>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+	    <p>Hi <strong>${buyerName || 'Customer'}</strong>,</p>
+	    <p>Thank you for your order on <strong>Gibli</strong>! We've successfully received your order and your SEPA bank transfer is now being processed.</p>
+
+	    <div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;padding:16px 20px;margin:20px 0;">
+	      <p style="margin:0 0 6px;font-weight:bold;color:#1d4ed8;">What happens next?</p>
+	      <p style="margin:0;color:#374151;font-size:14px;">Your bank is transferring the funds to us. This typically takes <strong>1–3 business days</strong>. Once we confirm receipt of funds, we'll notify you and the seller will begin preparing your order.</p>
+	    </div>
+
+	    <p style="font-size:14px;color:#6b7280;">Your items are reserved for you while we wait for payment to clear.</p>
+
+	    ${generateBuyerItemTable(items, shippingOptions)}
+
+	    <div style="background:#f9fafb;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:right;">
+	      <span style="font-size:16px;font-weight:bold;color:#111827;">Order Total: €${Number(total).toFixed(2)}</span>
+	    </div>
+
+	    <p style="color:#6b7280;font-size:13px;margin-top:24px;">If you have any questions, reply to this email and our team will help you.<br/><strong>Gibli Support Team</strong></p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: '🏦 Order Received — Bank Transfer in Progress',
+			html,
+		});
+		if (error) { console.error('❌ SEPA order received email error:', error); return; }
+		console.log(`✅ SEPA order received email sent to ${buyerEmail}:`, data);
+	} catch (err) {
+		console.error('❌ SEPA order received email error:', err);
+	}
+}
+
+/**
+ * Sent when payment_intent.succeeded fires — bank has settled funds.
+ * Order is promoted from AwaitingPayment to Processing.
+ */
+export async function sendSepaPaymentConfirmedEmail(buyerEmail, buyerName, items, total, shippingOptions) {
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:680px;margin:0 auto;">
+	  <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 32px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:22px;">Payment Confirmed! Your Order Is Being Prepared</h2>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+	    <p>Hi <strong>${buyerName || 'Customer'}</strong>,</p>
+	    <p>Great news — your bank transfer has cleared and your payment has been <strong>successfully confirmed</strong>! The seller has been notified and is now preparing your order.</p>
+
+	    <div style="background:#ecfdf5;border-left:4px solid #10b981;border-radius:8px;padding:16px 20px;margin:20px 0;">
+	      <p style="margin:0 0 6px;font-weight:bold;color:#065f46;">Payment Confirmed ✓</p>
+	      <p style="margin:0;color:#374151;font-size:14px;">Your items are now being packed and will be shipped soon. You'll receive a shipping notification once your order is on its way.</p>
+	    </div>
+
+	    ${generateBuyerItemTable(items, shippingOptions)}
+
+	    <div style="background:#f9fafb;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:right;">
+	      <span style="font-size:16px;font-weight:bold;color:#111827;">Order Total: €${Number(total).toFixed(2)}</span>
+	    </div>
+
+	    <p style="color:#6b7280;font-size:13px;margin-top:24px;">Thank you for shopping with Gibli!<br/><strong>Gibli Support Team</strong></p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: '✅ Payment Confirmed! Your Order Is Being Prepared',
+			html,
+		});
+		if (error) { console.error('❌ SEPA payment confirmed email error:', error); return; }
+		console.log(`✅ SEPA payment confirmed email sent to ${buyerEmail}:`, data);
+	} catch (err) {
+		console.error('❌ SEPA payment confirmed email error:', err);
+	}
+}
+
+/**
+ * Sent when payment_intent.payment_failed fires.
+ * Includes a retry link so the buyer can pay with any method.
+ */
+export async function sendSepaPaymentFailedEmail(buyerEmail, buyerName, total, retryUrl) {
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:680px;margin:0 auto;">
+	  <div style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:28px 32px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:22px;">Payment Failed — Action Required</h2>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+	    <p>Hi <strong>${buyerName || 'Customer'}</strong>,</p>
+	    <p>Unfortunately, your SEPA bank transfer of <strong>€${Number(total).toFixed(2)}</strong> could not be processed. This can happen due to insufficient funds, a bank block, or an expired mandate.</p>
+
+	    <div style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:8px;padding:16px 20px;margin:20px 0;">
+	      <p style="margin:0 0 6px;font-weight:bold;color:#991b1b;">What should you do?</p>
+	      <p style="margin:0;color:#374151;font-size:14px;">Your order is on hold. You can retry with a different payment method — card, or a new SEPA transfer — using the button below. You have <strong>30 days</strong> to retry before the order is automatically cancelled and stock is released.</p>
+	    </div>
+
+	    <div style="text-align:center;margin:28px 0;">
+	      <a href="${retryUrl}" style="background:#1d4ed8;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:16px;display:inline-block;">Retry Payment →</a>
+	    </div>
+
+	    <p style="color:#6b7280;font-size:13px;margin-top:24px;">If you need help or believe this is a mistake, please contact us.<br/><strong>Gibli Support Team</strong></p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: '❌ Payment Failed — Please Retry Your Order',
+			html,
+		});
+		if (error) { console.error('❌ SEPA payment failed email error:', error); return; }
+		console.log(`✅ SEPA payment failed email sent to ${buyerEmail}:`, data);
+	} catch (err) {
+		console.error('❌ SEPA payment failed email error:', err);
+	}
+}
+
+/**
+ * Sent by the 30-day cleanup cron when a PaymentFailed order expires with no retry.
+ */
+export async function sendSepaOrderExpiredEmail(buyerEmail, buyerName, total) {
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:680px;margin:0 auto;">
+	  <div style="background:#6b7280;padding:28px 32px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:22px;">Your Order Has Been Cancelled</h2>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+	    <p>Hi <strong>${buyerName || 'Customer'}</strong>,</p>
+	    <p>Your order of <strong>€${Number(total).toFixed(2)}</strong> has been automatically cancelled because payment could not be completed within the 30-day window.</p>
+
+	    <div style="background:#f3f4f6;border-radius:8px;padding:16px 20px;margin:20px 0;">
+	      <p style="margin:0;color:#374151;font-size:14px;">No charge has been made to your account. The reserved stock has been released back to the seller. You're welcome to place a new order at any time.</p>
+	    </div>
+
+	    <a href="${process.env.FRONTEND_URL}" style="background:#0057B8;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block;margin-top:8px;">Browse Gibli Again →</a>
+
+	    <p style="color:#6b7280;font-size:13px;margin-top:28px;">Questions? We're here to help.<br/><strong>Gibli Support Team</strong></p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from: FROM_EMAIL,
+			to: buyerEmail,
+			subject: '⚠️ Your Gibli Order Has Been Cancelled',
+			html,
+		});
+		if (error) { console.error('❌ SEPA order expired email error:', error); return; }
+		console.log(`✅ SEPA order expired email sent to ${buyerEmail}:`, data);
+	} catch (err) {
+		console.error('❌ SEPA order expired email error:', err);
+	}
+}
+
+// ═══════════════════════════════════════════════════════════
+// DISPUTE ALERT EMAIL  (card + SEPA)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Sent to ADMIN_EMAIL when charge.dispute.created or
+ * charge.dispute.closed fires.
+ *
+ * @param {'created'|'closed'} event
+ * @param {object} dispute  — Stripe dispute object
+ * @param {Array}  orders   — rows from GetOrdersByPaymentIntentId (may be empty)
+ */
+export async function sendDisputeAlertEmail(event, dispute, orders = []) {
+	const isCreated  = event === 'created';
+	const headerBg   = isCreated ? '#B91C1C' : (dispute.status === 'won' ? '#15803d' : '#92400e');
+	const headline   = isCreated
+		? '🚨 Payment Dispute Opened'
+		: dispute.status === 'won'
+			? '✅ Dispute Won — Payout Restored'
+			: '❌ Dispute Lost — Charge Reversed';
+
+	const amount     = `€${((dispute.amount || 0) / 100).toFixed(2)}`;
+	const reasonMap  = {
+		fraudulent:           'Fraudulent',
+		not_recognized:       'Not recognised by cardholder',
+		product_not_received: 'Product not received',
+		product_unacceptable: 'Product unacceptable',
+		credit_not_processed: 'Credit not processed',
+		duplicate:            'Duplicate charge',
+		subscription_canceled:'Subscription cancelled',
+		unrecognized:         'Unrecognised',
+	};
+	const reason     = reasonMap[dispute.reason] || dispute.reason || 'Unknown';
+	const dueDate    = dispute.evidence_due_by
+		? new Date(dispute.evidence_due_by * 1000).toUTCString()
+		: 'N/A';
+	const stripeUrl  = `https://dashboard.stripe.com/disputes/${dispute.id}`;
+
+	const deliveredStatuses = ['Delivered', 'Sold'];
+	const payoutAlreadyPaid  = orders.some((o) => o.PayoutStatus === 'Paid');
+	const anyDelivered       = orders.some((o) => deliveredStatuses.includes(o.DeliveryStatus));
+
+	const payoutWarning = payoutAlreadyPaid
+		? `<div style="background:#fef2f2;border:2px solid #B91C1C;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+			<strong style="color:#B91C1C;">⚠️ PAYOUT ALREADY RELEASED</strong>
+			<p style="margin:6px 0 0;color:#7f1d1d;font-size:13px;">The seller payout for this order was already marked as Paid before the dispute arrived. You may need to recover funds manually from the seller.</p>
+		   </div>`
+		: anyDelivered
+			? `<div style="background:#fefce8;border:1px solid #ca8a04;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+				<strong style="color:#92400e;">📦 Order Was Delivered</strong>
+				<p style="margin:6px 0 0;color:#78350f;font-size:13px;">Payout is frozen. Submit tracking evidence via the Stripe dashboard before the deadline.</p>
+			   </div>`
+			: '';
+
+	const orderRows = orders.length
+		? orders.map((o) => {
+			const statusColor   = deliveredStatuses.includes(o.DeliveryStatus) ? '#15803d' : '#d97706';
+			const payoutColor   = o.PayoutStatus === 'Paid' ? '#B91C1C' : o.PayoutStatus === 'Disputed' ? '#d97706' : '#374151';
+			const trackingCell  = o.TrackingUrl
+				? `<a href="${o.TrackingUrl}" style="color:#2563eb;font-size:12px;">${o.TrackingNumber || 'Track'}</a>`
+				: o.TrackingNumber || '—';
+			return `
+			<tr>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-family:monospace;">${o.OrderId}</td>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${o.BuyerEmail || o.BuyerName || '—'}</td>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${o.SellerBusinessName || o.SellerEmail || '—'}</td>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;font-weight:600;color:${statusColor};">${o.DeliveryStatus}</td>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;color:${payoutColor};">${o.PayoutStatus || '—'}</td>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${trackingCell}</td>
+				<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:right;">€${Number(o.TotalAmount).toFixed(2)}</td>
+			</tr>`;}).join('')
+		: `<tr><td colspan="7" style="padding:12px;text-align:center;color:#6b7280;font-size:13px;">No matching orders found in database</td></tr>`;
+
+	const html = `
+	<div style="font-family:Arial,sans-serif;color:#333;max-width:720px;margin:0 auto;">
+	  <div style="background:${headerBg};padding:24px 32px;border-radius:12px 12px 0 0;">
+	    <h2 style="color:#fff;margin:0;font-size:22px;">${headline}</h2>
+	    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Gibli Marketplace — immediate action may be required</p>
+	  </div>
+	  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:28px 32px;">
+
+	    <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:8px;overflow:hidden;margin-bottom:24px;">
+	      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;width:180px;">Dispute ID</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:13px;">${dispute.id}</td></tr>
+	      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;">Payment Intent</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:13px;">${dispute.payment_intent || '—'}</td></tr>
+	      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;">Disputed Amount</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#B91C1C;">${amount}</td></tr>
+	      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;">Reason</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;">${reason}</td></tr>
+	      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;">Status</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;">${dispute.status}</td></tr>
+	      ${isCreated ? `<tr><td style="padding:10px 14px;font-weight:600;color:#B91C1C;">Evidence Due</td><td style="padding:10px 14px;font-weight:700;color:#B91C1C;">${dueDate}</td></tr>` : ''}
+	    </table>
+
+	    ${payoutWarning}
+	    <h3 style="margin:0 0 12px;font-size:16px;">Affected Orders</h3>
+	    <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:8px;overflow:hidden;margin-bottom:24px;">
+	      <thead>
+	        <tr style="background:#e5e7eb;">
+	          <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Order ID</th>
+	          <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Buyer</th>
+	          <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Seller</th>
+	          <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Status</th>
+	          <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Payout</th>
+	          <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Tracking</th>
+	          <th style="padding:8px 12px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Amount</th>
+	        </tr>
+	      </thead>
+	      <tbody>${orderRows}</tbody>
+	    </table>
+
+	    <a href="${stripeUrl}" style="background:#635BFF;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block;margin-bottom:24px;">
+	      Open in Stripe Dashboard →
+	    </a>
+
+	    <p style="color:#6b7280;font-size:12px;margin:0;">Sent automatically by Gibli — ${new Date().toUTCString()}</p>
+	  </div>
+	</div>`;
+
+	try {
+		const { data, error } = await resend.emails.send({
+			from:    FROM_EMAIL,
+			to:      ADMIN_EMAIL,
+			subject: `${isCreated ? '🚨 [Dispute Opened]' : dispute.status === 'won' ? '✅ [Dispute Won]' : '❌ [Dispute Lost]'} ${amount} — ${reason}`,
+			html,
+		});
+		if (error) { console.error('❌ Dispute alert email error:', error); return; }
+		console.log(`✅ Dispute alert email sent (${event}):`, data);
+	} catch (err) {
+		console.error('❌ Dispute alert email error:', err);
 	}
 }
 

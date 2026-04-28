@@ -258,7 +258,9 @@ subscriptionRouter.post('/create-checkout', authenticateToken, async (req, res) 
 			},
 		};
 
-		// 6. If seller already has a paid active subscription, set trial to keep old plan until it expires
+		// 6. If seller already has a paid active subscription, set trial to keep old plan until it expires.
+		//    The old subscription is NOT cancelled here — that only happens in the webhook after the
+		//    new payment is confirmed, preventing the seller from losing their plan on checkout abandonment.
 		const isCurrentlyOnPaidPlan =
 			currentSub &&
 			currentSub.PlanCode !== 'free' &&
@@ -268,27 +270,20 @@ subscriptionRouter.post('/create-checkout', authenticateToken, async (req, res) 
 		if (isCurrentlyOnPaidPlan) {
 			const currentPeriodEnd = new Date(currentSub.CurrentPeriodEnd);
 			const trialEnd = Math.floor(currentPeriodEnd.getTime() / 1000);
+			const now      = Math.floor(Date.now() / 1000);
+
+			sessionParams.metadata.previousStripeSubId = currentSub.StripeSubscriptionId;
 
 			sessionParams.subscription_data = {
-				trial_end: trialEnd,
+				// Only set trial_end if the current period hasn't already expired
+				...(trialEnd > now ? { trial_end: trialEnd } : {}),
 				metadata: {
 					sellerId,
 					planId: String(plan.PlanId),
 					planCode: plan.PlanCode,
+					previousStripeSubId: currentSub.StripeSubscriptionId,
 				},
 			};
-
-			// Mark the current Stripe subscription to cancel at period end
-			await stripe.subscriptions.update(currentSub.StripeSubscriptionId, {
-				cancel_at_period_end: true,
-			});
-
-			// Update our DB to reflect cancelling status
-			await db.executeProcedure('UpdateSellerSubscription', {
-				SubscriptionId: currentSub.SubscriptionId,
-				Status: 'cancelling',
-				CancelAtPeriodEnd: 1,
-			});
 		} else {
 			sessionParams.subscription_data = {
 				metadata: {
@@ -381,7 +376,7 @@ subscriptionRouter.post('/activate-session', authenticateToken, async (req, res)
 		if (session.status !== 'complete') {
 			return res.status(400).json({ message: 'Payment not yet completed.' });
 		}
-		if (session.metadata?.sellerId !== sellerId) {
+		if (String(session.metadata?.sellerId) !== String(sellerId)) {
 			return res.status(403).json({ message: 'Session does not belong to this account.' });
 		}
 

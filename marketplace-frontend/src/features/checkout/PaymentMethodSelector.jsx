@@ -1,10 +1,10 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { CreditCard, Building2, X, Loader2, ShieldCheck, Info, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 
-// ── Fee helpers (mirrors backend calcFeeCents) ──────────────────────────────
+// â”€â”€ Fee helpers (mirrors backend calcFeeCents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const STRIPE_RATE  = 0.015;
 const STRIPE_FIXED = 0.25;
 const SEPA_RATE    = 0.008;
@@ -23,7 +23,7 @@ function calcFee(subtotal, method) {
 	return parseFloat(((subtotal + STRIPE_FIXED) / (1 - STRIPE_RATE) - subtotal).toFixed(2));
 }
 
-// ── PayPal logo SVG ──────────────────────────────────────────────────────────
+// â”€â”€ PayPal logo SVG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PayPalLogo = () => (
 	<svg viewBox='0 0 101 32' className='h-6 w-auto' fill='none' xmlns='http://www.w3.org/2000/svg'>
 		<path d='M12.237 2.785H5.687a.872.872 0 0 0-.863.737L2.154 23.85a.524.524 0 0 0 .518.606h3.322a.872.872 0 0 0 .863-.738l.655-4.154a.872.872 0 0 1 .863-.737h2.073c4.314 0 6.804-2.087 7.451-6.222.293-1.81.012-3.23-.832-4.226-.928-1.09-2.573-1.594-4.83-1.594z' fill='#253B80'/>
@@ -38,7 +38,7 @@ const PayPalLogo = () => (
 	</svg>
 );
 
-// ── SEPA bank icon ───────────────────────────────────────────────────────────
+// â”€â”€ SEPA bank icon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SepaIcon = () => (
 	<div className='flex items-center gap-1'>
 		<Building2 size={22} className='text-green-600' />
@@ -46,19 +46,23 @@ const SepaIcon = () => (
 	</div>
 );
 
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PaymentMethodSelector
 // Props:
-//   isOpen       – boolean
-//   onClose      – () => void
-//   subtotal     – number (order total in EUR, without fee)
-//   draftId      – string
-//   onSuccess    – () => void  (called after successful payment of any kind)
-// ────────────────────────────────────────────────────────────────────────────
-const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }) => {
+//   isOpen       â€“ boolean
+//   onClose      â€“ () => void
+//   subtotal     â€“ number (order total in EUR, without fee)
+//   draftId      â€“ string
+//   onSuccess    â€“ () => void  (called after successful payment of any kind)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// retryPaymentIntentId: when provided, the selector is in retry mode â€” calls
+// /checkout/create-retry-session instead of /checkout/create-session.
+const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, retryPaymentIntentId, onSuccess }) => {
 	const navigate  = useNavigate();
-	const [selected, setSelected]       = useState(null); // 'card' | 'sepa' | 'paypal'
+	const [selected, setSelected]           = useState(null); // 'card' | 'sepa' | 'paypal'
 	const [stripeLoading, setStripeLoading] = useState(false);
+	const [paypalLoading, setPaypalLoading] = useState(false);
+	const isRetryMode = !!retryPaymentIntentId;
 
 	if (!isOpen) return null;
 
@@ -66,27 +70,50 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 	const sepaFee   = calcFee(subtotal, 'sepa');
 	const paypalFee = calcFee(subtotal, 'paypal');
 
-	// ── Stripe (card or SEPA) ─────────────────────────────────────────────
+	// â”€â”€ Stripe (card or SEPA) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	const handleStripePay = async (method) => {
 		setStripeLoading(true);
 		try {
-			const res = await api.post('/checkout/create-session', { draftId, paymentMethod: method });
+			let url;
+			if (isRetryMode) {
+				const res = await api.post('/checkout/create-retry-session', {
+					originalPaymentIntentId: retryPaymentIntentId,
+					paymentMethod: method,
+				});
+				url = res.data.url;
+			} else {
+				const res = await api.post('/checkout/create-session', { draftId, paymentMethod: method });
+				url = res.data.url;
+			}
 			toast.success('Redirecting to secure payment...');
-			window.location.href = res.data.url;
+			window.location.href = url;
 		} catch (err) {
 			toast.error(err.response?.data?.message || 'Failed to initiate payment. Please try again.');
 			setStripeLoading(false);
 		}
 	};
 
-	// ── Method card config ────────────────────────────────────────────────
+	// ── PayPal ────────────────────────────────────────────────────────────────────
+	const handlePaypalPay = async () => {
+		setPaypalLoading(true);
+		try {
+			const res = await api.post('/checkout/create-paypal-order', { draftId });
+			if (!res.data.approveUrl) throw new Error('No approval URL returned from PayPal.');
+			window.location.href = res.data.approveUrl;
+		} catch (err) {
+			toast.error(err.response?.data?.message || 'Failed to initiate PayPal payment. Please try again.');
+			setPaypalLoading(false);
+		}
+	};
+
+	// ── Method card config ────────────────────────────────────────────────────────
 	const methods = [
 		{
 			id:          'card',
 			label:       'Credit / Debit Card',
-			description: 'Visa, Mastercard, Amex — secured by Stripe',
+			description: 'Visa, Mastercard, Amex â€” secured by Stripe',
 			fee:         cardFee,
-			feeNote:     '1.5% + €0.25 processing fee',
+			feeNote:     '1.5% + â‚¬0.25 processing fee',
 			total:       subtotal + cardFee,
 			icon:        <CreditCard size={22} className='text-blue-600' />,
 			border:      'border-blue-200',
@@ -98,7 +125,7 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 			label:       'SEPA Direct Debit',
 			description: 'Debit from any European bank account',
 			fee:         sepaFee,
-			feeNote:     '0.8% processing fee (max €5.00)',
+			feeNote:     '0.8% processing fee (max â‚¬5.00)',
 			total:       subtotal + sepaFee,
 			icon:        <SepaIcon />,
 			border:      'border-green-200',
@@ -110,13 +137,13 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 			label:       'PayPal',
 			description: 'Pay securely with your PayPal account',
 			fee:         paypalFee,
-			feeNote:     '3.49% + €0.49 processing fee',
+			feeNote:     '3.49% + â‚¬0.49 processing fee',
 			total:       subtotal + paypalFee,
 			icon:        <PayPalLogo />,
 			border:      'border-yellow-200',
 			selectedBg:  'bg-yellow-50 border-yellow-500',
 			feeBadge:    'bg-yellow-100 text-yellow-700',
-			comingSoon:  true,
+			disabled:    isRetryMode, // PayPal retry not supported — buyer must use Stripe
 		},
 	];
 
@@ -133,9 +160,11 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 				{/* Header */}
 				<div className='flex items-center justify-between p-5 border-b border-gray-100'>
 					<div>
-						<h2 className='text-lg font-bold text-gray-900'>Choose Payment Method</h2>
+						<h2 className='text-lg font-bold text-gray-900'>
+							{isRetryMode ? 'Retry Payment' : 'Choose Payment Method'}
+						</h2>
 						<p className='text-sm text-gray-500 mt-0.5'>
-							Order total: <span className='font-semibold text-gray-800'>€{subtotal.toFixed(2)}</span>
+							{isRetryMode ? 'Retry with a different method' : 'Order total:'}{' '}<span className='font-semibold text-gray-800'>€{subtotal.toFixed(2)}</span>
 						</p>
 					</div>
 					<button
@@ -163,15 +192,15 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 							<div key={method.id}>
 								<button
 									type='button'
-									onClick={() => !method.comingSoon && setSelected(method.id)}
-									disabled={stripeLoading || method.comingSoon}
+									onClick={() => !method.disabled && setSelected(method.id)}
+									disabled={stripeLoading || paypalLoading || method.disabled}
 									className={`w-full text-left rounded-xl border-2 p-4 transition-all focus:outline-none ${
-										method.comingSoon
+										method.disabled
 											? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
 											: isSelected
 												? method.selectedBg
 												: `border-gray-200 hover:${method.border} hover:bg-gray-50`
-									} ${stripeLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+									} ${(stripeLoading || paypalLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
 								>
 									<div className='flex items-start justify-between gap-3'>
 										{/* Left: icon + labels */}
@@ -192,11 +221,11 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 											</div>
 										</div>
 
-										{/* Right: fee badge or coming soon */}
+										{/* Right: fee badge or disabled note */}
 										<div className='flex-shrink-0 text-right'>
-											{method.comingSoon ? (
+											{method.disabled ? (
 												<span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500'>
-													<Clock size={11} /> Coming Soon
+													<Clock size={11} /> Not available for retry
 												</span>
 											) : (
 												<span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${method.feeBadge}`}>
@@ -206,7 +235,7 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 										</div>
 									</div>
 
-									{/* Expanded: fee breakdown + action */}
+									{/* Expanded: fee breakdown */}
 									{isSelected && (
 										<div className='mt-3 pt-3 border-t border-gray-200 space-y-2'>
 											<div className='flex justify-between text-xs text-gray-600'>
@@ -225,7 +254,7 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 									)}
 								</button>
 
-								{/* Stripe card — pay button */}
+								{/* Card — pay button */}
 								{isSelected && method.id === 'card' && (
 									<button
 										onClick={() => handleStripePay('card')}
@@ -258,6 +287,21 @@ const PaymentMethodSelector = ({ isOpen, onClose, subtotal, draftId, onSuccess }
 											)}
 										</button>
 									</div>
+								)}
+
+								{/* PayPal — pay button */}
+								{isSelected && method.id === 'paypal' && (
+									<button
+										onClick={handlePaypalPay}
+										disabled={paypalLoading}
+										className='mt-2 w-full bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-900 font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2'
+									>
+										{paypalLoading ? (
+											<><Loader2 size={18} className='animate-spin' /> Redirecting to PayPal...</>
+										) : (
+											<>Pay €{method.total.toFixed(2)} with <PayPalLogo /></>
+										)}
+									</button>
 								)}
 
 							</div>

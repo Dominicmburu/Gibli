@@ -51,10 +51,12 @@ orderRouter.post('/received', authenticateToken, async (req, res) => {
 			Role: 'Seller',
 		});
 		const orders = result.recordset;
-		const formattedOrders = orders.map((order) => ({
-			...order,
-			OrderItems: JSON.parse(order.OrderItems || '[]'),
-		}));
+		const formattedOrders = orders
+			.filter((order) => order.DeliveryStatus !== 'AwaitingPayment')
+			.map((order) => ({
+				...order,
+				OrderItems: JSON.parse(order.OrderItems || '[]'),
+			}));
 		return res.status(200).json({
 			success: true,
 			message: 'Fetched all orders received by seller',

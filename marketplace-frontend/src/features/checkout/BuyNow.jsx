@@ -32,7 +32,7 @@ const BuyNow = ({ product }) => {
 			const data = res.data || [];
 			setAddresses(data);
 			const def  = data.find((a) => a.IsDefault === 1 || a.IsDefault === true);
-			setSelectedAddressId(def ? def.ShippingId : data[0]?.ShippingId ?? null);
+			setSelectedAddressId(def ? String(def.ShippingId) : data[0] ? String(data[0].ShippingId) : null);
 		} catch {
 			setAddresses([]);
 		} finally {
@@ -40,7 +40,7 @@ const BuyNow = ({ product }) => {
 		}
 	};
 
-	const selectedAddress = addresses.find((a) => a.ShippingId === selectedAddressId) || null;
+	const selectedAddress = addresses.find((a) => String(a.ShippingId) === String(selectedAddressId)) || null;
 
 	const handleBuyNowClick = () => {
 		if (!isLoggedIn) {

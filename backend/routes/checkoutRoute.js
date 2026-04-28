@@ -12,6 +12,11 @@ import {
 	sendSubscriptionConfirmationEmail,
 	sendSubscriptionPaymentFailedEmail,
 	sendSubscriptionExpiredEmail,
+	sendSepaOrderReceivedEmail,
+	sendSepaPaymentConfirmedEmail,
+	sendSepaPaymentFailedEmail,
+	sendAdminAlertEmail,
+	sendDisputeAlertEmail,
 } from '../services/emailService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -79,7 +84,7 @@ async function getPaypalToken() {
 	return data.access_token;
 }
 
-async function createPaypalOrder(totalEur, description) {
+async function createPaypalOrder(totalEur, description, draftId) {
 	const token = await getPaypalToken();
 	const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders`, {
 		method: 'POST',
@@ -97,7 +102,7 @@ async function createPaypalOrder(totalEur, description) {
 				brand_name: 'Gibli Marketplace',
 				landing_page: 'NO_PREFERENCE',
 				user_action: 'PAY_NOW',
-				return_url: `${process.env.FRONTEND_URL}/payment/success`,
+				return_url: `${process.env.FRONTEND_URL}/payment/success?paypal=true&draftId=${encodeURIComponent(draftId)}`,
 				cancel_url: `${process.env.FRONTEND_URL}/payment/fail`,
 			},
 		}),
@@ -140,18 +145,60 @@ const getAddressForItem = (item, defaultAddress, perItem) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// SHARED ORDER FULFILMENT (used by Stripe webhook + PayPal capture)
+// SHARED ORDER FULFILMENT (used by Stripe webhook + PayPal capture + activate-session)
+//
+// The draft is marked as used BEFORE the order creation loop so that
+// webhook retries cannot create duplicate orders. Email failures are
+// isolated with individual try-catch blocks so they never abort
+// fulfillment after payment has been received.
 // ─────────────────────────────────────────────────────────────
 
-async function fulfillOrder({ draftId, userId, paymentId }) {
-	const draftResult = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
-	const draftRow = draftResult?.recordset?.[0];
-	if (!draftRow) throw new Error(`No checkout draft found for ID: ${draftId}`);
+async function fulfillOrder({ draftId, paymentId, deliveryStatus = 'Processing', preClaimedDraft = null }) {
+	let draftRow = preClaimedDraft;
 
-	const cartItems        = JSON.parse(draftRow.CartItemsJson);
-	const shippingOptions  = JSON.parse(draftRow.ShippingOptionsJson);
+	if (!draftRow) {
+		// Atomic claim: UPDATE WHERE IsUsed=0 + SELECT in one SP.
+		// Only one concurrent caller gets the draft row back — the other gets an empty
+		// recordset and returns early. This eliminates the webhook vs activate-session race.
+		const claimResult = await db.executeProcedure('ClaimCheckoutDraft', { DraftId: draftId });
+		draftRow = claimResult?.recordset?.[0];
+
+		if (!draftRow) {
+			// Either already claimed by a concurrent call, or draft doesn't exist.
+			// Check orders by PI to distinguish "race lost" from "genuine missing draft".
+			if (paymentId) {
+				const existing = await db.executeProcedure('GetOrdersByPaymentIntentId', {
+					PaymentIntentId: paymentId,
+					StatusFilter:    null,
+				});
+				if (existing.recordset?.length > 0) {
+					console.log(`ℹ️ fulfillOrder: draft ${draftId} already claimed — orders exist for PI ${paymentId}`);
+					return;
+				}
+			}
+			throw new Error(`No checkout draft found for ID: ${draftId}`);
+		}
+	}
+
+	const isAwaitingPayment  = deliveryStatus === 'AwaitingPayment';
+	const buyerId            = draftRow.BuyerId;
+	const cartItems          = JSON.parse(draftRow.CartItemsJson);
+	const shippingOptions    = JSON.parse(draftRow.ShippingOptionsJson);
 	const shippingAddressRaw = JSON.parse(draftRow.ShippingAddressJson);
 	const { defaultAddress, perItem } = parseShippingAddress(shippingAddressRaw);
+
+	// Re-validate stock at fulfillment time to catch concurrent purchases
+	for (const item of cartItems) {
+		const stockCheck = await db.executeProcedure('GetProductForCheckout', {
+			ProductId: item.ProductId,
+			UserId:    buyerId,
+			Quantity:  item.Quantity,
+		});
+		const stock = stockCheck.recordset?.[0];
+		if (!stock || stock.InStock < item.Quantity) {
+			throw new Error(`Insufficient stock for product ${item.ProductId} at time of fulfillment`);
+		}
+	}
 
 	const groupKey = (item) => {
 		const addr = getAddressForItem(item, defaultAddress, perItem);
@@ -166,8 +213,8 @@ async function fulfillOrder({ draftId, userId, paymentId }) {
 	}, {});
 
 	for (const items of Object.values(grouped)) {
-		const sellerId     = items[0].SellerId;
-		const orderAddress = getAddressForItem(items[0], defaultAddress, perItem);
+		const sellerId        = items[0].SellerId;
+		const orderAddress    = getAddressForItem(items[0], defaultAddress, perItem);
 		const orderShippingId = orderAddress?.ShippingId;
 
 		const sellerOrderTotal = items.reduce((sum, i) => {
@@ -176,60 +223,86 @@ async function fulfillOrder({ draftId, userId, paymentId }) {
 			return sum + totalPrice;
 		}, 0);
 
+		// Embed ShippingType in each item so payment_intent.succeeded can rebuild shippingOptions
+		const enrichedItems = items.map((i) => ({
+			...i,
+			ShippingType: shippingOptions?.[i.ProductId] || 'standard',
+		}));
+
 		const newOrderId = uuidv4();
 		await db.executeProcedure('CreateOrder', {
 			OrderId:         newOrderId,
-			BuyerId:         userId,
+			BuyerId:         buyerId,
 			SellerId:        sellerId,
 			ShippingId:      orderShippingId,
 			TotalAmount:     sellerOrderTotal,
 			PaymentIntentId: paymentId,
-			DeliveryStatus:  'Processing',
-			CartItemsJson:   JSON.stringify(items),
+			DeliveryStatus:  deliveryStatus,
+			CartItemsJson:   JSON.stringify(enrichedItems),
 		});
 
-		try {
-			const commResult      = await db.executeProcedure('GetSellerCommissionRate', { SellerId: sellerId });
-			const commissionRate  = commResult.recordset?.[0]?.CommissionRate ?? 0.05;
-			const subscriptionId  = commResult.recordset?.[0]?.SubscriptionId ?? null;
-			const commissionAmount = Number((sellerOrderTotal * commissionRate).toFixed(2));
-			const netAmount        = Number((sellerOrderTotal - commissionAmount).toFixed(2));
+		// Commission + seller notification are deferred for SEPA — triggered by payment_intent.succeeded
+		if (!isAwaitingPayment) {
+			try {
+				const commResult      = await db.executeProcedure('GetSellerCommissionRate', { SellerId: sellerId });
+				const commissionRate  = commResult.recordset?.[0]?.CommissionRate ?? 0.05;
+				const subscriptionId  = commResult.recordset?.[0]?.SubscriptionId ?? null;
+				const commissionAmount = Number((sellerOrderTotal * commissionRate).toFixed(2));
+				const netAmount        = Number((sellerOrderTotal - commissionAmount).toFixed(2));
 
-			await db.executeProcedure('RecordCommission', {
-				OrderId:          newOrderId,
-				SellerId:         sellerId,
-				SubscriptionId:   subscriptionId,
-				GrossAmount:      sellerOrderTotal,
-				CommissionRate:   commissionRate,
-				CommissionAmount: commissionAmount,
-				NetAmount:        netAmount,
-			});
-		} catch (commErr) {
-			console.error('⚠️ Failed to record commission for order', newOrderId, commErr.message);
+				await db.executeProcedure('RecordCommission', {
+					OrderId:          newOrderId,
+					SellerId:         sellerId,
+					SubscriptionId:   subscriptionId,
+					GrossAmount:      sellerOrderTotal,
+					CommissionRate:   commissionRate,
+					CommissionAmount: commissionAmount,
+					NetAmount:        netAmount,
+				});
+			} catch (commErr) {
+				console.error('⚠️ Failed to record commission for order', newOrderId, commErr.message);
+			}
+
+			try {
+				const seller = await db.executeProcedure('GetSellerDetails', { SellerId: sellerId });
+				await sendSellerOrderNotificationEmail(
+					seller.recordset[0].Email,
+					seller.recordset[0].BusinessName,
+					enrichedItems,
+					shippingOptions,
+					orderAddress,
+					sellerOrderTotal
+				);
+			} catch (emailErr) {
+				console.error('⚠️ Failed to send seller notification email for order', newOrderId, emailErr.message);
+			}
 		}
-
-		const seller = await db.executeProcedure('GetSellerDetails', { SellerId: sellerId });
-		await sendSellerOrderNotificationEmail(
-			seller.recordset[0].Email,
-			seller.recordset[0].BusinessName,
-			items,
-			shippingOptions,
-			orderAddress,
-			sellerOrderTotal
-		);
 	}
 
-	await db.executeProcedure('MarkCheckoutDraftAsUsed', { DraftId: draftId });
-	await db.executeProcedure('ClearUserCart', { UserId: userId });
+	await db.executeProcedure('ClearUserCart', { UserId: buyerId });
 
-	const buyer = await db.executeProcedure('GetUserById', { UserId: userId });
-	await sendBuyerOrderConfirmationEmail(
-		buyer.recordset[0].Email,
-		buyer.recordset[0].Username,
-		cartItems,
-		draftRow.TotalAmount,
-		shippingOptions
-	);
+	try {
+		const buyer = await db.executeProcedure('GetUserById', { UserId: buyerId });
+		if (isAwaitingPayment) {
+			await sendSepaOrderReceivedEmail(
+				buyer.recordset[0].Email,
+				buyer.recordset[0].Username,
+				cartItems,
+				draftRow.TotalAmount,
+				shippingOptions
+			);
+		} else {
+			await sendBuyerOrderConfirmationEmail(
+				buyer.recordset[0].Email,
+				buyer.recordset[0].Username,
+				cartItems,
+				draftRow.TotalAmount,
+				shippingOptions
+			);
+		}
+	} catch (emailErr) {
+		console.error('⚠️ Failed to send buyer email:', emailErr.message);
+	}
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -288,23 +361,29 @@ function buildStripeLineItems(cartItems, shippingOptions, method) {
 checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 	const { draftId, paymentMethod = 'card' } = req.body;
 
-	const result = await db.executeProcedure('GetCheckoutDraft', { draftId });
-	const draft  = result.recordset?.[0];
-	if (!draft) return res.status(404).json({ message: 'Checkout draft not found.' });
-
-	const cartItems          = JSON.parse(draft.CartItemsJson);
-	const shippingOptions    = JSON.parse(draft.ShippingOptionsJson);
-	const shippingAddressRaw = JSON.parse(draft.ShippingAddressJson);
-	const { defaultAddress } = parseShippingAddress(shippingAddressRaw);
-
-	if (!cartItems?.length || !shippingOptions || !defaultAddress) {
-		return res.status(400).json({ message: 'Missing cart, shipping, or address details.' });
-	}
-
 	try {
-		const lineItemsWithFee = buildStripeLineItems(cartItems, shippingOptions, paymentMethod);
+		const result = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
+		const draft  = result.recordset?.[0];
+		if (!draft) return res.status(404).json({ message: 'Checkout draft not found.' });
 
-		const paymentMethods = paymentMethod === 'sepa' ? ['sepa_debit'] : ['card'];
+		if (String(draft.BuyerId) !== String(req.user.id)) {
+			return res.status(403).json({ message: 'Forbidden.' });
+		}
+		if (draft.SessionId) {
+			return res.status(409).json({ message: 'A payment session is already in progress for this order. Please go back and start a new checkout.' });
+		}
+
+		const cartItems          = JSON.parse(draft.CartItemsJson);
+		const shippingOptions    = JSON.parse(draft.ShippingOptionsJson);
+		const shippingAddressRaw = JSON.parse(draft.ShippingAddressJson);
+		const { defaultAddress } = parseShippingAddress(shippingAddressRaw);
+
+		if (!cartItems?.length || !shippingOptions || !defaultAddress) {
+			return res.status(400).json({ message: 'Missing cart, shipping, or address details.' });
+		}
+
+		const lineItemsWithFee = buildStripeLineItems(cartItems, shippingOptions, paymentMethod);
+		const paymentMethods   = paymentMethod === 'sepa' ? ['sepa_debit'] : ['card'];
 
 		const session = await stripe.checkout.sessions.create({
 			payment_method_types: paymentMethods,
@@ -313,9 +392,10 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 			success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
 			cancel_url:  `${process.env.FRONTEND_URL}/payment/fail`,
 			metadata: {
-				userId:           cartItems[0].UserId,
-				checkoutDraftId:  draftId,
-				shippingAddressId: defaultAddress.ShippingId,
+				userId:            String(req.user.id),
+				checkoutDraftId:   draftId,
+				shippingAddressId: String(defaultAddress.ShippingId),
+				paymentMethod,
 			},
 		});
 
@@ -335,31 +415,38 @@ checkoutRouter.post('/create-session', authenticateToken, async (req, res) => {
 checkoutRouter.post('/create-paypal-order', authenticateToken, async (req, res) => {
 	const { draftId } = req.body;
 
-	const result = await db.executeProcedure('GetCheckoutDraft', { draftId });
-	const draft  = result.recordset?.[0];
-	if (!draft) return res.status(404).json({ message: 'Checkout draft not found.' });
-
-	const cartItems       = JSON.parse(draft.CartItemsJson);
-	const shippingOptions = JSON.parse(draft.ShippingOptionsJson);
-
-	const subtotalCents = cartItems.reduce((sum, item) => {
-		const shipType   = shippingOptions[item.ProductId];
-		const totalPrice = shipType === 'express' ? item.ExpressTotalPrice : item.TotalPrice;
-		return sum + Math.round(totalPrice * 100) * item.Quantity;
-	}, 0);
-
-	const feeCents    = calcFeeCents(subtotalCents, 'paypal');
-	const totalCents  = subtotalCents + feeCents;
-	const totalEur    = totalCents / 100;
-
 	try {
-		const paypalOrder = await createPaypalOrder(totalEur, 'Gibli Marketplace Order');
-		// Store PayPal order ID in the draft's SessionId field for idempotency checks
+		const result = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
+		const draft  = result.recordset?.[0];
+		if (!draft) return res.status(404).json({ message: 'Checkout draft not found.' });
+
+		if (String(draft.BuyerId) !== String(req.user.id)) {
+			return res.status(403).json({ message: 'Forbidden.' });
+		}
+		if (draft.SessionId) {
+			return res.status(409).json({ message: 'A payment session is already in progress for this order. Please go back and start a new checkout.' });
+		}
+
+		const cartItems       = JSON.parse(draft.CartItemsJson);
+		const shippingOptions = JSON.parse(draft.ShippingOptionsJson);
+
+		const subtotalCents = cartItems.reduce((sum, item) => {
+			const shipType   = shippingOptions[item.ProductId];
+			const totalPrice = shipType === 'express' ? item.ExpressTotalPrice : item.TotalPrice;
+			return sum + Math.round(totalPrice * 100) * item.Quantity;
+		}, 0);
+
+		const feeCents   = calcFeeCents(subtotalCents, 'paypal');
+		const totalCents = subtotalCents + feeCents;
+		const totalEur   = totalCents / 100;
+
+		const paypalOrder = await createPaypalOrder(totalEur, 'Gibli Marketplace Order', draftId);
 		await db.executeProcedure('InsertSessionIdToDraft', {
 			DraftId:   draftId,
 			SessionId: paypalOrder.id,
 		});
-		return res.json({ paypalOrderId: paypalOrder.id });
+		const approveUrl = paypalOrder.links?.find((l) => l.rel === 'approve')?.href;
+		return res.json({ paypalOrderId: paypalOrder.id, approveUrl });
 	} catch (err) {
 		console.error('Error creating PayPal order:', err);
 		res.status(500).json({ message: 'Failed to create PayPal order.' });
@@ -369,7 +456,8 @@ checkoutRouter.post('/create-paypal-order', authenticateToken, async (req, res) 
 // ─────────────────────────────────────────────────────────────
 // POST /checkout/capture-paypal-order
 // Body: { paypalOrderId, draftId }
-// Captures payment then creates marketplace orders
+// Verifies paypalOrderId matches the one stored on the draft,
+// captures payment, then creates marketplace orders.
 // ─────────────────────────────────────────────────────────────
 checkoutRouter.post('/capture-paypal-order', authenticateToken, async (req, res) => {
 	const { paypalOrderId, draftId } = req.body;
@@ -380,13 +468,24 @@ checkoutRouter.post('/capture-paypal-order', authenticateToken, async (req, res)
 	}
 
 	try {
+		const draftResult = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
+		const draft = draftResult.recordset?.[0];
+		if (!draft) return res.status(404).json({ message: 'Checkout draft not found.' });
+
+		if (String(draft.BuyerId) !== String(userId)) {
+			return res.status(403).json({ message: 'Forbidden.' });
+		}
+		if (draft.SessionId !== paypalOrderId) {
+			return res.status(400).json({ message: 'PayPal order ID does not match this checkout session.' });
+		}
+
 		const captureData = await capturePaypalOrder(paypalOrderId);
 
 		if (captureData.status !== 'COMPLETED') {
 			return res.status(400).json({ message: `PayPal capture status: ${captureData.status}` });
 		}
 
-		await fulfillOrder({ draftId, userId, paymentId: paypalOrderId });
+		await fulfillOrder({ draftId, paymentId: paypalOrderId });
 
 		return res.json({ success: true });
 	} catch (err) {
@@ -407,6 +506,8 @@ checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 	}
 
 	try {
+		// Re-fetch every product from the DB so prices are authoritative, not client-supplied
+		const sanitizedCartItems = [];
 		for (const item of cartItems) {
 			const productResult = await db.executeProcedure('GetProductForCheckout', {
 				ProductId: item.ProductId,
@@ -422,12 +523,14 @@ checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 			}
 			if (product.InStock < item.Quantity) {
 				return res.status(400).json({
-					message: `Only ${product.InStock} unit${product.InStock !== 1 ? 's' : ''} of "${item.ProductName}" are available.`,
+					message: `Only ${product.InStock} unit${product.InStock !== 1 ? 's' : ''} of "${product.ProductName}" are available.`,
 					code: 'INSUFFICIENT_STOCK',
 					productId: item.ProductId,
 					available: product.InStock,
 				});
 			}
+			// Only trust Quantity from the client; all prices come from the database
+			sanitizedCartItems.push({ ...product, Quantity: item.Quantity });
 		}
 
 		const computeTotal = (items, opts) => {
@@ -445,16 +548,16 @@ checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 		};
 
 		const draftId     = v4();
-		const totalAmount = computeTotal(cartItems, shippingOptions);
+		const totalAmount = computeTotal(sanitizedCartItems, shippingOptions);
 
 		await db.executeProcedure('CreateCheckoutDraft', {
-			DraftId:            draftId,
+			DraftId:             draftId,
 			BuyerId,
-			CartItemsJson:      JSON.stringify(cartItems),
+			CartItemsJson:       JSON.stringify(sanitizedCartItems),
 			ShippingOptionsJson: JSON.stringify(shippingOptions),
 			ShippingAddressJson: JSON.stringify(shippingAddress),
-			TotalAmount:        totalAmount,
-			SessionId:          null,
+			TotalAmount:         totalAmount,
+			SessionId:           null,
 		});
 
 		return res.status(201).json({ draftId, totalAmount });
@@ -467,7 +570,6 @@ checkoutRouter.post('/draft', authenticateToken, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // POST /checkout/buy-now
 // Creates a draft for a single product and returns { draftId, totalAmount }.
-// The frontend then shows the payment method selector.
 // ─────────────────────────────────────────────────────────────
 checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 	const { productId, quantity = 1, shippingType = 'standard', shippingId } = req.body;
@@ -486,6 +588,11 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 
 		if (product.InStock < quantity) {
 			return res.status(400).json({ message: `Insufficient stock. Only ${product.InStock} units available.` });
+		}
+
+		// Enforce server-side: sellers cannot purchase their own products
+		if (String(product.SellerId) === String(userId)) {
+			return res.status(403).json({ message: 'You cannot purchase your own products.' });
 		}
 
 		// Resolve shipping address
@@ -509,7 +616,7 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 		const cartItems      = [product];
 		const shippingOptions = { [productId]: shippingType };
 
-		const shipFee    = shippingType === 'express'
+		const shipFee     = shippingType === 'express'
 			? Number(product.ExpressShippingPrice || product.ShippingPrice || 0)
 			: Number(product.ShippingPrice || 0);
 		const totalAmount = Number((Number(product.Price) * quantity + shipFee).toFixed(2));
@@ -529,6 +636,133 @@ checkoutRouter.post('/buy-now', authenticateToken, async (req, res) => {
 	} catch (err) {
 		console.error('Buy Now error:', err);
 		res.status(500).json({ message: 'Failed to process buy now request.' });
+	}
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /checkout/activate-session
+// Client-side fallback called by the success page in case the Stripe
+// webhook was delayed or never fired. Idempotent — if the webhook
+// already fulfilled the order (draft IsUsed=1), GetCheckoutDraft
+// returns null and we return { fulfilled: true, alreadyProcessed: true }.
+// Body: { sessionId }
+// ─────────────────────────────────────────────────────────────
+checkoutRouter.post('/activate-session', authenticateToken, async (req, res) => {
+	const { sessionId } = req.body;
+	const userId = req.user.id;
+
+	if (!sessionId) return res.status(400).json({ message: 'sessionId is required.' });
+
+	try {
+		const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+		if (session.mode !== 'payment') {
+			return res.status(400).json({ message: 'Not a product checkout session.' });
+		}
+		if (session.status !== 'complete') {
+			return res.status(400).json({ message: 'Payment not yet completed.' });
+		}
+		if (String(session.metadata?.userId) !== String(userId)) {
+			return res.status(403).json({ message: 'Session does not belong to this account.' });
+		}
+
+		// Retry sessions have no draft — they re-use existing orders with a new PI
+		if (session.metadata?.isRetry === 'true') {
+			await handleRetryCheckoutComplete(session);
+			const deliveryStatus = session.metadata.paymentMethod === 'sepa' ? 'AwaitingPayment' : 'Processing';
+			return res.json({ fulfilled: true, alreadyProcessed: false, deliveryStatus });
+		}
+
+		const draftId     = session.metadata.checkoutDraftId;
+		const draftResult = await db.executeProcedure('GetCheckoutDraft', { DraftId: draftId });
+		const draft       = draftResult.recordset?.[0];
+
+		if (!draft) {
+			// Draft consumed — verify orders actually exist before calling it done
+			const piId = session.payment_intent;
+			if (piId) {
+				const existing = await db.executeProcedure('GetOrdersByPaymentIntentId', {
+					PaymentIntentId: piId,
+					StatusFilter:    null,
+				});
+				if (existing.recordset?.length > 0) {
+					const deliveryStatus = existing.recordset[0]?.DeliveryStatus || 'Processing';
+					return res.json({ fulfilled: true, alreadyProcessed: true, deliveryStatus });
+				}
+			}
+			// Draft consumed but no orders found — payment received but fulfillment failed
+			console.error(`⚠️ activate-session: draft ${draftId} consumed but no orders found for PI ${session.payment_intent}`);
+			return res.status(409).json({
+				message: 'Your payment was received but something went wrong creating your order. Please contact support and quote your session ID.',
+				sessionId,
+			});
+		}
+
+		const isSepa         = session.payment_method_types?.includes('sepa_debit');
+		const deliveryStatus = isSepa ? 'AwaitingPayment' : 'Processing';
+
+		await fulfillOrder({ draftId, paymentId: session.payment_intent, deliveryStatus });
+
+		return res.json({ fulfilled: true, alreadyProcessed: false, deliveryStatus });
+	} catch (err) {
+		console.error('Error activating checkout session:', err);
+		res.status(500).json({ message: 'Failed to activate session.' });
+	}
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /checkout/create-retry-session
+// Creates a new Stripe checkout session for orders stuck in
+// PaymentFailed status (SEPA transfer rejected).  The buyer may
+// choose a different payment method (card or SEPA).
+// Body: { originalPaymentIntentId, paymentMethod: 'card' | 'sepa' }
+// Returns: { url }
+// ─────────────────────────────────────────────────────────────
+checkoutRouter.post('/create-retry-session', authenticateToken, async (req, res) => {
+	const { originalPaymentIntentId, paymentMethod = 'card' } = req.body;
+	const userId = req.user.id;
+
+	if (!originalPaymentIntentId) return res.status(400).json({ message: 'originalPaymentIntentId is required.' });
+
+	try {
+		const ordersResult = await db.executeProcedure('GetOrdersByPaymentIntentId', {
+			PaymentIntentId: originalPaymentIntentId,
+			StatusFilter:    'PaymentFailed',
+		});
+		const orders = ordersResult.recordset || [];
+
+		if (!orders.length) return res.status(404).json({ message: 'No payment-failed orders found for this payment.' });
+		if (String(orders[0].BuyerId) !== String(userId)) return res.status(403).json({ message: 'Forbidden.' });
+
+		const subtotalCents  = Math.round(orders.reduce((sum, o) => sum + Number(o.TotalAmount), 0) * 100);
+		const feeCents       = calcFeeCents(subtotalCents, paymentMethod);
+		const paymentMethods = paymentMethod === 'sepa' ? ['sepa_debit'] : ['card'];
+
+		const session = await stripe.checkout.sessions.create({
+			payment_method_types: paymentMethods,
+			mode: 'payment',
+			line_items: [{
+				price_data: {
+					currency:     'eur',
+					product_data: { name: 'Order Retry Payment — Gibli' },
+					unit_amount:  subtotalCents + feeCents,
+				},
+				quantity: 1,
+			}],
+			success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+			cancel_url:  `${process.env.FRONTEND_URL}/orders`,
+			metadata: {
+				isRetry:               'true',
+				originalPaymentIntentId,
+				userId:                String(userId),
+				paymentMethod,
+			},
+		});
+
+		return res.json({ url: session.url });
+	} catch (err) {
+		console.error('Error creating retry session:', err);
+		res.status(500).json({ message: 'Failed to create retry session.' });
 	}
 });
 
@@ -569,16 +803,49 @@ export const stripeWebhook = async (req, res) => {
 		return res.status(200).end();
 	}
 
+	// SEPA: bank cleared the funds — promote AwaitingPayment orders to Processing
+	if (event.type === 'payment_intent.succeeded') {
+		await handlePaymentIntentSucceeded(event.data.object);
+		return res.status(200).end();
+	}
+
+	// SEPA: bank payment ultimately failed — cancel AwaitingPayment orders
+	if (event.type === 'payment_intent.payment_failed') {
+		await handlePaymentIntentFailed(event.data.object);
+		return res.status(200).end();
+	}
+
+	// Dispute opened (card or SEPA) — freeze payout, alert admin
+	if (event.type === 'charge.dispute.created') {
+		await handleChargeDisputeCreated(event.data.object);
+		return res.status(200).end();
+	}
+
+	// Dispute resolved — unfreeze or write off payout, alert admin
+	if (event.type === 'charge.dispute.closed') {
+		await handleChargeDisputeClosed(event.data.object);
+		return res.status(200).end();
+	}
+
 	// One-time payment checkout
 	if (event.type === 'checkout.session.completed') {
 		const session = event.data.object;
 		try {
-			const draftId = session.metadata.checkoutDraftId;
-			const userId  = session.metadata.userId;
+			// Retry payment — re-uses existing orders with a new payment intent
+			if (session.metadata?.isRetry === 'true') {
+				await handleRetryCheckoutComplete(session);
+				return res.status(200).send('✅ Retry checkout processed');
+			}
 
+			const draftId = session.metadata.checkoutDraftId;
 			console.log('🧾 Webhook received, draftId:', draftId);
 
-			await fulfillOrder({ draftId, userId, paymentId: session.payment_intent });
+			// SEPA Direct Debit: mandate created immediately but funds take 1-3 days to clear.
+			// Orders start as AwaitingPayment and are promoted by payment_intent.succeeded.
+			const isSepa         = session.payment_method_types?.includes('sepa_debit');
+			const deliveryStatus = isSepa ? 'AwaitingPayment' : 'Processing';
+
+			await fulfillOrder({ draftId, paymentId: session.payment_intent, deliveryStatus });
 
 			res.status(200).send('✅ Orders inserted successfully');
 		} catch (err) {
@@ -591,12 +858,377 @@ export const stripeWebhook = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// PAYMENT INTENT HANDLERS (SEPA deferred settlement)
+// ─────────────────────────────────────────────────────────────
+
+async function handlePaymentIntentSucceeded(paymentIntent) {
+	try {
+		const ordersResult = await db.executeProcedure('GetOrdersByPaymentIntentId', {
+			PaymentIntentId: paymentIntent.id,
+			StatusFilter:    'AwaitingPayment',
+		});
+		const orders = ordersResult.recordset || [];
+
+		if (!orders.length) {
+			// Card payments also fire payment_intent.succeeded — safe to ignore here
+			console.log(`ℹ️ payment_intent.succeeded: no AwaitingPayment orders for ${paymentIntent.id}`);
+			return;
+		}
+
+		// Fraud check via Stripe charge outcome
+		try {
+			const charges = await stripe.charges.list({ payment_intent: paymentIntent.id, limit: 1 });
+			const charge  = charges.data?.[0];
+			if (charge?.outcome?.risk_level === 'elevated' || charge?.outcome?.risk_level === 'highest') {
+				await sendAdminAlertEmail(
+					`High-risk SEPA payment — manual review required`,
+					[
+						`Risk level: ${charge.outcome.risk_level}`,
+						`Risk score: ${charge.outcome.risk_score ?? 'N/A'}`,
+						`Payment intent: ${paymentIntent.id}`,
+						`Amount: €${((paymentIntent.amount_received || 0) / 100).toFixed(2)}`,
+						`Buyer: ${orders[0]?.BuyerEmail || 'unknown'}`,
+						`Orders: ${orders.map((o) => o.OrderId).join(', ')}`,
+					]
+				);
+			}
+		} catch (fraudErr) {
+			console.error('⚠️ Fraud check failed:', fraudErr.message);
+		}
+
+		// Promote AwaitingPayment → Processing
+		await db.executeProcedure('PromoteAwaitingOrders', { PaymentIntentId: paymentIntent.id });
+		console.log(`✅ Promoted ${orders.length} order(s) to Processing for PI ${paymentIntent.id}`);
+
+		// For each order: record commission + email seller
+		for (const order of orders) {
+			const orderItems      = JSON.parse(order.CartItemsJson || '[]');
+			const shippingOptions = orderItems.reduce((acc, item) => {
+				acc[item.ProductId] = item.ShippingType || 'standard';
+				return acc;
+			}, {});
+
+			try {
+				const commResult      = await db.executeProcedure('GetSellerCommissionRate', { SellerId: order.SellerId });
+				const commissionRate  = commResult.recordset?.[0]?.CommissionRate ?? 0.05;
+				const subscriptionId  = commResult.recordset?.[0]?.SubscriptionId ?? null;
+				const commissionAmount = Number((order.TotalAmount * commissionRate).toFixed(2));
+				const netAmount        = Number((order.TotalAmount - commissionAmount).toFixed(2));
+				await db.executeProcedure('RecordCommission', {
+					OrderId:          order.OrderId,
+					SellerId:         order.SellerId,
+					SubscriptionId:   subscriptionId,
+					GrossAmount:      order.TotalAmount,
+					CommissionRate:   commissionRate,
+					CommissionAmount: commissionAmount,
+					NetAmount:        netAmount,
+				});
+			} catch (commErr) {
+				console.error('⚠️ Commission recording failed for order', order.OrderId, commErr.message);
+			}
+
+			try {
+				const address = {
+					City:            order.ShippingCity,
+					Country:         order.ShippingCountry,
+					StateOrProvince: order.ShippingStateOrProvince || '',
+					FullName:        order.ShippingFullName,
+					AddressLine1:    order.ShippingAddressLine1,
+					PostalCode:      order.ShippingPostalCode,
+				};
+				await sendSellerOrderNotificationEmail(
+					order.SellerEmail,
+					order.SellerBusinessName,
+					orderItems,
+					shippingOptions,
+					address,
+					order.TotalAmount
+				);
+			} catch (emailErr) {
+				console.error('⚠️ Seller notification email failed for order', order.OrderId, emailErr.message);
+			}
+		}
+
+		// Email buyer: payment confirmed
+		try {
+			const allItems        = orders.flatMap((o) => JSON.parse(o.CartItemsJson || '[]'));
+			const totalAmount     = orders.reduce((sum, o) => sum + Number(o.TotalAmount), 0);
+			const shippingOptions = allItems.reduce((acc, item) => {
+				acc[item.ProductId] = item.ShippingType || 'standard';
+				return acc;
+			}, {});
+			await sendSepaPaymentConfirmedEmail(
+				orders[0].BuyerEmail,
+				orders[0].BuyerName,
+				allItems,
+				totalAmount,
+				shippingOptions
+			);
+		} catch (emailErr) {
+			console.error('⚠️ Buyer payment confirmed email failed:', emailErr.message);
+		}
+	} catch (err) {
+		console.error('❌ handlePaymentIntentSucceeded error:', err);
+	}
+}
+
+async function handlePaymentIntentFailed(paymentIntent) {
+	try {
+		const ordersResult = await db.executeProcedure('GetOrdersByPaymentIntentId', {
+			PaymentIntentId: paymentIntent.id,
+			StatusFilter:    'AwaitingPayment',
+		});
+		const orders = ordersResult.recordset || [];
+
+		if (!orders.length) {
+			console.log(`ℹ️ payment_intent.payment_failed: no AwaitingPayment orders for ${paymentIntent.id}`);
+			return;
+		}
+
+		// Mark as PaymentFailed — stock held for 30 days pending buyer retry
+		await db.executeProcedure('SetPaymentFailedOrders', { PaymentIntentId: paymentIntent.id });
+		console.log(`⚠️ Marked ${orders.length} order(s) as PaymentFailed for PI ${paymentIntent.id}`);
+
+		// Email buyer with retry link
+		try {
+			const totalAmount = orders.reduce((sum, o) => sum + Number(o.TotalAmount), 0);
+			const retryUrl    = `${process.env.FRONTEND_URL}/orders?retry=${encodeURIComponent(paymentIntent.id)}`;
+			await sendSepaPaymentFailedEmail(
+				orders[0].BuyerEmail,
+				orders[0].BuyerName,
+				totalAmount,
+				retryUrl
+			);
+		} catch (emailErr) {
+			console.error('⚠️ Payment failed email could not be sent:', emailErr.message);
+		}
+	} catch (err) {
+		console.error('❌ handlePaymentIntentFailed error:', err);
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// DISPUTE HANDLERS  (card + SEPA)
+// ─────────────────────────────────────────────────────────────
+
+async function handleChargeDisputeCreated(dispute) {
+	try {
+		const piId = dispute.payment_intent;
+
+		// Find affected orders (null StatusFilter = all statuses)
+		const ordersResult = piId
+			? await db.executeProcedure('GetOrdersByPaymentIntentId', { PaymentIntentId: piId, StatusFilter: null })
+			: { recordset: [] };
+		const orders = ordersResult.recordset || [];
+
+		// Freeze seller payout so it cannot be paid out while dispute is open.
+		// Returns previous status — if 'Paid', funds are already with the seller.
+		if (piId) {
+			try {
+				const freezeResult  = await db.executeProcedure('FreezeSellerPayoutByPI', {
+					PaymentIntentId: piId,
+					DisputeId:       dispute.id,
+				});
+				const frozenPayouts = freezeResult.recordset || [];
+				const alreadyPaid   = frozenPayouts.some((p) => p.PrevStatus === 'Paid');
+				if (alreadyPaid) {
+					console.error(`🚨 Dispute ${dispute.id}: payout was already PAID before dispute — manual seller recovery needed`);
+				}
+				// Merge payout status back into orders for the email
+				for (const o of orders) {
+					const match = frozenPayouts.find((p) => p.PayoutId);
+					if (match) o.PayoutStatus = match.PrevStatus;
+				}
+				console.log(`⚠️ Seller payout frozen for dispute ${dispute.id} (${frozenPayouts.length} payout(s), PI: ${piId})`);
+			} catch (freezeErr) {
+				console.error('⚠️ Failed to freeze seller payout:', freezeErr.message);
+			}
+		}
+
+		// Alert admin immediately
+		await sendDisputeAlertEmail('created', dispute, orders);
+
+		console.log(`⚠️ Dispute opened: ${dispute.id} — reason: ${dispute.reason} — ${orders.length} order(s) affected`);
+	} catch (err) {
+		console.error('❌ handleChargeDisputeCreated error:', err);
+	}
+}
+
+async function handleChargeDisputeClosed(dispute) {
+	try {
+		const piId    = dispute.payment_intent;
+		const outcome = dispute.status === 'won' ? 'won' : 'lost';
+
+		const ordersResult = piId
+			? await db.executeProcedure('GetOrdersByPaymentIntentId', { PaymentIntentId: piId, StatusFilter: null })
+			: { recordset: [] };
+		const orders = ordersResult.recordset || [];
+
+		if (piId) {
+			try {
+				await db.executeProcedure('UnfreezeSellerPayoutByPI', {
+					PaymentIntentId: piId,
+					DisputeId:       dispute.id,
+					Outcome:         outcome,
+				});
+				console.log(`ℹ️ Dispute ${dispute.id} closed (${outcome}) — payout updated`);
+			} catch (unfreezeErr) {
+				console.error('⚠️ Failed to unfreeze seller payout:', unfreezeErr.message);
+			}
+		}
+
+		// Alert admin with outcome
+		await sendDisputeAlertEmail('closed', dispute, orders);
+
+		console.log(`ℹ️ Dispute closed: ${dispute.id} — outcome: ${outcome}`);
+	} catch (err) {
+		console.error('❌ handleChargeDisputeClosed error:', err);
+	}
+}
+
+// Called when a buyer completes a retry checkout session after SEPA failure.
+// For SEPA retry: updates orders to AwaitingPayment + new PI, sends bank-transfer email.
+// For card retry: updates orders to Processing + new PI, records commission, emails all parties.
+async function handleRetryCheckoutComplete(session) {
+	try {
+		const { originalPaymentIntentId, userId, paymentMethod } = session.metadata || {};
+		const newPaymentIntentId = session.payment_intent;
+		const isSepa             = paymentMethod === 'sepa';
+
+		const ordersResult = await db.executeProcedure('GetOrdersByPaymentIntentId', {
+			PaymentIntentId: originalPaymentIntentId,
+			StatusFilter:    'PaymentFailed',
+		});
+		const orders = ordersResult.recordset || [];
+
+		if (!orders.length) {
+			console.log(`ℹ️ Retry checkout: no PaymentFailed orders for ${originalPaymentIntentId}`);
+			return;
+		}
+		if (String(orders[0].BuyerId) !== String(userId)) {
+			console.error(`⚠️ Retry checkout: userId ${userId} does not own orders for PI ${originalPaymentIntentId}`);
+			return;
+		}
+
+		// Fraud check
+		if (newPaymentIntentId) {
+			try {
+				const charges = await stripe.charges.list({ payment_intent: newPaymentIntentId, limit: 1 });
+				const charge  = charges.data?.[0];
+				if (charge?.outcome?.risk_level === 'elevated' || charge?.outcome?.risk_level === 'highest') {
+					await sendAdminAlertEmail(
+						`High-risk retry payment — manual review required`,
+						[
+							`Risk level: ${charge.outcome.risk_level}`,
+							`Payment intent: ${newPaymentIntentId}`,
+							`Original PI: ${originalPaymentIntentId}`,
+							`Buyer: ${orders[0].BuyerEmail}`,
+						]
+					);
+				}
+			} catch (fraudErr) {
+				console.error('⚠️ Fraud check failed for retry:', fraudErr.message);
+			}
+		}
+
+		const newDeliveryStatus = isSepa ? 'AwaitingPayment' : 'Processing';
+
+		await db.executeProcedure('RetryOrderPayment', {
+			OriginalPaymentIntentId: originalPaymentIntentId,
+			NewPaymentIntentId:      newPaymentIntentId,
+			NewDeliveryStatus:       newDeliveryStatus,
+			BuyerId:                 String(userId),
+		});
+
+		if (isSepa) {
+			// payment_intent.succeeded handles commission + seller email when funds clear
+			try {
+				const allItems        = orders.flatMap((o) => JSON.parse(o.CartItemsJson || '[]'));
+				const totalAmount     = orders.reduce((sum, o) => sum + Number(o.TotalAmount), 0);
+				const shippingOptions = allItems.reduce((acc, item) => {
+					acc[item.ProductId] = item.ShippingType || 'standard';
+					return acc;
+				}, {});
+				await sendSepaOrderReceivedEmail(orders[0].BuyerEmail, orders[0].BuyerName, allItems, totalAmount, shippingOptions);
+			} catch (emailErr) {
+				console.error('⚠️ SEPA retry received email failed:', emailErr.message);
+			}
+		} else {
+			// Card: immediate commission + seller + buyer emails
+			for (const order of orders) {
+				const orderItems      = JSON.parse(order.CartItemsJson || '[]');
+				const shippingOptions = orderItems.reduce((acc, item) => {
+					acc[item.ProductId] = item.ShippingType || 'standard';
+					return acc;
+				}, {});
+
+				try {
+					const commResult      = await db.executeProcedure('GetSellerCommissionRate', { SellerId: order.SellerId });
+					const commissionRate  = commResult.recordset?.[0]?.CommissionRate ?? 0.05;
+					const subscriptionId  = commResult.recordset?.[0]?.SubscriptionId ?? null;
+					const commissionAmount = Number((order.TotalAmount * commissionRate).toFixed(2));
+					const netAmount        = Number((order.TotalAmount - commissionAmount).toFixed(2));
+					await db.executeProcedure('RecordCommission', {
+						OrderId:          order.OrderId,
+						SellerId:         order.SellerId,
+						SubscriptionId:   subscriptionId,
+						GrossAmount:      order.TotalAmount,
+						CommissionRate:   commissionRate,
+						CommissionAmount: commissionAmount,
+						NetAmount:        netAmount,
+					});
+				} catch (commErr) {
+					console.error('⚠️ Commission failed for retry order', order.OrderId, commErr.message);
+				}
+
+				try {
+					const address = {
+						City:            order.ShippingCity,
+						Country:         order.ShippingCountry,
+						StateOrProvince: order.ShippingStateOrProvince || '',
+						FullName:        order.ShippingFullName,
+						AddressLine1:    order.ShippingAddressLine1,
+						PostalCode:      order.ShippingPostalCode,
+					};
+					await sendSellerOrderNotificationEmail(
+						order.SellerEmail,
+						order.SellerBusinessName,
+						orderItems,
+						shippingOptions,
+						address,
+						order.TotalAmount
+					);
+				} catch (emailErr) {
+					console.error('⚠️ Seller email failed for retry order', order.OrderId, emailErr.message);
+				}
+			}
+
+			try {
+				const allItems        = orders.flatMap((o) => JSON.parse(o.CartItemsJson || '[]'));
+				const totalAmount     = orders.reduce((sum, o) => sum + Number(o.TotalAmount), 0);
+				const shippingOptions = allItems.reduce((acc, item) => {
+					acc[item.ProductId] = item.ShippingType || 'standard';
+					return acc;
+				}, {});
+				await sendBuyerOrderConfirmationEmail(orders[0].BuyerEmail, orders[0].BuyerName, allItems, totalAmount, shippingOptions);
+			} catch (emailErr) {
+				console.error('⚠️ Buyer confirmation email failed for retry:', emailErr.message);
+			}
+		}
+
+		console.log(`✅ Retry complete — original PI ${originalPaymentIntentId} → new PI ${newPaymentIntentId} (${newDeliveryStatus})`);
+	} catch (err) {
+		console.error('❌ handleRetryCheckoutComplete error:', err);
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
 // SUBSCRIPTION WEBHOOK HANDLERS
 // ─────────────────────────────────────────────────────────────
 
 async function handleSubscriptionCheckoutComplete(session) {
 	try {
-		const { sellerId, planId, planCode } = session.metadata || {};
+		const { sellerId, planId, planCode, previousStripeSubId } = session.metadata || {};
 		if (!sellerId || !planId) {
 			console.error('⚠️ Subscription checkout missing metadata:', session.metadata);
 			return;
@@ -613,6 +1245,20 @@ async function handleSubscriptionCheckoutComplete(session) {
 		if (existingCheck.recordset?.length) {
 			console.log(`ℹ️ Webhook: subscription ${stripeSub.id} already activated — skipping.`);
 			return;
+		}
+
+		// Cancel the previous plan only after the new payment is confirmed
+		if (previousStripeSubId) {
+			try {
+				await stripe.subscriptions.update(previousStripeSubId, { cancel_at_period_end: true });
+				await db.executeProcedure('UpdateSellerSubscriptionByStripeId', {
+					StripeSubscriptionId: previousStripeSubId,
+					Status:               'cancelling',
+					CancelAtPeriodEnd:    1,
+				});
+			} catch (cancelErr) {
+				console.error('⚠️ Could not cancel previous subscription:', cancelErr.message);
+			}
 		}
 
 		const currentPeriodStart = new Date(stripeSub.current_period_start * 1000);
@@ -637,7 +1283,7 @@ async function handleSubscriptionCheckoutComplete(session) {
 		if (session.customer) {
 			try {
 				await db.executeProcedure('UpdateSellerStripeCustomerId', {
-					SellerId:        sellerId,
+					SellerId:         sellerId,
 					StripeCustomerId: session.customer,
 				});
 			} catch (custErr) {
@@ -802,5 +1448,53 @@ async function handleSubscriptionUpdated(stripeSub) {
 		console.error('❌ handleSubscriptionUpdated error:', err);
 	}
 }
+
+// ─────────────────────────────────────────────────────────────
+// PAYPAL WEBHOOK  (PAYMENT.CAPTURE.COMPLETED)
+//
+// Safety net: if the buyer closes the tab after PayPal approval
+// the client-side capture-paypal-order call never fires.
+// PayPal sends this event ~seconds after capture regardless.
+// ClaimCheckoutDraftBySessionId is atomic — whichever path runs
+// first claims the draft; the other gets an empty result and exits.
+// ─────────────────────────────────────────────────────────────
+
+async function handlePaypalCaptureCompleted(capture) {
+	try {
+		// The PayPal order ID is the SessionId we stored on the draft.
+		// It lives under supplementary_data.related_ids.order_id on the capture resource.
+		const paypalOrderId = capture.supplementary_data?.related_ids?.order_id;
+		if (!paypalOrderId) {
+			console.error('⚠️ PayPal capture webhook: no order_id in supplementary_data', JSON.stringify(capture).slice(0, 300));
+			return;
+		}
+
+		const claimResult = await db.executeProcedure('ClaimCheckoutDraftBySessionId', { SessionId: paypalOrderId });
+		const draftRow    = claimResult?.recordset?.[0];
+
+		if (!draftRow) {
+			// Client-side capture already claimed the draft — nothing to do
+			console.log(`ℹ️ PayPal webhook: draft already claimed for order ${paypalOrderId}`);
+			return;
+		}
+
+		await fulfillOrder({ draftId: draftRow.DraftId, paymentId: paypalOrderId, preClaimedDraft: draftRow });
+		console.log(`✅ PayPal webhook: order ${paypalOrderId} fulfilled via PAYMENT.CAPTURE.COMPLETED`);
+	} catch (err) {
+		console.error('❌ handlePaypalCaptureCompleted error:', err);
+	}
+}
+
+export const paypalWebhook = async (req, res) => {
+	const event = req.body;
+
+	if (event?.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
+		await handlePaypalCaptureCompleted(event.resource);
+	} else {
+		console.log(`ℹ️ PayPal webhook: ignored event type ${event?.event_type}`);
+	}
+
+	res.status(200).end();
+};
 
 export default checkoutRouter;

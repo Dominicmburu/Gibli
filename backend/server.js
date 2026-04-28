@@ -8,7 +8,7 @@ import categoryRouter from './routes/categoryRoutes.js';
 import sellerRouter from './routes/sellerRoutes.js';
 import productRouter from './routes/productRoutes.js';
 import cartRouter from './routes/cartRoutes.js';
-import checkoutRouter, { stripeWebhook } from './routes/checkoutRoute.js';
+import checkoutRouter, { stripeWebhook, paypalWebhook } from './routes/checkoutRoute.js';
 import wishlistRouter from './routes/wishListRoutes.js';
 import storeRouter from './routes/storeRoutes.js';
 import shippingRouter from './routes/shippingRoutes.js';
@@ -35,7 +35,10 @@ app.use(cookieParser());
 
 app.post('/checkout/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 
-app.use(express.json()); // for parsing JSON requests
+app.use(express.json());
+
+// PayPal sends JSON (not raw) so register after express.json()
+app.post('/checkout/paypal-webhook', paypalWebhook);
 app.use((req, res, next) => {
 	console.log(`[${req.method}] ${req.url}`);
 	console.log('Incoming body:', req.body);
