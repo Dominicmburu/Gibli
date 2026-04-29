@@ -7,7 +7,7 @@ import { useAuth } from '../../utils/useAuth';
 import PaymentMethodSelector from './PaymentMethodSelector';
 
 const BuyNow = ({ product }) => {
-	const { isLoggedIn, userInfo } = useAuth();
+	const { isLoggedIn, userInfo, loading: authLoading } = useAuth();
 	const isOwnProduct = product?.SellerId && userInfo?.role === 'Seller' && userInfo?.id === product.SellerId;
 
 	const [showModal, setShowModal]         = useState(false);
@@ -43,6 +43,7 @@ const BuyNow = ({ product }) => {
 	const selectedAddress = addresses.find((a) => String(a.ShippingId) === String(selectedAddressId)) || null;
 
 	const handleBuyNowClick = () => {
+		if (authLoading) return; // Auth check still in flight — ignore the click
 		if (!isLoggedIn) {
 			toast.error('Please log in to continue with your purchase.');
 			navigate('/login');
@@ -118,7 +119,7 @@ const BuyNow = ({ product }) => {
 		<>
 			<button
 				onClick={handleBuyNowClick}
-				disabled={product.InStock < 1 || isOwnProduct}
+				disabled={product.InStock < 1 || isOwnProduct || authLoading}
 				title={isOwnProduct ? 'You cannot purchase your own products' : ''}
 				className='w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-md text-sm sm:text-base'
 			>
