@@ -5,13 +5,16 @@ import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import 'keen-slider/keen-slider.min.css';
 import { LanguageProvider } from './context/LanguageContext';
+import { AuthProvider } from './context/AuthContext';
 import './i18n/index.js';
 
 createRoot(document.getElementById('root')).render(
 	// <StrictMode>
 	<LanguageProvider>
 		<BrowserRouter>
-			<App />
+			<AuthProvider>
+				<App />
+			</AuthProvider>
 		</BrowserRouter>
 	</LanguageProvider>
 	//  </StrictMode>
